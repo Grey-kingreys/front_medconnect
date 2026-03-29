@@ -1,68 +1,172 @@
+/* MedConnect — Global Styles & CSS Variables
+ *
+ * Ce fichier est le pont entre theme.ts et Tailwind.
+ * :root      → mode clair (par défaut)
+ * .dark      → mode sombre (activé via JS ou prefers-color-scheme)
+ *
+ * Tailwind lit ces variables via tailwind.config.ts.
+ * Tu n'as donc JAMAIS à écrire dark:bg-[#xxx] dans les composants —
+ * tu écris simplement bg-background et le mode bascule automatiquement.
+ */
+
+@import "tailwindcss";
+
+/* ─── GOOGLE FONTS ──────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ─── MODE CLAIR (défaut) ───────────────────────────────────────────────────── */
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+  color-scheme: light;
 
-  color-scheme: light dark;
-  color: rgba(255, 255, 255, 0.87);
-  background-color: #242424;
+  /* Fond */
+  --color-background: #FFFFFF;
+  --color-surface: #F9FAFB;
+  --color-surface-hover: #F3F4F6;
+  --color-surface-elevated: #FFFFFF;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
+  /* Texte */
+  --color-foreground: #111827;
+  --color-foreground-muted: #6B7280;
+  --color-foreground-faint: #9CA3AF;
+
+  /* Bordures */
+  --color-border: #E5E7EB;
+  --color-border-strong: #D1D5DB;
+
+  /* Primaire — indigo */
+  --color-primary: #5B5BD6;
+  --color-primary-hover: #4A48C4;
+  --color-primary-foreground: #FFFFFF;
+  --color-primary-subtle: #EEECFB;
+
+  /* Danger — rouge SOS */
+  --color-danger: #EF4444;
+  --color-danger-hover: #DC2626;
+  --color-danger-foreground: #FFFFFF;
+  --color-danger-subtle: #FEE2E2;
+
+  /* Succès — vert */
+  --color-success: #22C55E;
+  --color-success-foreground: #FFFFFF;
+  --color-success-subtle: #DCFCE7;
+
+  /* Avertissement — rose */
+  --color-warning: #F43F5E;
+  --color-warning-foreground: #FFFFFF;
+  --color-warning-subtle: #FFE4E6;
+
+  /* Navigation bottom bar */
+  --color-nav-background: #FFFFFF;
+  --color-nav-border: #E5E7EB;
+  --color-nav-icon: #9CA3AF;
+  --color-nav-icon-active: #5B5BD6;
+
+  /* Ombres */
+  --shadow-card: 0 2px 12px 0 rgb(91 91 214 / 0.08);
+  --shadow-sos: 0 4px 20px 0 rgb(239 68 68 / 0.25);
+  --shadow-button: 0 4px 14px 0 rgb(91 91 214 / 0.30);
+}
+
+/* ─── MODE SOMBRE ────────────────────────────────────────────────────────────── */
+/* Activé quand <html class="dark"> */
+.dark {
+  color-scheme: dark;
+
+  /* Fond — gris très sombre, pas noir pur (meilleur pour les yeux) */
+  --color-background: #0f1117;
+  --color-surface: #1a1f2e;
+  --color-surface-hover: #232838;
+  --color-surface-elevated: #222736;
+
+  /* Texte */
+  --color-foreground: #F1F5F9;
+  --color-foreground-muted: #94A3B8;
+  --color-foreground-faint: #64748B;
+
+  /* Bordures */
+  --color-border: #2D3347;
+  --color-border-strong: #3D4460;
+
+  /* Primaire — légèrement plus clair pour contraste sur fond sombre */
+  --color-primary: #7B7FE8;
+  --color-primary-hover: #6B6FD8;
+  --color-primary-foreground: #FFFFFF;
+  --color-primary-subtle: #1E1E4A;
+
+  /* Danger */
+  --color-danger: #F87171;
+  --color-danger-hover: #EF4444;
+  --color-danger-foreground: #FFFFFF;
+  --color-danger-subtle: #2D1515;
+
+  /* Succès */
+  --color-success: #4ADE80;
+  --color-success-foreground: #0F2A1A;
+  --color-success-subtle: #0F2A1A;
+
+  /* Avertissement */
+  --color-warning: #FB7185;
+  --color-warning-foreground: #FFFFFF;
+  --color-warning-subtle: #2D1520;
+
+  /* Navigation bottom bar */
+  --color-nav-background: #1a1f2e;
+  --color-nav-border: #2D3347;
+  --color-nav-icon: #64748B;
+  --color-nav-icon-active: #7B7FE8;
+
+  /* Ombres (plus marquées sur fond sombre) */
+  --shadow-card: 0 2px 16px 0 rgb(0 0 0 / 0.40);
+  --shadow-sos: 0 4px 24px 0 rgb(239 68 68 / 0.35);
+  --shadow-button: 0 4px 14px 0 rgb(123 127 232 / 0.35);
+}
+
+/* ─── SUPPORT AUTOMATIQUE prefers-color-scheme (optionnel) ──────────────────── */
+/* Décommente si tu veux respecter la préférence système par défaut
+   avant que l'utilisateur choisisse manuellement dans l'app. */
+/*
+@media (prefers-color-scheme: dark) {
+  :root:not(.light) {
+    color-scheme: dark;
+    --color-background:        #0f1117;
+    ... (copie les valeurs .dark ici)
+  }
+}
+*/
+
+/* ─── BASE GLOBALE ───────────────────────────────────────────────────────────── */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+  font-size: 16px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-a {
-  font-weight: 500;
-  color: #646cff;
-  text-decoration: inherit;
-}
-a:hover {
-  color: #535bf2;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  margin: 0;
-  display: flex;
-  place-items: center;
-  min-width: 320px;
-  min-height: 100vh;
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  min-height: 100dvh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
+/* Transition douce sur les éléments lors du changement de mode */
+*,
+*::before,
+*::after {
+  transition-property: background-color, border-color, color;
+  transition-duration: 0.15s;
+  transition-timing-function: ease;
 }
 
-button {
-  border-radius: 8px;
-  border: 1px solid transparent;
-  padding: 0.6em 1.2em;
-  font-size: 1em;
-  font-weight: 500;
-  font-family: inherit;
-  background-color: #1a1a1a;
-  cursor: pointer;
-  transition: border-color 0.25s;
-}
-button:hover {
-  border-color: #646cff;
-}
-button:focus,
-button:focus-visible {
-  outline: 4px auto -webkit-focus-ring-color;
-}
-
-@media (prefers-color-scheme: light) {
-  :root {
-    color: #213547;
-    background-color: #ffffff;
-  }
-  a:hover {
-    color: #747bff;
-  }
-  button {
-    background-color: #f9f9f9;
-  }
+/* Reset transition pour les animations voulues (évite les conflits) */
+.no-transition,
+.no-transition * {
+  transition: none !important;
 }
