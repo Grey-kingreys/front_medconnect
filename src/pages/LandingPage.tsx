@@ -384,7 +384,6 @@ export default function LandingPage() {
                             <p>
                                 "Imaginez une femme enceinte en zone rurale qui peut, grâce à MedConnect, trouver immédiatement le centre de santé le plus proche et recevoir des conseils médicaux adaptés."
                             </p>
-                            <footer>— Vision MedConnect, pitch investisseurs 2024</footer>
                         </blockquote>
                     </div>
                 </section>
