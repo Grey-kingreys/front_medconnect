@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useRef } from "react";
 import { Heart, Home, ArrowLeft, Search, Stethoscope } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 /* ── ECG / Heartbeat Monitor Line ── */
@@ -25,7 +26,7 @@ function ECGMonitor() {
   return (
     <div className="relative w-full max-w-2xl mx-auto">
       {/* Monitor screen */}
-      <div className="relative bg-slate-950/80 backdrop-blur-xl border border-slate-800 rounded-3xl p-6 sm:p-8 overflow-hidden shadow-2xl shadow-primary-500/5">
+      <div className="relative bg-slate-950/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-3xl p-6 sm:p-8 overflow-hidden shadow-2xl shadow-primary-500/5">
         {/* Scanline effect */}
         <div className="absolute inset-0 pointer-events-none opacity-[0.03]">
           <div
@@ -41,11 +42,10 @@ function ECGMonitor() {
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
             <div
-              className={`w-2.5 h-2.5 rounded-full ${
-                phase === "beating"
+              className={`w-2.5 h-2.5 rounded-full ${phase === "beating"
                   ? "bg-secondary-500 animate-pulse"
                   : "bg-emergency-500"
-              }`}
+                }`}
             />
             <span className="text-xs font-mono uppercase tracking-widest text-slate-500">
               {phase === "beating" ? "Recherche en cours..." : "Signal perdu"}
@@ -113,9 +113,8 @@ function ECGMonitor() {
 
           {/* Scanning line */}
           <div
-            className={`absolute top-0 bottom-0 w-px ${
-              phase === "beating" ? "bg-secondary-400/40" : "bg-emergency-500/30"
-            }`}
+            className={`absolute top-0 bottom-0 w-px ${phase === "beating" ? "bg-secondary-400/40" : "bg-emergency-500/30"
+              }`}
             style={{
               animation: "ecg-scan 2s linear infinite",
             }}
@@ -130,11 +129,10 @@ function ECGMonitor() {
                 BPM
               </p>
               <p
-                className={`text-lg font-bold font-mono ${
-                  phase === "beating"
+                className={`text-lg font-bold font-mono ${phase === "beating"
                     ? "text-secondary-500"
                     : "text-emergency-500"
-                }`}
+                  }`}
               >
                 {phase === "beating" ? "72" : "—"}
               </p>
@@ -144,11 +142,10 @@ function ECGMonitor() {
                 SpO2
               </p>
               <p
-                className={`text-lg font-bold font-mono ${
-                  phase === "beating"
+                className={`text-lg font-bold font-mono ${phase === "beating"
                     ? "text-primary-400"
                     : "text-emergency-500"
-                }`}
+                  }`}
               >
                 {phase === "beating" ? "98%" : "—"}
               </p>
@@ -157,11 +154,10 @@ function ECGMonitor() {
 
           {/* Status */}
           <div
-            className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${
-              phase === "beating"
+            className={`px-3 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider ${phase === "beating"
                 ? "bg-secondary-500/10 text-secondary-400 border border-secondary-500/20"
                 : "bg-emergency-500/10 text-emergency-500 border border-emergency-500/20 animate-pulse"
-            }`}
+              }`}
           >
             {phase === "beating" ? "Connexion..." : "Page introuvable"}
           </div>
@@ -262,9 +258,8 @@ export default function NotFound() {
 
         {/* 404 Number — appears after flatline */}
         <div
-          className={`text-center mt-12 transition-all duration-1000 ${
-            showContent ? "opacity-100" : "opacity-0"
-          }`}
+          className={`text-center mt-12 transition-all duration-1000 ${showContent ? "opacity-100" : "opacity-0"
+            }`}
           style={{
             animation: showContent
               ? "number-reveal 0.8s ease-out forwards"
@@ -302,16 +297,15 @@ export default function NotFound() {
 
             {/* Stethoscope icon overlay */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-              <Stethoscope className="w-12 h-12 sm:w-16 sm:h-16 text-white/10" />
+              <Stethoscope className="w-12 h-12 sm:w-16 sm:h-16 text-slate-900 dark:text-white/10" />
             </div>
           </div>
         </div>
 
         {/* Content — rises after 404 */}
         <div
-          className={`text-center mt-6 space-y-6 transition-all duration-700 ${
-            showContent ? "opacity-100" : "opacity-0"
-          }`}
+          className={`text-center mt-6 space-y-6 transition-all duration-700 ${showContent ? "opacity-100" : "opacity-0"
+            }`}
           style={{
             animation: showContent
               ? "content-rise 0.8s ease-out 0.3s forwards"
@@ -326,14 +320,14 @@ export default function NotFound() {
           </div>
 
           <h2
-            className="text-2xl sm:text-3xl lg:text-4xl font-bold text-white"
+            className="text-2xl sm:text-3xl lg:text-4xl font-bold text-slate-900 dark:text-white"
             style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
           >
             Cette page a besoin d&apos;un{" "}
             <span className="gradient-text">médecin</span>
           </h2>
 
-          <p className="text-slate-400 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
+          <p className="text-slate-500 dark:text-slate-400 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
             Il semble que la page que vous cherchez n&apos;existe pas, a été
             déplacée ou est en consultation ailleurs.
           </p>
@@ -342,7 +336,7 @@ export default function NotFound() {
           <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
             <Link
               href="/"
-              className="group relative inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-semibold text-white rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/25 hover:-translate-y-0.5"
+              className="group relative inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-semibold text-slate-900 dark:text-white rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/25 hover:-translate-y-0.5"
             >
               <span className="absolute inset-0 bg-gradient-to-r from-primary-600 via-primary-500 to-cyan-500" />
               <span className="absolute inset-0 bg-gradient-to-r from-primary-500 via-cyan-500 to-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
@@ -352,7 +346,7 @@ export default function NotFound() {
 
             <button
               onClick={() => window.history.back()}
-              className="inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-medium text-slate-300 border border-slate-700 rounded-2xl hover:bg-white/5 hover:border-slate-500 hover:text-white transition-all duration-300"
+              className="inline-flex items-center justify-center gap-2.5 px-8 py-4 text-base font-medium text-slate-600 dark:text-slate-300 border border-slate-700 rounded-2xl hover:bg-white/5 hover:border-slate-500 hover:text-slate-900 dark:text-white transition-all duration-300"
             >
               <ArrowLeft className="w-5 h-5" />
               <span>Page précédente</span>
@@ -372,17 +366,20 @@ export default function NotFound() {
 
         {/* Bottom decoration: MedConnect brand */}
         <div
-          className={`text-center mt-16 transition-all duration-700 delay-500 ${
-            showContent ? "opacity-100" : "opacity-0"
-          }`}
+          className={`text-center mt-16 transition-all duration-700 delay-500 ${showContent ? "opacity-100" : "opacity-0"
+            }`}
         >
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-400 transition-colors"
+            className="inline-flex items-center gap-2 text-slate-600 hover:text-slate-500 dark:text-slate-400 transition-colors"
           >
-            <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center">
-              <Heart className="w-3 h-3 text-white fill-white" />
-            </div>
+            <Image
+              src="/images/logo.png"
+              alt="MedConnect Logo"
+              width={24}
+              height={24}
+              className="rounded-md opacity-60 hover:opacity-100 transition-opacity duration-300"
+            />
             <span
               className="text-sm font-semibold"
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}

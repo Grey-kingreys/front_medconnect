@@ -1,4 +1,4 @@
-import { Heart } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 
 export default function AuthLayout({
@@ -28,14 +28,19 @@ export default function AuthLayout({
         <div className="relative z-10">
           {/* Logo */}
           <Link href="/" className="inline-flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
-              <Heart className="w-5 h-5 text-white fill-white" />
-            </div>
+            <Image
+              src="/images/logo.png"
+              alt="MedConnect Logo"
+              width={40}
+              height={40}
+              priority
+              className="rounded-lg group-hover:scale-105 transition-transform duration-300"
+            />
             <span
               className="text-xl font-bold tracking-tight"
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
-              <span className="text-white">Med</span>
+              <span className="text-slate-900 dark:text-white">Med</span>
               <span className="gradient-text">Connect</span>
             </span>
           </Link>
@@ -44,14 +49,14 @@ export default function AuthLayout({
         {/* Tagline */}
         <div className="relative z-10 space-y-6">
           <h1
-            className="text-4xl xl:text-5xl font-extrabold text-white leading-tight"
+            className="text-4xl xl:text-5xl font-extrabold text-slate-900 dark:text-white leading-tight"
             style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
           >
             Votre santé,
             <br />
             <span className="gradient-text-hero">connectée</span>
           </h1>
-          <p className="text-lg text-slate-400 max-w-md leading-relaxed">
+          <p className="text-lg text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
             Carnet de santé numérique, géolocalisation médicale, urgences et
             diagnostic IA — tout dans votre poche.
           </p>
@@ -81,21 +86,26 @@ export default function AuthLayout({
           {/* Mobile logo */}
           <div className="lg:hidden flex justify-center mb-8">
             <Link href="/" className="inline-flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
-                <Heart className="w-5 h-5 text-white fill-white" />
-              </div>
+              <Image
+                src="/images/logo.png"
+                alt="MedConnect Logo"
+                width={40}
+                height={40}
+                priority
+                className="rounded-lg"
+              />
               <span
                 className="text-xl font-bold tracking-tight"
                 style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
               >
-                <span className="text-white">Med</span>
+                <span className="text-slate-900 dark:text-white">Med</span>
                 <span className="gradient-text">Connect</span>
               </span>
             </Link>
           </div>
 
           {/* Card */}
-          <div className="bg-[#0f172a]/80 backdrop-blur-2xl border border-slate-800/60 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-black/20">
+          <div className="bg-[#0f172a]/80 backdrop-blur-2xl border border-slate-200 dark:border-slate-800/60 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-black/20">
             {children}
           </div>
         </div>

@@ -47,12 +47,12 @@ export default function LoginPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <h2
-          className="text-2xl sm:text-3xl font-extrabold text-white mb-2"
+          className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-2"
           style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
         >
           Bon retour !
         </h2>
-        <p className="text-slate-400 text-sm">
+        <p className="text-slate-500 dark:text-slate-400 text-sm">
           Connectez-vous à votre compte MedConnect
         </p>
       </div>
@@ -69,7 +69,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Email */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
             Adresse email
           </label>
           <div className="relative">
@@ -82,7 +82,7 @@ export default function LoginPage() {
               value={form.email}
               onChange={handleChange}
               placeholder="vous@exemple.com"
-              className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
           </div>
         </div>
@@ -90,7 +90,7 @@ export default function LoginPage() {
         {/* Password */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <label htmlFor="password" className="block text-sm font-medium text-slate-300">
+            <label htmlFor="password" className="block text-sm font-medium text-slate-600 dark:text-slate-300">
               Mot de passe
             </label>
             <Link
@@ -111,12 +111,12 @@ export default function LoginPage() {
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
-              className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 dark:text-slate-300 transition-colors"
               aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}

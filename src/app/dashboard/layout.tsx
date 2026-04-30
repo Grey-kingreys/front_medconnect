@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import {
-  Heart,
   LayoutDashboard,
   Calendar,
   FileText,
@@ -28,6 +28,7 @@ import {
   Bot,
   Loader2,
 } from "lucide-react";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -115,21 +116,21 @@ function getNavSections(role: string): NavSection[] {
         },
       ];
 
+
     case "STRUCTURE_ADMIN":
       return [
         common,
         {
-          title: "Gestion",
+          title: "Ma Structure",
           items: [
             { label: "Ma Structure", href: "/dashboard/structure", icon: <Building2 className="w-5 h-5" /> },
-            { label: "Membres", href: "/dashboard/membres", icon: <Users className="w-5 h-5" /> },
+            { label: "Équipe médicale", href: "/dashboard/membres", icon: <Users className="w-5 h-5" /> },
             { label: "Statistiques", href: "/dashboard/stats", icon: <Activity className="w-5 h-5" /> },
           ],
         },
       ];
 
     case "ADMIN":
-    case "SUPER_ADMIN":
       return [
         common,
         {
@@ -140,17 +141,30 @@ function getNavSections(role: string): NavSection[] {
             { label: "Statistiques", href: "/dashboard/stats", icon: <Activity className="w-5 h-5" /> },
           ],
         },
-        ...(role === "SUPER_ADMIN"
-          ? [
-              {
-                title: "Super Admin",
-                items: [
-                  { label: "Configuration", href: "/dashboard/config", icon: <Settings className="w-5 h-5" /> },
-                  { label: "Sécurité", href: "/dashboard/securite", icon: <ShieldCheck className="w-5 h-5" /> },
-                ],
-              },
-            ]
-          : []),
+      ];
+
+    case "SUPER_ADMIN":
+      return [
+        {
+          title: "Général",
+          items: [
+            { label: "Dashboard", href: "/dashboard/super-admin", icon: <LayoutDashboard className="w-5 h-5" /> },
+          ],
+        },
+        {
+          title: "Administration",
+          items: [
+            { label: "Utilisateurs", href: "/dashboard/utilisateurs", icon: <Users className="w-5 h-5" /> },
+            { label: "Structures", href: "/dashboard/structures", icon: <Building2 className="w-5 h-5" /> },
+          ],
+        },
+        {
+          title: "Super Admin",
+          items: [
+            { label: "Configuration", href: "/dashboard/config", icon: <Settings className="w-5 h-5" /> },
+            { label: "Sécurité", href: "/dashboard/securite", icon: <ShieldCheck className="w-5 h-5" /> },
+          ],
+        },
       ];
 
     default:
@@ -219,38 +233,46 @@ function Sidebar({
       <aside
         className={`
           fixed top-0 left-0 h-full z-50 flex flex-col
-          bg-[#0a0f1e]/95 backdrop-blur-2xl border-r border-slate-800/50
+          bg-white dark:bg-[#0a0f1e]/95 backdrop-blur-2xl border-r border-slate-200 dark:border-slate-800/50
           transition-all duration-300 ease-in-out
           ${collapsed ? "w-[72px]" : "w-[280px]"}
           ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
         {/* Header */}
-        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} p-4 border-b border-slate-800/50`}>
+        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} p-4 border-b border-slate-200 dark:border-slate-800/50`}>
           {!collapsed && (
             <Link href="/" className="inline-flex items-center gap-2.5 group">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
-                <Heart className="w-4.5 h-4.5 text-white fill-white" />
-              </div>
+              <Image
+                src="/images/logo.png"
+                alt="MedConnect Logo"
+                width={36}
+                height={36}
+                className="rounded-lg group-hover:scale-105 transition-transform duration-300"
+              />
               <span
                 className="text-lg font-bold tracking-tight"
                 style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
               >
-                <span className="text-white">Med</span>
+                <span className="text-slate-900 dark:text-white">Med</span>
                 <span className="gradient-text">Connect</span>
               </span>
             </Link>
           )}
           {collapsed && (
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
-              <Heart className="w-4.5 h-4.5 text-white fill-white" />
-            </div>
+            <Image
+              src="/images/logo.png"
+              alt="MedConnect"
+              width={36}
+              height={36}
+              className="rounded-lg"
+            />
           )}
 
           {/* Close button mobile */}
           <button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+            className="lg:hidden p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -258,7 +280,7 @@ function Sidebar({
           {/* Collapse button desktop */}
           <button
             onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex p-1.5 rounded-lg text-slate-500 hover:text-white hover:bg-slate-800/50 transition-colors"
+            className="hidden lg:flex p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
           >
             {collapsed ? (
               <ChevronRight className="w-4 h-4" />
@@ -269,7 +291,7 @@ function Sidebar({
         </div>
 
         {/* User card */}
-        <div className={`p-4 border-b border-slate-800/50 ${collapsed ? "flex justify-center" : ""}`}>
+        <div className={`p-4 border-b border-slate-200 dark:border-slate-800/50 ${collapsed ? "flex justify-center" : ""}`}>
           <Link
             href="/dashboard/profil"
             className={`
@@ -281,14 +303,14 @@ function Sidebar({
           >
             {/* Avatar */}
             <div className={`relative flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${roleGradient} flex items-center justify-center shadow-lg`}>
-              <span className="text-sm font-bold text-white">{initials}</span>
+              <span className="text-sm font-bold text-slate-900 dark:text-white">{initials}</span>
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary-500 rounded-full border-2 border-[#0a0f1e]" />
             </div>
 
             {/* Name & role */}
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-white truncate group-hover:text-primary-300 transition-colors">
+                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-primary-300 transition-colors">
                   {user.prenom} {user.nom}
                 </p>
                 <p className={`text-xs font-medium bg-gradient-to-r ${roleGradient} bg-clip-text text-transparent`}>
@@ -315,7 +337,11 @@ function Sidebar({
               )}
               <div className="space-y-1">
                 {section.items.map((item) => {
-                  const isActive = pathname === item.href;
+                  // Exact match for root-level items, startsWith for sub-pages
+                  const isActive =
+                    item.href === "/dashboard" || item.href === "/dashboard/super-admin"
+                      ? pathname === item.href
+                      : pathname === item.href || pathname.startsWith(item.href + "/");
                   return (
                     <Link
                       key={item.href}
@@ -327,8 +353,8 @@ function Sidebar({
                         transition-all duration-200
                         ${
                           isActive
-                            ? "bg-primary-500/10 text-primary-400 shadow-sm shadow-primary-500/5"
-                            : "text-slate-400 hover:bg-slate-800/40 hover:text-white"
+                            ? "bg-primary-500/10 text-primary-500 shadow-sm shadow-primary-500/5"
+                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white"
                         }
                         ${collapsed ? "justify-center" : ""}
                       `}
@@ -337,7 +363,7 @@ function Sidebar({
                       {isActive && (
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-gradient-to-b from-primary-400 to-cyan-400" />
                       )}
-                      <span className={`flex-shrink-0 transition-colors ${isActive ? "text-primary-400" : "text-slate-500 group-hover:text-white"}`}>
+                      <span className={`flex-shrink-0 transition-colors ${isActive ? "text-primary-400" : "text-slate-500 group-hover:text-slate-900 dark:text-white"}`}>
                         {item.icon}
                       </span>
                       {!collapsed && <span>{item.label}</span>}
@@ -350,13 +376,13 @@ function Sidebar({
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-800/50">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800/50">
           <button
             onClick={logout}
             title={collapsed ? "Se déconnecter" : undefined}
             className={`
               group flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-sm font-medium
-              text-slate-400 hover:bg-emergency-500/10 hover:text-emergency-500
+              text-slate-500 dark:text-slate-400 hover:bg-emergency-500/10 hover:text-emergency-600 dark:hover:text-emergency-500
               transition-all duration-200
               ${collapsed ? "justify-center" : ""}
             `}
@@ -364,6 +390,11 @@ function Sidebar({
             <LogOut className="w-5 h-5 flex-shrink-0" />
             {!collapsed && <span>Se déconnecter</span>}
           </button>
+          
+          <div className={`mt-2 ${collapsed ? "flex justify-center" : "flex items-center justify-between px-3"}`}>
+            {!collapsed && <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thème</span>}
+            <ThemeSwitcher up={true} />
+          </div>
         </div>
       </aside>
     </>
@@ -384,12 +415,16 @@ export default function DashboardLayout({
   // Loading state
   if (loading) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#030712] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center animate-pulse-glow">
-            <Heart className="w-6 h-6 text-white fill-white" />
-          </div>
-          <div className="flex items-center gap-2 text-slate-400">
+          <Image
+            src="/images/logo.png"
+            alt="MedConnect"
+            width={48}
+            height={48}
+            className="rounded-2xl animate-pulse-glow"
+          />
+          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span className="text-sm">Chargement...</span>
           </div>
@@ -401,17 +436,17 @@ export default function DashboardLayout({
   // Non connecté — le hook redirigera vers /auth/login
   if (!user) {
     return (
-      <div className="min-h-screen gradient-hero flex items-center justify-center">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#030712] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
-          <p className="text-sm text-slate-400">Redirection...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Redirection...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#030712]">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#030712] transition-colors duration-300">
       <Sidebar
         collapsed={collapsed}
         setCollapsed={setCollapsed}
@@ -427,26 +462,30 @@ export default function DashboardLayout({
         `}
       >
         {/* Top bar mobile */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between p-4 bg-[#030712]/80 backdrop-blur-xl border-b border-slate-800/50">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between p-4 bg-white/80 dark:bg-[#030712]/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/50">
           <button
             onClick={() => setMobileOpen(true)}
-            className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/50 transition-colors"
+            className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
           >
             <Menu className="w-5 h-5" />
           </button>
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center">
-              <Heart className="w-4 h-4 text-white fill-white" />
-            </div>
+            <Image
+              src="/images/logo.png"
+              alt="MedConnect Logo"
+              width={32}
+              height={32}
+              className="rounded-lg"
+            />
             <span
               className="text-base font-bold"
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
-              <span className="text-white">Med</span>
+              <span className="text-slate-900 dark:text-white">Med</span>
               <span className="gradient-text">Connect</span>
             </span>
           </Link>
-          <div className="w-9" /> {/* Spacer */}
+          <ThemeSwitcher />
         </header>
 
         {/* Page content */}
