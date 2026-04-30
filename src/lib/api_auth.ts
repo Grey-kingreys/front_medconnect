@@ -79,11 +79,11 @@ async function apiFetch<T>(
   const url = `${API_URL}${endpoint}`;
 
   const res = await fetch(url, {
+    ...options,
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
     },
-    ...options,
   });
 
   const body = await res.json();
@@ -104,20 +104,64 @@ async function apiFetch<T>(
 
 /**
  * Fetch authentifié — ajoute automatiquement le Bearer token
+ * En cas de 401 (token expiré), tente un refresh automatique et réessaie une fois.
  */
 async function authFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  const token = typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+  const getToken = () =>
+    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
-  return apiFetch<T>(endpoint, {
-    ...options,
-    headers: {
-      ...options.headers,
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  });
+  const doFetch = (token: string | null) =>
+    apiFetch<T>(endpoint, {
+      ...options,
+      headers: {
+        ...options.headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
+  try {
+    return await doFetch(getToken());
+  } catch (err) {
+    // Si 401 → tenter un refresh du token puis réessayer une seule fois
+    if (err instanceof ApiError && err.status === 401) {
+      try {
+        const refreshToken =
+          typeof window !== "undefined"
+            ? localStorage.getItem("refresh_token")
+            : null;
+        if (!refreshToken) throw new ApiError("Pas de refresh token", 401);
+
+        const refreshRes = await apiFetch<{ access_token: string; refresh_token: string }>(
+          "/auth/refresh",
+          {
+            method: "POST",
+            body: JSON.stringify({ refresh_token: refreshToken }),
+          }
+        );
+
+        // Sauvegarder les nouveaux tokens
+        if (typeof window !== "undefined") {
+          localStorage.setItem("access_token", refreshRes.data.access_token);
+          localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
+        }
+
+        // Réessayer la requête originale avec le nouveau token
+        return await doFetch(refreshRes.data.access_token);
+      } catch {
+        // Refresh échoué → session expirée, nettoyer le localStorage
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
+          localStorage.removeItem("user");
+        }
+        throw new ApiError("Session expirée. Veuillez vous reconnecter.", 401);
+      }
+    }
+    throw err;
+  }
 }
 
 export class ApiError extends Error {

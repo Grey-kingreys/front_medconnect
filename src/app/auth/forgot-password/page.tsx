@@ -43,12 +43,12 @@ export default function ForgotPasswordPage() {
 
         <div>
           <h2
-            className="text-2xl font-extrabold text-white mb-2"
+            className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2"
             style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
           >
             Email envoyé !
           </h2>
-          <p className="text-slate-400 text-sm leading-relaxed">
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
             Si un compte existe avec l&apos;adresse{" "}
             <span className="text-primary-400 font-medium">{email}</span>,
             vous recevrez un lien de réinitialisation dans quelques instants.
@@ -56,8 +56,8 @@ export default function ForgotPasswordPage() {
         </div>
 
         {/* Tips */}
-        <div className="bg-slate-900/40 border border-slate-800/50 rounded-2xl p-4 text-left space-y-2">
-          <p className="text-xs font-medium text-slate-300">💡 Conseils :</p>
+        <div className="bg-slate-900/40 border border-slate-200 dark:border-slate-800/50 rounded-2xl p-4 text-left space-y-2">
+          <p className="text-xs font-medium text-slate-600 dark:text-slate-300">💡 Conseils :</p>
           <ul className="text-xs text-slate-500 space-y-1.5">
             <li>• Vérifiez votre dossier spam/indésirables</li>
             <li>• Le lien expire dans 1 heure</li>
@@ -69,7 +69,7 @@ export default function ForgotPasswordPage() {
         <div className="space-y-3">
           <button
             onClick={() => { setSent(false); setEmail(""); }}
-            className="w-full py-3 rounded-xl text-sm font-medium text-slate-300 border border-slate-700/50 hover:bg-white/5 hover:border-slate-500 transition-all duration-200"
+            className="w-full py-3 rounded-xl text-sm font-medium text-slate-600 dark:text-slate-300 border border-slate-700/50 hover:bg-white/5 hover:border-slate-500 transition-all duration-200"
           >
             Renvoyer avec une autre adresse
           </button>
@@ -97,12 +97,12 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
         <h2
-          className="text-2xl sm:text-3xl font-extrabold text-white mb-2"
+          className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-2"
           style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
         >
           Mot de passe oublié ?
         </h2>
-        <p className="text-slate-400 text-sm leading-relaxed">
+        <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
           Entrez votre adresse email et nous vous enverrons un lien pour
           réinitialiser votre mot de passe.
         </p>
@@ -119,7 +119,7 @@ export default function ForgotPasswordPage() {
       {/* Form */}
       <form onSubmit={handleSubmit} className="space-y-5">
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
             Adresse email
           </label>
           <div className="relative">
@@ -132,7 +132,7 @@ export default function ForgotPasswordPage() {
               value={email}
               onChange={(e) => { setEmail(e.target.value); if (error) setError(""); }}
               placeholder="vous@exemple.com"
-              className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
               autoFocus
             />
           </div>
@@ -161,7 +161,7 @@ export default function ForgotPasswordPage() {
       <p className="mt-8 text-center">
         <Link
           href="/auth/login"
-          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors"
+          className="inline-flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-slate-600 dark:text-slate-300 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Retour à la connexion

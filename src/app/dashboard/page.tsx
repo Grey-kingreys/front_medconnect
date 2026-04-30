@@ -1,6 +1,8 @@
 "use client";
 
 import { useAuth } from "@/hooks/useAuth";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   FileText,
   Stethoscope,
@@ -18,8 +20,10 @@ import {
   TrendingUp,
   Heart,
   Clock,
+  Sparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { getMyStructure, MyStructure } from "@/lib/api_structure";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -261,6 +265,13 @@ function getStatsCards(role: string): StatCard[] {
         { label: "Consultations / mois", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-accent-400" },
         { label: "Croissance", value: "—", change: "+0%", icon: <TrendingUp className="w-5 h-5" />, color: "text-cyan-400" },
       ];
+    case "STRUCTURE_ADMIN":
+      return [
+        { label: "Médecins", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-primary-400" },
+        { label: "Pharmaciens", value: "—", icon: <Pill className="w-5 h-5" />, color: "text-secondary-400" },
+        { label: "Patients Inscrits", value: "—", icon: <Users className="w-5 h-5" />, color: "text-accent-400" },
+        { label: "Consultations / mois", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-cyan-400" },
+      ];
     default:
       return [];
   }
@@ -274,7 +285,7 @@ function StatsGrid({ cards }: { cards: StatCard[] }) {
       {cards.map((card) => (
         <div
           key={card.label}
-          className="group relative bg-[#0f172a]/80 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-5 hover:border-slate-700/50 transition-all duration-300"
+          className="group relative bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-5 hover:border-slate-300 dark:hover:border-slate-700/50 transition-all duration-300"
         >
           <div className="flex items-start justify-between mb-3">
             <div className={`p-2 rounded-xl bg-slate-800/50 ${card.color}`}>
@@ -286,7 +297,7 @@ function StatsGrid({ cards }: { cards: StatCard[] }) {
               </span>
             )}
           </div>
-          <p className="text-2xl font-bold text-white mb-1">{card.value}</p>
+          <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{card.value}</p>
           <p className="text-xs text-slate-500">{card.label}</p>
         </div>
       ))}
@@ -301,17 +312,17 @@ function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
         <Link
           key={action.href}
           href={action.href}
-          className="group relative bg-[#0f172a]/80 backdrop-blur-xl border border-slate-800/50 rounded-2xl p-6 hover:border-slate-700/50 hover:shadow-lg hover:shadow-primary-500/5 transition-all duration-300 overflow-hidden"
+          className="group relative bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-6 hover:border-slate-300 dark:hover:border-slate-700/50 hover:shadow-lg hover:shadow-primary-500/5 transition-all duration-300 overflow-hidden"
         >
           {/* Background glow on hover */}
           <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500`} />
 
           <div className="relative">
             <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${action.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-              <span className="text-white">{action.icon}</span>
+              <span className="text-slate-900 dark:text-white">{action.icon}</span>
             </div>
 
-            <h3 className="text-base font-semibold text-white mb-1.5 group-hover:text-primary-300 transition-colors">
+            <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5 group-hover:text-primary-300 transition-colors">
               {action.label}
             </h3>
             <p className="text-sm text-slate-500 leading-relaxed mb-3">
@@ -333,12 +344,49 @@ function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
 
 export default function DashboardPage() {
   const { user, profile } = useAuth();
+  const router = useRouter();
+  
+  const [structureStats, setStructureStats] = useState<{ medecins: number; pharmaciens: number; actifs: number; }>({
+    medecins: 0, pharmaciens: 0, actifs: 0
+  });
+
+  // Redirect SUPER_ADMIN to their dedicated dashboard
+  useEffect(() => {
+    if (user?.role === "SUPER_ADMIN") {
+      router.replace("/dashboard/super-admin");
+    }
+  }, [user, router]);
+
+  useEffect(() => {
+    if (user?.role === "STRUCTURE_ADMIN") {
+      getMyStructure().then((res) => {
+        const membres = res.data.membres || [];
+        setStructureStats({
+          medecins: membres.filter(m => m.role === "MEDECIN").length,
+          pharmaciens: membres.filter(m => m.role === "PHARMACIEN").length,
+          actifs: membres.filter(m => m.isActive).length,
+        });
+      }).catch(console.error);
+    }
+  }, [user]);
 
   if (!user) return null;
+  if (user.role === "SUPER_ADMIN") return null; // Redirecting...
 
   const welcomeMessage = getWelcomeMessage(user.role);
   const quickActions = getQuickActions(user.role);
-  const statsCards = getStatsCards(user.role);
+  let statsCards = getStatsCards(user.role);
+
+  // Update STRUCTURE_ADMIN stats dynamically
+  if (user.role === "STRUCTURE_ADMIN") {
+    statsCards = statsCards.map((card) => {
+      if (card.label === "Médecins") return { ...card, value: structureStats.medecins.toString() };
+      if (card.label === "Pharmaciens") return { ...card, value: structureStats.pharmaciens.toString() };
+      if (card.label === "Patients Inscrits") return { ...card, value: "0" }; // TODO: Connect patients
+      if (card.label === "Consultations / mois") return { ...card, value: "0" }; // TODO: Connect consultations
+      return card;
+    });
+  }
 
   const now = new Date();
   const hour = now.getHours();
@@ -348,7 +396,7 @@ export default function DashboardPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in">
       {/* Welcome Header */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f172a] to-[#1e1b4b] border border-slate-800/50 p-6 sm:p-8">
+      <div className="relative overflow-hidden rounded-3xl bg-slate-100 dark:bg-gradient-to-br dark:from-[#0f172a] dark:to-[#1e1b4b] border border-slate-200 dark:border-slate-800/50 p-6 sm:p-8">
         {/* Background decorations */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl" />
@@ -358,13 +406,16 @@ export default function DashboardPage() {
         <div className="relative flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1
-              className="text-2xl sm:text-3xl font-extrabold text-white mb-2"
+              className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-2"
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
               {greeting},{" "}
-              <span className="gradient-text">{user.prenom}</span> 👋
+              <span className="gradient-text">{user.prenom}</span>
+              <span className="inline-block ml-2 text-amber-400">
+                <Sparkles className="w-5 h-5 animate-pulse" />
+              </span>
             </h1>
-            <p className="text-sm sm:text-base text-slate-400 max-w-xl">
+            <p className="text-sm sm:text-base text-slate-500 dark:text-slate-400 max-w-xl">
               {welcomeMessage}
             </p>
           </div>
@@ -410,7 +461,7 @@ export default function DashboardPage() {
       {/* Stats */}
       {statsCards.length > 0 && (
         <section>
-          <h2 className="text-lg font-semibold text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
             Aperçu
           </h2>
           <StatsGrid cards={statsCards} />
@@ -419,7 +470,7 @@ export default function DashboardPage() {
 
       {/* Quick Actions */}
       <section>
-        <h2 className="text-lg font-semibold text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
           Accès rapide
         </h2>
         <QuickActionsGrid actions={quickActions} />

@@ -32,7 +32,7 @@ export default function ResetPasswordPage() {
       fallback={
         <div className="text-center space-y-6 py-8">
           <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto" />
-          <p className="text-sm text-slate-400">Chargement...</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Chargement...</p>
         </div>
       }
     >
@@ -117,12 +117,12 @@ function ResetPasswordContent() {
         <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto" />
         <div>
           <h2
-            className="text-xl font-bold text-white mb-2"
+            className="text-xl font-bold text-slate-900 dark:text-white mb-2"
             style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
           >
             Vérification du lien...
           </h2>
-          <p className="text-sm text-slate-400">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Nous vérifions la validité de votre lien de réinitialisation.
           </p>
         </div>
@@ -142,12 +142,12 @@ function ResetPasswordContent() {
 
         <div>
           <h2
-            className="text-2xl font-extrabold text-white mb-2"
+            className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2"
             style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
           >
             Lien invalide ou expiré
           </h2>
-          <p className="text-slate-400 text-sm leading-relaxed">
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
             Ce lien de réinitialisation n&apos;est plus valide. Il a peut-être
             expiré ou a déjà été utilisé.
           </p>
@@ -164,7 +164,7 @@ function ResetPasswordContent() {
 
           <Link
             href="/auth/login"
-            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-300 transition-colors"
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-sm font-medium text-slate-500 hover:text-slate-600 dark:text-slate-300 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Retour à la connexion
@@ -186,12 +186,12 @@ function ResetPasswordContent() {
 
         <div>
           <h2
-            className="text-2xl font-extrabold text-white mb-2"
+            className="text-2xl font-extrabold text-slate-900 dark:text-white mb-2"
             style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
           >
             Mot de passe réinitialisé !
           </h2>
-          <p className="text-slate-400 text-sm leading-relaxed">
+          <p className="text-slate-500 dark:text-slate-400 text-sm leading-relaxed">
             Votre mot de passe a été changé avec succès. Vous pouvez maintenant
             vous connecter avec votre nouveau mot de passe.
           </p>
@@ -220,12 +220,12 @@ function ResetPasswordContent() {
           </div>
         </div>
         <h2
-          className="text-2xl sm:text-3xl font-extrabold text-white mb-2"
+          className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-2"
           style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
         >
           Nouveau mot de passe
         </h2>
-        <p className="text-slate-400 text-sm">
+        <p className="text-slate-500 dark:text-slate-400 text-sm">
           Choisissez un nouveau mot de passe pour{" "}
           <span className="text-primary-400 font-medium">{email}</span>
         </p>
@@ -243,7 +243,7 @@ function ResetPasswordContent() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* New password */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-2">
+          <label htmlFor="password" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
             Nouveau mot de passe
           </label>
           <div className="relative">
@@ -257,13 +257,13 @@ function ResetPasswordContent() {
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
-              className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
               autoFocus
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 dark:text-slate-300 transition-colors"
               aria-label={showPassword ? "Masquer" : "Afficher"}
             >
               {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
@@ -293,7 +293,7 @@ function ResetPasswordContent() {
 
         {/* Confirm password */}
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-2">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
             Confirmer le mot de passe
           </label>
           <div className="relative">
@@ -307,7 +307,7 @@ function ResetPasswordContent() {
               value={form.confirmPassword}
               onChange={handleChange}
               placeholder="••••••••"
-              className={`w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
+              className={`w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
                 form.confirmPassword.length > 0 && form.password !== form.confirmPassword
                   ? "border-emergency-500/50 focus:border-emergency-500/50 focus:ring-emergency-500/20"
                   : form.confirmPassword.length > 0 && form.password === form.confirmPassword

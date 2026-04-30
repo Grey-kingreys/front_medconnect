@@ -212,18 +212,18 @@ export default function ProfilePage() {
       {/* Page Title */}
       <div>
         <h1
-          className="text-2xl sm:text-3xl font-extrabold text-white"
+          className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white"
           style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
         >
           Mon Profil
         </h1>
-        <p className="text-sm text-slate-400 mt-1">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
           Gérez vos informations personnelles et la sécurité de votre compte
         </p>
       </div>
 
       {/* Profile Header Card */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#0f172a] to-[#1e1b4b] border border-slate-800/50 p-6 sm:p-8">
+      <div className="relative overflow-hidden rounded-3xl bg-slate-100 dark:bg-gradient-to-br dark:from-[#0f172a] dark:to-[#1e1b4b] border border-slate-200 dark:border-slate-800/50 p-6 sm:p-8">
         {/* Background decorations */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/10 rounded-full blur-3xl" />
@@ -233,24 +233,24 @@ export default function ProfilePage() {
         <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-6">
           {/* Avatar */}
           <div className={`relative flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br ${roleGradient} flex items-center justify-center shadow-2xl`}>
-            <span className="text-2xl sm:text-3xl font-bold text-white">{initials}</span>
+            <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{initials}</span>
             <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-secondary-500 rounded-full border-3 border-[#0f172a] flex items-center justify-center">
-              <CheckCircle2 className="w-3 h-3 text-white" />
+              <CheckCircle2 className="w-3 h-3 text-slate-900 dark:text-white" />
             </div>
           </div>
 
           {/* Info */}
           <div className="text-center sm:text-left flex-1">
-            <h2 className="text-xl sm:text-2xl font-bold text-white">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">
               {profile.prenom} {profile.nom}
             </h2>
-            <p className="text-sm text-slate-400 mt-0.5">{profile.email}</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{profile.email}</p>
             <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-3">
-              <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r ${roleGradient} text-white`}>
+              <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r ${roleGradient} text-slate-900 dark:text-white`}>
                 <Shield className="w-3 h-3" />
                 {roleLabel}
               </span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-slate-400 bg-slate-800/50 rounded-full border border-slate-700/50">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 text-xs font-medium text-slate-500 dark:text-slate-400 bg-slate-800/50 rounded-full border border-slate-700/50">
                 <Calendar className="w-3 h-3" />
                 Membre depuis{" "}
                 {new Date(profile.createdAt).toLocaleDateString("fr-FR", {
@@ -297,15 +297,15 @@ export default function ProfilePage() {
       )}
 
       {/* Profile Form */}
-      <div className="bg-[#0f172a]/80 backdrop-blur-xl border border-slate-800/50 rounded-3xl p-6 sm:p-8">
+      <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-3xl p-6 sm:p-8">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
             Informations personnelles
           </h3>
           {editing && (
             <button
               onClick={cancelEdit}
-              className="flex items-center gap-1.5 text-sm text-slate-400 hover:text-white transition-colors"
+              className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white transition-colors"
             >
               <X className="w-4 h-4" />
               Annuler
@@ -317,7 +317,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             {/* Nom */}
             <div>
-              <label htmlFor="nom" className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="nom" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 Nom
               </label>
               <div className="relative">
@@ -329,14 +329,14 @@ export default function ProfilePage() {
                   value={form.nom}
                   onChange={handleFormChange}
                   disabled={!editing}
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
 
             {/* Prénom */}
             <div>
-              <label htmlFor="prenom" className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="prenom" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 Prénom
               </label>
               <div className="relative">
@@ -348,7 +348,7 @@ export default function ProfilePage() {
                   value={form.prenom}
                   onChange={handleFormChange}
                   disabled={!editing}
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -356,7 +356,7 @@ export default function ProfilePage() {
 
           {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="email" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
               Adresse email
             </label>
             <div className="relative">
@@ -368,14 +368,14 @@ export default function ProfilePage() {
                 value={form.email}
                 onChange={handleFormChange}
                 disabled={!editing}
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>
 
           {/* Téléphone */}
           <div>
-            <label htmlFor="telephone" className="block text-sm font-medium text-slate-300 mb-2">
+            <label htmlFor="telephone" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
               Téléphone
             </label>
             <div className="relative">
@@ -388,7 +388,7 @@ export default function ProfilePage() {
                 onChange={handleFormChange}
                 disabled={!editing}
                 placeholder="Non renseigné"
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -399,7 +399,7 @@ export default function ProfilePage() {
               <button
                 type="submit"
                 disabled={saving}
-                className="group relative flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="group relative flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-semibold text-slate-900 dark:text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-primary-600 to-cyan-500" />
                 <span className="absolute inset-0 bg-gradient-to-r from-primary-500 to-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -418,21 +418,21 @@ export default function ProfilePage() {
       </div>
 
       {/* Password Section */}
-      <div className="bg-[#0f172a]/80 backdrop-blur-xl border border-slate-800/50 rounded-3xl p-6 sm:p-8">
+      <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-3xl p-6 sm:p-8">
         <div className="flex items-center justify-between mb-6">
-          <h3 className="text-lg font-semibold text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
             Sécurité
           </h3>
         </div>
 
         {!showPasswordForm ? (
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-slate-800/50 text-slate-400">
+              <div className="p-2 rounded-xl bg-slate-800/50 text-slate-500 dark:text-slate-400">
                 <Lock className="w-5 h-5" />
               </div>
               <div>
-                <p className="text-sm font-medium text-white">Mot de passe</p>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">Mot de passe</p>
                 <p className="text-xs text-slate-500">
                   Dernière modification :{" "}
                   {new Date(profile.updatedAt).toLocaleDateString("fr-FR")}
@@ -465,7 +465,7 @@ export default function ProfilePage() {
 
             {/* Current Password */}
             <div>
-              <label htmlFor="currentPassword" className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="currentPassword" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 Mot de passe actuel
               </label>
               <div className="relative">
@@ -477,14 +477,14 @@ export default function ProfilePage() {
                   value={passwordForm.currentPassword}
                   onChange={handlePasswordChange}
                   required
-                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() =>
                     setShowPasswords((p) => ({ ...p, current: !p.current }))
                   }
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 dark:text-slate-300 transition-colors"
                 >
                   {showPasswords.current ? (
                     <EyeOff className="w-5 h-5" />
@@ -497,7 +497,7 @@ export default function ProfilePage() {
 
             {/* New Password */}
             <div>
-              <label htmlFor="newPassword" className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="newPassword" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 Nouveau mot de passe
               </label>
               <div className="relative">
@@ -510,14 +510,14 @@ export default function ProfilePage() {
                   onChange={handlePasswordChange}
                   required
                   minLength={8}
-                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() =>
                     setShowPasswords((p) => ({ ...p, new: !p.new }))
                   }
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 dark:text-slate-300 transition-colors"
                 >
                   {showPasswords.new ? (
                     <EyeOff className="w-5 h-5" />
@@ -530,7 +530,7 @@ export default function ProfilePage() {
 
             {/* Confirm Password */}
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-2">
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 Confirmer le nouveau mot de passe
               </label>
               <div className="relative">
@@ -543,14 +543,14 @@ export default function ProfilePage() {
                   onChange={handlePasswordChange}
                   required
                   minLength={8}
-                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                 />
                 <button
                   type="button"
                   onClick={() =>
                     setShowPasswords((p) => ({ ...p, confirm: !p.confirm }))
                   }
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 dark:text-slate-300 transition-colors"
                 >
                   {showPasswords.confirm ? (
                     <EyeOff className="w-5 h-5" />
@@ -575,14 +575,14 @@ export default function ProfilePage() {
                     confirmPassword: "",
                   });
                 }}
-                className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 transition-all duration-200"
+                className="px-4 py-2.5 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-all duration-200"
               >
                 Annuler
               </button>
               <button
                 type="submit"
                 disabled={passwordSaving}
-                className="group relative flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-accent-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
+                className="group relative flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-accent-500/25 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-accent-600 to-primary-500" />
                 <span className="absolute inset-0 bg-gradient-to-r from-accent-500 to-primary-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -601,22 +601,22 @@ export default function ProfilePage() {
       </div>
 
       {/* Account Info */}
-      <div className="bg-[#0f172a]/80 backdrop-blur-xl border border-slate-800/50 rounded-3xl p-6 sm:p-8">
-        <h3 className="text-lg font-semibold text-white mb-6" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
+      <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-3xl p-6 sm:p-8">
+        <h3 className="text-lg font-semibold text-slate-900 dark:text-white mb-6" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
           Informations du compte
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <p className="text-xs text-slate-500 mb-1">Identifiant</p>
-            <p className="text-sm text-white font-mono truncate">{profile.id}</p>
+            <p className="text-sm text-slate-900 dark:text-white font-mono truncate">{profile.id}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <p className="text-xs text-slate-500 mb-1">Rôle</p>
-            <p className="text-sm text-white">{roleLabel}</p>
+            <p className="text-sm text-slate-900 dark:text-white">{roleLabel}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <p className="text-xs text-slate-500 mb-1">Compte créé le</p>
-            <p className="text-sm text-white">
+            <p className="text-sm text-slate-900 dark:text-white">
               {new Date(profile.createdAt).toLocaleDateString("fr-FR", {
                 day: "numeric",
                 month: "long",
@@ -624,9 +624,9 @@ export default function ProfilePage() {
               })}
             </p>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-800/50">
+          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <p className="text-xs text-slate-500 mb-1">Dernière modification</p>
-            <p className="text-sm text-white">
+            <p className="text-sm text-slate-900 dark:text-white">
               {new Date(profile.updatedAt).toLocaleDateString("fr-FR", {
                 day: "numeric",
                 month: "long",

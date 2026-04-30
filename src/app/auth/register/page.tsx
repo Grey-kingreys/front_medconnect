@@ -92,12 +92,12 @@ export default function RegisterPage() {
       {/* Header */}
       <div className="text-center mb-8">
         <h2
-          className="text-2xl sm:text-3xl font-extrabold text-white mb-2"
+          className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white mb-2"
           style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
         >
           Créer un compte
         </h2>
-        <p className="text-slate-400 text-sm">
+        <p className="text-slate-500 dark:text-slate-400 text-sm">
           Rejoignez MedConnect gratuitement
         </p>
       </div>
@@ -115,7 +115,7 @@ export default function RegisterPage() {
         {/* Nom + Prénom */}
         <div className="grid grid-cols-2 gap-3">
           <div>
-            <label htmlFor="nom" className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label htmlFor="nom" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
               Nom
             </label>
             <div className="relative">
@@ -129,12 +129,12 @@ export default function RegisterPage() {
                 value={form.nom}
                 onChange={handleChange}
                 placeholder="Diallo"
-                className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
               />
             </div>
           </div>
           <div>
-            <label htmlFor="prenom" className="block text-sm font-medium text-slate-300 mb-1.5">
+            <label htmlFor="prenom" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
               Prénom
             </label>
             <div className="relative">
@@ -148,7 +148,7 @@ export default function RegisterPage() {
                 value={form.prenom}
                 onChange={handleChange}
                 placeholder="Mamadou"
-                className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
               />
             </div>
           </div>
@@ -156,7 +156,7 @@ export default function RegisterPage() {
 
         {/* Email */}
         <div>
-          <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1.5">
+          <label htmlFor="email" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
             Adresse email
           </label>
           <div className="relative">
@@ -169,14 +169,14 @@ export default function RegisterPage() {
               value={form.email}
               onChange={handleChange}
               placeholder="vous@exemple.com"
-              className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
           </div>
         </div>
 
         {/* Téléphone (optionnel) */}
         <div>
-          <label htmlFor="telephone" className="block text-sm font-medium text-slate-300 mb-1.5">
+          <label htmlFor="telephone" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
             Téléphone <span className="text-slate-600">(optionnel)</span>
           </label>
           <div className="relative">
@@ -188,14 +188,14 @@ export default function RegisterPage() {
               value={form.telephone}
               onChange={handleChange}
               placeholder="+224 622 123 456"
-              className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
           </div>
         </div>
 
         {/* Mot de passe */}
         <div>
-          <label htmlFor="password" className="block text-sm font-medium text-slate-300 mb-1.5">
+          <label htmlFor="password" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
             Mot de passe
           </label>
           <div className="relative">
@@ -209,12 +209,12 @@ export default function RegisterPage() {
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
-              className="w-full pl-10 pr-11 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-10 pr-11 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-600 dark:text-slate-300 transition-colors"
               aria-label={showPassword ? "Masquer" : "Afficher"}
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -244,7 +244,7 @@ export default function RegisterPage() {
 
         {/* Confirmer mot de passe */}
         <div>
-          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-300 mb-1.5">
+          <label htmlFor="confirmPassword" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
             Confirmer le mot de passe
           </label>
           <div className="relative">
@@ -258,7 +258,7 @@ export default function RegisterPage() {
               value={form.confirmPassword}
               onChange={handleChange}
               placeholder="••••••••"
-              className={`w-full pl-10 pr-3 py-3 bg-slate-900/60 border rounded-xl text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
+              className={`w-full pl-10 pr-3 py-3 bg-slate-900/60 border rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
                 form.confirmPassword.length > 0 && form.password !== form.confirmPassword
                   ? "border-emergency-500/50 focus:border-emergency-500/50 focus:ring-emergency-500/20"
                   : form.confirmPassword.length > 0 && form.password === form.confirmPassword
