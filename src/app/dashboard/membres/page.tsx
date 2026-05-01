@@ -91,11 +91,13 @@ export default function MembresPage() {
         </div>
         <div className="flex gap-3">
           <button onClick={fetchData} className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 border border-slate-700/50 hover:text-slate-900 dark:text-white hover:bg-slate-800/50"><RefreshCw className="w-4 h-4" /></button>
-          <button onClick={() => setShowCreate(true)} className="group relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white overflow-hidden hover:shadow-lg hover:shadow-primary-500/25">
-            <span className="absolute inset-0 bg-gradient-to-r from-primary-600 to-cyan-500" />
-            <span className="absolute inset-0 bg-gradient-to-r from-primary-500 to-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-            <Plus className="relative w-4 h-4" /><span className="relative">Ajouter un membre</span>
-          </button>
+          {user?.role === "STRUCTURE_ADMIN" && (
+            <button onClick={() => setShowCreate(true)} className="group relative flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold text-slate-900 dark:text-white overflow-hidden hover:shadow-lg hover:shadow-primary-500/25">
+              <span className="absolute inset-0 bg-gradient-to-r from-primary-600 to-cyan-500" />
+              <span className="absolute inset-0 bg-gradient-to-r from-primary-500 to-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <Plus className="relative w-4 h-4" /><span className="relative">Ajouter un membre</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -153,9 +155,10 @@ export default function MembresPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200 dark:border-slate-800/50">
-                  {["Membre", "Email", "Rôle", "Téléphone", "Statut", "Depuis le", "Actions"].map(h => (
+                  {["Membre", "Email", "Rôle", "Téléphone", "Statut", "Depuis le"].map(h => (
                     <th key={h} className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-600">{h}</th>
                   ))}
+                  {user?.role === "STRUCTURE_ADMIN" && <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-600">Actions</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800/30">
@@ -196,16 +199,18 @@ export default function MembresPage() {
                         </span>
                       </td>
                       <td className="px-5 py-4"><span className="text-xs text-slate-600">{new Date(m.createdAt).toLocaleDateString("fr-FR")}</span></td>
-                      <td className="px-5 py-4">
-                        <button onClick={() => handleToggle(m)} disabled={!!actionLoading} title={m.isActive ? "Désactiver" : "Activer"}
-                          className={`p-2 rounded-lg transition-all disabled:opacity-50 ${m.isActive ? "text-slate-500 hover:text-emergency-400 hover:bg-emergency-500/10" : "text-slate-500 hover:text-secondary-400 hover:bg-secondary-500/10"}`}>
-                          {isToggling ? <Loader2 className="w-4 h-4 animate-spin" /> : m.isActive ? <XCircle className="w-4 h-4" /> : <Power className="w-4 h-4" />}
-                        </button>
-                        <button onClick={() => setMemberToDelete(m)} disabled={!!actionLoading} title="Supprimer"
-                          className="p-2 rounded-lg text-slate-500 hover:text-emergency-500 hover:bg-emergency-500/10 transition-all disabled:opacity-50">
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </td>
+                      {user?.role === "STRUCTURE_ADMIN" && (
+                        <td className="px-5 py-4">
+                          <button onClick={() => handleToggle(m)} disabled={!!actionLoading} title={m.isActive ? "Désactiver" : "Activer"}
+                            className={`p-2 rounded-lg transition-all disabled:opacity-50 ${m.isActive ? "text-slate-500 hover:text-emergency-400 hover:bg-emergency-500/10" : "text-slate-500 hover:text-secondary-400 hover:bg-secondary-500/10"}`}>
+                            {isToggling ? <Loader2 className="w-4 h-4 animate-spin" /> : m.isActive ? <XCircle className="w-4 h-4" /> : <Power className="w-4 h-4" />}
+                          </button>
+                          <button onClick={() => setMemberToDelete(m)} disabled={!!actionLoading} title="Supprimer"
+                            className="p-2 rounded-lg text-slate-500 hover:text-emergency-500 hover:bg-emergency-500/10 transition-all disabled:opacity-50">
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}

@@ -204,6 +204,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const isAuthenticated = !!user;
+
+  // ── Rafraîchissement automatique en arrière-plan (Silent Refresh) ──
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    // Le token expire en 15 min, on le rafraîchit toutes les 13 min
+    const interval = setInterval(async () => {
+      console.log("[Auth] Silent refresh starting...");
+      try {
+        const refreshRes = await refreshAccessToken();
+        localStorage.setItem("access_token", refreshRes.data.access_token);
+        localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
+        console.log("[Auth] Silent refresh successful");
+      } catch (err) {
+        console.error("[Auth] Silent refresh failed", err);
+      }
+    }, 13 * 60 * 1000); 
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   // ── Redirection automatique si non connecté sur page protégée ──
   useEffect(() => {
     if (loading) return;
@@ -221,8 +243,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push("/dashboard");
     }
   }, [user, loading, pathname, router]);
-
-  const isAuthenticated = !!user;
 
   return (
     <AuthContext.Provider
