@@ -102,13 +102,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("access_token");
         localStorage.removeItem("refresh_token");
         localStorage.removeItem("user");
-      } catch (refreshErr) {
-        // Session complètement expirée ou compte supprimé
-        setUser(null);
-        setProfile(null);
-        localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
-        localStorage.removeItem("user");
       }
     }
   }, [router]);
