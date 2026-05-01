@@ -6,6 +6,7 @@ import { Building2, Mail, Lock, User, Phone, MapPin, Loader2, ArrowRight, CheckC
 import Link from "next/link";
 import { verifyInviteToken, setupStructure, MyStructure } from "@/lib/api_structure";
 import { useAuth } from "@/hooks/useAuth";
+import { ApiError } from "@/lib/api_auth";
 
 export default function SetupStructurePage() {
   const router = useRouter();
@@ -39,8 +40,8 @@ export default function SetupStructurePage() {
         const res = await verifyInviteToken(token);
         setStructure(res.data);
         setForm((prev) => ({ ...prev, structureNom: res.data.nom }));
-      } catch (err: any) {
-        setError(err.message || "Lien invalide ou expiré.");
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Lien invalide ou expiré.");
       } finally {
         setLoading(false);
       }
@@ -85,8 +86,8 @@ export default function SetupStructurePage() {
         user: res.data.user,
       });
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue lors de la configuration.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue lors de la configuration.");
       setStep(1); // Go back if error to allow correcting
     } finally {
       setSaving(false);

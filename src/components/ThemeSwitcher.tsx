@@ -11,6 +11,7 @@ export function ThemeSwitcher({ up = false }: { up?: boolean }) {
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Éviter les erreurs d'hydratation
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {

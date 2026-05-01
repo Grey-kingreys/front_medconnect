@@ -244,7 +244,7 @@ export default function CarnetPage() {
             <Bot className="absolute -right-4 -bottom-4 w-32 h-32 opacity-10 group-hover:rotate-12 transition-transform duration-500" />
             <h3 className="text-lg font-bold mb-2">Un symptôme ?</h3>
             <p className="text-slate-400 text-sm mb-6 leading-relaxed">Utilisez notre intelligence artificielle pour un pré-diagnostic rapide et discret.</p>
-            <button className="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-sm font-bold transition-all">Lancer l'auto-diagnostic</button>
+            <button className="w-full py-3 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-sm font-bold transition-all">Lancer l&apos;auto-diagnostic</button>
           </div>
         </div>
 
@@ -278,7 +278,7 @@ export default function CarnetPage() {
                   <input type="date" value={form.dateNaissance} onChange={e => setForm(p => ({ ...p, dateNaissance: e.target.value }))} className={inputCls} />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Contact d'urgence</label>
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Contact d&apos;urgence</label>
                   <input type="text" value={form.contactUrgence} onChange={e => setForm(p => ({ ...p, contactUrgence: e.target.value }))} className={inputCls} placeholder="Nom - Téléphone" />
                 </div>
                 <div>
@@ -386,7 +386,7 @@ export default function CarnetPage() {
                 <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center text-primary-400 shrink-0"><ShieldAlert className="w-6 h-6" /></div>
                 <div>
                   <h4 className="text-sm font-bold text-white mb-1">Confidentialité de vos données</h4>
-                  <p className="text-xs text-slate-500 leading-relaxed">Vos données médicales sont cryptées de bout en bout. Seuls les médecins que vous autorisez lors d'une consultation pourront y accéder temporairement.</p>
+                  <p className="text-xs text-slate-500 leading-relaxed">Vos données médicales sont cryptées de bout en bout. Seuls les médecins que vous autorisez lors d&apos;une consultation pourront y accéder temporairement.</p>
                 </div>
               </div>
 
@@ -414,7 +414,7 @@ export default function CarnetPage() {
                   <div className="relative z-10 space-y-6">
                     <div className="flex items-center gap-4">
                       <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center"><Phone className="w-6 h-6" /></div>
-                      <h3 className="font-bold">Contact d'urgence</h3>
+                      <h3 className="font-bold">Contact d&apos;urgence</h3>
                     </div>
                     <div>
                       <p className="text-white/70 text-xs uppercase font-black tracking-widest mb-1">Personne à prévenir</p>

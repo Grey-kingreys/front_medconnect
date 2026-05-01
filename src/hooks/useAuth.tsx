@@ -44,9 +44,20 @@ const AuthContext = createContext<AuthContextType>({
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const [user, setUser] = useState<AuthUser | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    if (typeof window !== "undefined") {
+      const stored = localStorage.getItem("user");
+      try { return stored ? JSON.parse(stored) : null; } catch { return null; }
+    }
+    return null;
+  });
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => {
+    if (typeof window !== "undefined") {
+      return !localStorage.getItem("access_token");
+    }
+    return true;
+  });
 
   // ── Récupérer le profil complet depuis l'API ──────────────────
   const refreshProfile = useCallback(async () => {

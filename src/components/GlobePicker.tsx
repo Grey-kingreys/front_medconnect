@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { MapPin, Target, ZoomIn, ZoomOut, Search, Layers, Crosshair } from "lucide-react";
+import { MapPin, Target, ZoomIn, ZoomOut, Layers, Crosshair } from "lucide-react";
 
 interface GlobePickerProps {
   initialLat?: number;
@@ -48,6 +48,7 @@ export default function GlobePicker({
       style: "mapbox://styles/mapbox/navigation-night-v1",
       center: [startLng, startLat],
       zoom: initialLat ? 12 : 2,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       projection: { name: "globe" } as any,
     });
 
@@ -55,7 +56,8 @@ export default function GlobePicker({
       if (!map.current) return;
       
       const style = map.current.getStyle();
-      const isNight = style && (style.name?.toLowerCase().includes("night") || style.id?.toLowerCase().includes("night"));
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const isNight = style && (style.name?.toLowerCase().includes("night") || (style as any).id?.toLowerCase().includes("night"));
 
       // Use a more reliable GeoJSON source for continents
       if (!map.current.getSource('continents')) {
@@ -142,6 +144,7 @@ export default function GlobePicker({
     return () => {
       map.current?.remove();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Only once
 
   // Handle style toggle without re-init
@@ -220,6 +223,7 @@ export default function GlobePicker({
         markers.current.push(m);
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [structures, isSatellite]);
 
   const handleZoomIn = (e: React.MouseEvent) => {

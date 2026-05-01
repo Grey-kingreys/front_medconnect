@@ -12,7 +12,7 @@ interface MapModalProps {
   initialLat?: number;
   initialLng?: number;
   onLocationSelect?: (lat: number, lng: number) => void;
-  structures?: any[]; // For viewer mode
+  structures?: Structure[]; // For viewer mode
   hideCloseButton?: boolean;
 }
 
@@ -120,6 +120,7 @@ export function MapModal({
             initialLng={initialLng}
             onLocationSelect={onLocationSelect ? (lat, lng) => setSelectedCoords({ lat, lng }) : undefined}
             structures={filteredStructures.map(s => ({
+              id: s.id || s.nom,
               lat: s.latitude || 0,
               lng: s.longitude || 0,
               label: s.nom,

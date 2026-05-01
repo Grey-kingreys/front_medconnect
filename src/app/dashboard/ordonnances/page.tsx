@@ -166,7 +166,7 @@ export default function OrdonnancesPage() {
                     
                     <div className="flex gap-6">
                       <div>
-                        <p className="text-[10px] font-bold uppercase text-white/60 mb-1">Date d'émission</p>
+                        <p className="text-[10px] font-bold uppercase text-white/60 mb-1">Date d&apos;émission</p>
                         <p className="text-sm font-bold">{new Date(selectedOrdonnance.dateEmission).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
                       </div>
                       {selectedOrdonnance.dateExpiration && (

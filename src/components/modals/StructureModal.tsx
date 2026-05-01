@@ -75,11 +75,8 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
           ville: form.ville || undefined,
           latitude: form.latitude,
           longitude: form.longitude,
-          latitude: form.latitude,
-          longitude: form.longitude,
           horaires: JSON.stringify(schedule),
           estDeGarde: form.estDeGarde,
-          estOuvertManuel: form.estOuvertManuel,
         });
       } else {
         await updateMyStructure({
@@ -95,7 +92,7 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
           estOuvertManuel: form.estOuvertManuel,
         });
       }
-      onSuccess();
+      onSuccess?.();
       onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : "Une erreur est survenue");
@@ -144,7 +141,7 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
               <div>
                 <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Type <span className="text-emergency-500">*</span></label>
                 <div className="relative">
-                  <select disabled={mode === "view"} value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as StructureType }))} className={`${cls} appearance-none pr-10 cursor-pointer`}>
+                  <select disabled={false} value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as StructureType }))} className={`${cls} appearance-none pr-10 cursor-pointer`}>
                     <option value="HOPITAL">Hôpital</option>
                     <option value="CLINIQUE">Clinique</option>
                     <option value="PHARMACIE">Pharmacie</option>
@@ -165,11 +162,11 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
               <>
                 <div>
                   <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Email Administrateur <span className="text-emergency-500">*</span></label>
-                  <input required disabled={mode === "view"} type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={cls} placeholder="admin@structure.com" />
+                  <input required disabled={false} type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={cls} placeholder="admin@structure.com" />
                 </div>
                 <div>
                   <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Téléphone Admin</label>
-                  <input type="tel" disabled={mode === "view"} value={form.telephone} onChange={e => setForm(p => ({ ...p, telephone: e.target.value }))} className={cls} placeholder="+224 622 000 000" />
+                  <input type="tel" disabled={false} value={form.telephone} onChange={e => setForm(p => ({ ...p, telephone: e.target.value }))} className={cls} placeholder="+224 622 000 000" />
                 </div>
               </>
             )}
