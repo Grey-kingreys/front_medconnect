@@ -19,7 +19,29 @@ const ROLE_LABELS: Record<string, string> = {
   PHARMACIEN: "Pharmacien",
   STRUCTURE_ADMIN: "Admin Structure",
   ADMIN: "Administrateur",
+  SUPER_ADMIN: "Super Admin",
 };
+
+export const MEDICAL_SPECIALTIES = [
+  "Médecine Générale",
+  "Cardiologie",
+  "Dermatologie",
+  "Gynécologie",
+  "Pédiatrie",
+  "Ophtalmologie",
+  "Dentisterie",
+  "Psychiatrie",
+  "Neurologie",
+  "Radiologie",
+  "Chirurgie",
+  "Gastro-entérologie",
+  "ORL",
+  "Urologie",
+  "Oncologie",
+  "Orthopédie",
+  "Infectiologie",
+  "Urgentiste"
+];
 
 export function UserModal({ mode, structureId, structureType, onClose, onSuccess }: UserModalProps) {
   const isMembreMode = mode === "create_membre";
@@ -38,6 +60,7 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
     password: "",
     role: isMembreMode ? allowedMembreRoles[0] : "PATIENT",
     telephone: "",
+    specialite: "",
   });
 
   const [saving, setSaving] = useState(false);
@@ -57,7 +80,8 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
         if (!structureId) throw new Error("structureId manquant");
         await createMembre(structureId, {
           nom: form.nom, prenom: form.prenom, email: form.email,
-          role: form.role as MembreRole, telephone: form.telephone || undefined
+          role: form.role as MembreRole, telephone: form.telephone || undefined,
+          specialite: form.role === "MEDECIN" ? form.specialite : undefined
         });
       } else if (isSuperAdminMode) {
         await createSuperAdmin({
@@ -67,7 +91,8 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
       } else if (isAdminUserMode) {
         await createUser({
           nom: form.nom, prenom: form.prenom, email: form.email,
-          password: form.password, role: form.role, telephone: form.telephone || undefined
+          password: form.password, role: form.role, telephone: form.telephone || undefined,
+          specialite: form.role === "MEDECIN" ? form.specialite : undefined
         });
       }
       onSuccess();
@@ -155,6 +180,24 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
               <label className="block text-sm text-slate-600 dark:text-slate-300 mb-2">Téléphone</label>
               <input type="tel" value={form.telephone} onChange={e => setForm(p => ({ ...p, telephone: e.target.value }))} className={cls} placeholder="+224 622..." />
             </div>
+
+            {form.role === "MEDECIN" && (
+              <div className="col-span-2">
+                <label className="block text-sm text-slate-600 dark:text-slate-300 mb-2">Spécialité <span className="text-emergency-500">*</span></label>
+                <div className="relative">
+                  <select 
+                    required
+                    value={form.specialite} 
+                    onChange={e => setForm(p => ({ ...p, specialite: e.target.value }))} 
+                    className={`${cls} appearance-none pr-10 cursor-pointer`}
+                  >
+                    <option value="">Sélectionner une spécialité</option>
+                    {MEDICAL_SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
+                </div>
+              </div>
+            )}
           </div>
 
           {!isMembreMode && (

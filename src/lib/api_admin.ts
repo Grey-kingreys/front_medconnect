@@ -168,6 +168,7 @@ export interface CreateUserPayload {
   password: string;
   role: string;
   telephone?: string;
+  specialite?: string;
 }
 
 // ─── Super-Admin : Stats globales ───────────────────────────────

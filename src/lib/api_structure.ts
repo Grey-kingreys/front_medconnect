@@ -79,6 +79,7 @@ export interface Membre {
   telephone?: string;
   role: MembreRole;
   isActive: boolean;
+  specialite?: string;
   createdAt: string;
 }
 
@@ -123,6 +124,7 @@ export interface CreateMembrePayload {
   email: string;
   role: MembreRole;
   telephone?: string;
+  specialite?: string;
 }
 
 // ─── Structure Admin : Ma Structure ─────────────────────────────
