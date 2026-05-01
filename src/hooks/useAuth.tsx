@@ -138,47 +138,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Vérification initiale de l'authentification ───────────────
   useEffect(() => {
     const checkAuth = async () => {
-      setLoading(true);
-      const token = localStorage.getItem("access_token");
-      const storedUser = localStorage.getItem("user");
-
-      if (!token || !storedUser) {
-        setUser(null);
-        setProfile(null);
-        setLoading(false);
-        return;
-      }
-
-      // Charger le user du localStorage immédiatement
+      console.log("[Auth] Checking session...");
       try {
-        const parsed = JSON.parse(storedUser) as AuthUser;
-        setUser(parsed);
-      } catch {
-        setUser(null);
-      }
+        const token = localStorage.getItem("access_token");
+        const storedUser = localStorage.getItem("user");
 
-      // Vérifier le token et charger le profil complet
-      try {
-        await verifyToken();
-        await refreshProfile();
-      } catch {
-        // Token expiré, tenter le refresh
-        try {
-          const refreshRes = await refreshAccessToken();
-          localStorage.setItem("access_token", refreshRes.data.access_token);
-          localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
-          await refreshProfile();
-        } catch {
-          // Session complètement expirée
+        if (!token || !storedUser) {
+          console.log("[Auth] No session found in storage");
           setUser(null);
           setProfile(null);
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          localStorage.removeItem("user");
+          return;
         }
-      }
 
-      setLoading(false);
+        try {
+          const parsed = JSON.parse(storedUser) as AuthUser;
+          setUser(parsed);
+          console.log("[Auth] User loaded from storage:", parsed.email);
+        } catch (e) {
+          console.error("[Auth] Failed to parse stored user", e);
+          setUser(null);
+        }
+
+        try {
+          console.log("[Auth] Verifying token...");
+          await verifyToken();
+          await refreshProfile();
+          console.log("[Auth] Session verified");
+        } catch {
+          console.log("[Auth] Token invalid or expired, attempting refresh...");
+          try {
+            const refreshRes = await refreshAccessToken();
+            localStorage.setItem("access_token", refreshRes.data.access_token);
+            localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
+            await refreshProfile();
+            console.log("[Auth] Session refreshed");
+          } catch {
+            console.warn("[Auth] Session expired completely");
+            setUser(null);
+            setProfile(null);
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
+            localStorage.removeItem("user");
+          }
+        }
+      } catch (err) {
+        console.error("[Auth] Fatal error during checkAuth", err);
+      } finally {
+        console.log("[Auth] Check complete, setting loading to false");
+        setLoading(false);
+      }
     };
 
     checkAuth();
