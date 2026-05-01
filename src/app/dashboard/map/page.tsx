@@ -7,6 +7,7 @@ import {
   Phone, 
   Clock, 
   ChevronRight, 
+  ChevronDown,
   Building2, 
   Map as MapIcon, 
   LayoutGrid,
@@ -18,12 +19,14 @@ import {
 } from "lucide-react";
 import { getAllStructures, getPublicStructureDetails, MyStructure } from "@/lib/api_structure";
 import GlobePicker from "@/components/GlobePicker";
+import { MEDICAL_SPECIALTIES } from "@/components/modals/UserModal";
 
 export default function MapPage() {
   const [structures, setStructures] = useState<MyStructure[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState<"list" | "map">("list");
+  const [filterSpecialty, setFilterSpecialty] = useState<string>("ALL");
   
   const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
   const [structureDetails, setStructureDetails] = useState<MyStructure | null>(null);
@@ -58,11 +61,15 @@ export default function MapPage() {
     }
   };
 
-  const filtered = structures.filter(s => 
-    s.nom.toLowerCase().includes(search.toLowerCase()) ||
-    (s.ville || "").toLowerCase().includes(search.toLowerCase()) ||
-    (s.adresse || "").toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = structures.filter(s => {
+    const matchesSearch = s.nom.toLowerCase().includes(search.toLowerCase()) ||
+      (s.ville || "").toLowerCase().includes(search.toLowerCase()) ||
+      (s.adresse || "").toLowerCase().includes(search.toLowerCase());
+    
+    const matchesSpecialty = filterSpecialty === "ALL" || s.membres?.some(m => m.specialite === filterSpecialty);
+    
+    return matchesSearch && matchesSpecialty;
+  });
 
   if (loading) {
     return (
@@ -113,7 +120,7 @@ export default function MapPage() {
     if (!structureDetails) return null;
     
     const isCurrentlyOpen = isOpenNow(structureDetails);
-    const doctors = structureDetails.membres?.filter(m => m.role === "MEDECIN") || [];
+    const doctors = structureDetails.membres?.filter(m => m.role === "MEDECIN" || m.role === "STRUCTURE_ADMIN") || [];
     
     let parsedSchedule: Record<string, string> = {};
     try {
@@ -196,7 +203,9 @@ export default function MapPage() {
                     </div>
                     <div>
                       <p className="font-bold text-slate-900 dark:text-white">Dr. {doc.prenom} {doc.nom}</p>
-                      <p className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">Médecin</p>
+                      <p className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">
+                        {doc.specialite || "Médecin"}
+                      </p>
                     </div>
                   </div>
                   <div className="pl-13 space-y-1 mt-3">
@@ -249,6 +258,19 @@ export default function MapPage() {
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all shadow-sm"
             />
+          </div>
+          
+          <div className="relative w-full sm:w-64">
+            <Stethoscope className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <select 
+              value={filterSpecialty}
+              onChange={(e) => setFilterSpecialty(e.target.value)}
+              className="w-full pl-12 pr-10 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all shadow-sm appearance-none cursor-pointer"
+            >
+              <option value="ALL">Toutes spécialités</option>
+              {MEDICAL_SPECIALTIES.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+            <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           </div>
         </div>
       </div>

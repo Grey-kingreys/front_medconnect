@@ -33,6 +33,7 @@ export interface UserProfile {
   telephone?: string;
   role: string;
   isActive: boolean;
+  specialite?: string;
   structureId?: string;
   structure?: {
     id: string;

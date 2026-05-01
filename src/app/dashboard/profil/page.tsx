@@ -24,6 +24,7 @@ import {
   EyeOff,
   Pencil,
   X,
+  Stethoscope,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -329,7 +330,7 @@ export default function ProfilePage() {
                   value={form.nom}
                   onChange={handleFormChange}
                   disabled={!editing}
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -348,7 +349,7 @@ export default function ProfilePage() {
                   value={form.prenom}
                   onChange={handleFormChange}
                   disabled={!editing}
-                  className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                 />
               </div>
             </div>
@@ -368,7 +369,7 @@ export default function ProfilePage() {
                 value={form.email}
                 onChange={handleFormChange}
                 disabled={!editing}
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>
@@ -388,10 +389,29 @@ export default function ProfilePage() {
                 onChange={handleFormChange}
                 disabled={!editing}
                 placeholder="Non renseigné"
-                className="w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>
           </div>
+
+          {/* Spécialité (pour les médecins) */}
+          {user.role === "MEDECIN" && (
+            <div>
+              <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+                Spécialité
+              </label>
+              <div className="relative">
+                <Stethoscope className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  value={profile.specialite || "Non renseignée"}
+                  disabled
+                  className="w-full pl-12 pr-4 py-3.5 bg-slate-100 dark:bg-slate-800/40 border border-slate-200 dark:border-slate-800 rounded-xl text-slate-600 dark:text-slate-400 font-medium text-sm cursor-not-allowed"
+                />
+              </div>
+              <p className="text-[10px] text-slate-500 mt-2 italic">La spécialité ne peut être modifiée que par l&apos;administrateur de votre structure.</p>
+            </div>
+          )}
 
           {/* Save button */}
           {editing && (
@@ -426,7 +446,7 @@ export default function ProfilePage() {
         </div>
 
         {!showPasswordForm ? (
-          <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
+          <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-xl bg-slate-800/50 text-slate-500 dark:text-slate-400">
                 <Lock className="w-5 h-5" />
@@ -477,7 +497,7 @@ export default function ProfilePage() {
                   value={passwordForm.currentPassword}
                   onChange={handlePasswordChange}
                   required
-                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                  className="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                 />
                 <button
                   type="button"
@@ -510,7 +530,7 @@ export default function ProfilePage() {
                   onChange={handlePasswordChange}
                   required
                   minLength={8}
-                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                  className="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                 />
                 <button
                   type="button"
@@ -543,7 +563,7 @@ export default function ProfilePage() {
                   onChange={handlePasswordChange}
                   required
                   minLength={8}
-                  className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                  className="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                 />
                 <button
                   type="button"
@@ -606,15 +626,15 @@ export default function ProfilePage() {
           Informations du compte
         </h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <p className="text-xs text-slate-500 mb-1">Identifiant</p>
             <p className="text-sm text-slate-900 dark:text-white font-mono truncate">{profile.id}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <p className="text-xs text-slate-500 mb-1">Rôle</p>
             <p className="text-sm text-slate-900 dark:text-white">{roleLabel}</p>
           </div>
-          <div className="p-4 rounded-2xl bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
+          <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-200 dark:border-slate-800/50">
             <p className="text-xs text-slate-500 mb-1">Compte créé le</p>
             <p className="text-sm text-slate-900 dark:text-white">
               {new Date(profile.createdAt).toLocaleDateString("fr-FR", {

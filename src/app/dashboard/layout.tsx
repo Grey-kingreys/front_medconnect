@@ -124,6 +124,7 @@ function getNavSections(role: string): NavSection[] {
           title: "Ma Structure",
           items: [
             { label: "Ma Structure", href: "/dashboard/structure", icon: <Building2 className="w-5 h-5" /> },
+            { label: "Mes Patients", href: "/dashboard/patients", icon: <Users className="w-5 h-5" /> },
             { label: "Équipe médicale", href: "/dashboard/membres", icon: <Users className="w-5 h-5" /> },
             { label: "Statistiques", href: "/dashboard/stats", icon: <Activity className="w-5 h-5" /> },
           ],

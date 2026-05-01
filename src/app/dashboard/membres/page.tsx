@@ -173,7 +173,12 @@ export default function MembresPage() {
                           <div className={`w-9 h-9 rounded-xl ${role.bg} flex items-center justify-center flex-shrink-0`}>
                             <span className={`text-xs font-bold ${role.color}`}>{initials}</span>
                           </div>
-                          <p className="text-sm font-medium text-slate-900 dark:text-white">{m.prenom} {m.nom}</p>
+                          <div>
+                            <p className="text-sm font-medium text-slate-900 dark:text-white">{m.prenom} {m.nom}</p>
+                            {m.role === "MEDECIN" && m.specialite && (
+                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight">{m.specialite}</p>
+                            )}
+                          </div>
                         </div>
                       </td>
                       <td className="px-5 py-4">
