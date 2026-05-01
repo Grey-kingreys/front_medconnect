@@ -257,7 +257,7 @@ function ResetPasswordContent() {
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
-              className="w-full pl-12 pr-12 py-3.5 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
               autoFocus
             />
             <button
@@ -307,12 +307,12 @@ function ResetPasswordContent() {
               value={form.confirmPassword}
               onChange={handleChange}
               placeholder="••••••••"
-              className={`w-full pl-12 pr-4 py-3.5 bg-slate-900/60 border rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
+              className={`w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
                 form.confirmPassword.length > 0 && form.password !== form.confirmPassword
                   ? "border-emergency-500/50 focus:border-emergency-500/50 focus:ring-emergency-500/20"
                   : form.confirmPassword.length > 0 && form.password === form.confirmPassword
                     ? "border-secondary-500/50 focus:border-secondary-500/50 focus:ring-secondary-500/20"
-                    : "border-slate-700/50 focus:border-primary-500/50 focus:ring-primary-500/20"
+                    : "border-slate-200 dark:border-slate-700/50 focus:border-primary-500/50 focus:ring-primary-500/20"
               }`}
             />
           </div>

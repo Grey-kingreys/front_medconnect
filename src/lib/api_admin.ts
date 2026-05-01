@@ -107,9 +107,13 @@ export interface Structure {
   ville?: string;
   latitude?: number;
   longitude?: number;
+  description?: string;
+  horaires?: string;
+  estDeGarde: boolean;
   isActive: boolean;
   isConfigured: boolean;
   admin?: { id: string; nom: string; prenom: string; email: string };
+  membres?: Array<{ id: string; nom: string; prenom: string; role: string; isActive: boolean }>;
   _count?: { membres: number };
   createdAt: string;
   updatedAt: string;
@@ -199,6 +203,13 @@ export async function toggleStructureActive(id: string) {
 export async function resendStructureInvitation(id: string) {
   return authFetch<null>(
     `/super-admin/structures/${id}/resend-invitation`,
+    { method: "POST" }
+  );
+}
+
+export async function deleteStructure(id: string) {
+  return authFetch<null>(
+    `/super-admin/structures/${id}/delete`,
     { method: "POST" }
   );
 }

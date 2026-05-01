@@ -105,7 +105,7 @@ export default function AuthLayout({
           </div>
 
           {/* Card */}
-          <div className="bg-[#0f172a]/80 backdrop-blur-2xl border border-slate-200 dark:border-slate-800/60 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-black/20">
+          <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-2xl border border-slate-200 dark:border-slate-800/60 rounded-3xl p-8 sm:p-10 shadow-2xl shadow-black/10 dark:shadow-black/20">
             {children}
           </div>
         </div>

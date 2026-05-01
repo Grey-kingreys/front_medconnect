@@ -79,7 +79,7 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
     }
   };
 
-  const cls = "w-full px-4 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 text-sm transition-all";
+  const cls = "w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 text-sm transition-all";
 
   const getTitle = () => {
     if (isSuperAdminMode) return "Nouveau Super Admin";
@@ -95,14 +95,14 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-white dark:bg-[#0f172a]/95 border border-slate-200 dark:border-slate-800/60 rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
-        <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800/50">
+      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={onClose} />
+      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+        <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800/50">
           <div>
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getTitle()}</h2>
             <p className="text-xs text-slate-500 mt-0.5">{getSubtitle()}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50"><X className="w-5 h-5" /></button>
         </div>
 
         <form onSubmit={submit} className="p-6 space-y-4">
@@ -172,7 +172,7 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
           )}
 
           <div className="flex gap-3 pt-2">
-            <button type="button" onClick={onClose} className="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-700/50 hover:bg-slate-800/50 transition-all">
+            <button type="button" onClick={onClose} className="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all">
               Annuler
             </button>
             <button type="submit" disabled={saving} className={`flex-[2] group relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white overflow-hidden disabled:opacity-60`}>

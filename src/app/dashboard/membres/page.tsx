@@ -4,10 +4,11 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Plus, Search, RefreshCw, CheckCircle2, XCircle,
-  Power, AlertCircle, Loader2, X, ChevronDown, Stethoscope, Pill, Mail, Phone,
+  Power, AlertCircle, Loader2, X, ChevronDown, Stethoscope, Pill, Mail, Phone, Trash2,
 } from "lucide-react";
 import { getMembres, createMembre, toggleMembreActive, Membre, MembreRole, ApiError } from "@/lib/api_structure";
 import { UserModal } from "@/components/modals/UserModal";
+import { MemberDeleteModal } from "@/components/modals/MemberDeleteModal";
 
 const ROLE_CONFIG: Record<MembreRole, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   MEDECIN: { label: "Médecin", color: "text-blue-400", bg: "bg-blue-500/10", icon: <Stethoscope className="w-4 h-4" /> },
@@ -29,6 +30,7 @@ export default function MembresPage() {
   const [filterRole, setFilterRole] = useState<"ALL" | MembreRole>("ALL");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "ACTIVE" | "INACTIVE">("ALL");
   const [showCreate, setShowCreate] = useState(false);
+  const [memberToDelete, setMemberToDelete] = useState<Membre | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
@@ -199,6 +201,10 @@ export default function MembresPage() {
                           className={`p-2 rounded-lg transition-all disabled:opacity-50 ${m.isActive ? "text-slate-500 hover:text-emergency-400 hover:bg-emergency-500/10" : "text-slate-500 hover:text-secondary-400 hover:bg-secondary-500/10"}`}>
                           {isToggling ? <Loader2 className="w-4 h-4 animate-spin" /> : m.isActive ? <XCircle className="w-4 h-4" /> : <Power className="w-4 h-4" />}
                         </button>
+                        <button onClick={() => setMemberToDelete(m)} disabled={!!actionLoading} title="Supprimer"
+                          className="p-2 rounded-lg text-slate-500 hover:text-emergency-500 hover:bg-emergency-500/10 transition-all disabled:opacity-50">
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   );
@@ -221,6 +227,15 @@ export default function MembresPage() {
           structureType={structureType}
           onClose={() => setShowCreate(false)}
           onSuccess={fetchData}
+        />
+      )}
+
+      {memberToDelete && structureId && (
+        <MemberDeleteModal
+          member={memberToDelete}
+          structureId={structureId}
+          onClose={() => setMemberToDelete(null)}
+          onDeleted={fetchData}
         />
       )}
     </div>

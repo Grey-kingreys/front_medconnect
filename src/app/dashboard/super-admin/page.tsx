@@ -16,6 +16,7 @@ import {
   ArrowRight,
   Loader2,
   RefreshCw,
+  Sparkles,
 } from "lucide-react";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { BarChart } from "@/components/charts/BarChart";
@@ -28,6 +29,8 @@ import {
   UserStats,
   Structure,
 } from "@/lib/api_admin";
+import GlobePicker from "@/components/GlobePicker";
+import { StructureModal } from "@/components/modals/StructureModal";
 
 // ─── Color palette ──────────────────────────────────────────────
 const STRUCTURE_COLORS: Record<string, string> = {
@@ -64,6 +67,7 @@ export default function SuperAdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedStructure, setSelectedStructure] = useState<Structure | null>(null);
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -154,7 +158,10 @@ export default function SuperAdminDashboard() {
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
               {greeting},{" "}
-              <span className="gradient-text">{user?.prenom}</span> 👋
+              <span className="gradient-text">{user?.prenom}</span>
+              <span className="inline-block ml-2 text-amber-400">
+                <Sparkles className="w-5 h-5 animate-pulse" />
+              </span>
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl">
               Vue d&apos;ensemble de la plateforme MedConnect — statistiques globales et gestion des structures.
@@ -257,6 +264,63 @@ export default function SuperAdminDashboard() {
             accentColor="#f59e0b"
             gradient
           />
+        </div>
+      </section>
+
+      {/* ── Global Coverage Map ──────────────────────────────────── */}
+      <section>
+        <div className="flex items-center justify-between mb-4">
+          <h2
+            className="text-lg font-semibold text-slate-900 dark:text-white"
+            style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
+          >
+            Couverture Globale
+          </h2>
+          <div className="hidden sm:flex items-center gap-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-blue-500" />
+              <span>Hôpitaux</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              <span>Cliniques</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+              <span>Pharmacies</span>
+            </div>
+          </div>
+        </div>
+        <div className="relative h-[400px] rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800/50 shadow-2xl group">
+          <GlobePicker
+            structures={structures
+              .filter(s => s.latitude != null && s.longitude != null)
+              .map(s => ({
+                id: s.id,
+                lat: s.latitude!,
+                lng: s.longitude!,
+                label: s.nom,
+                type: s.type
+              }))}
+            onStructureClick={(id) => {
+              const s = structures.find(x => x.id === id);
+              if (s) setSelectedStructure(s);
+            }}
+            className="w-full h-full rounded-none"
+          />
+          
+          {/* Stats Overlay */}
+          <div className="absolute right-6 bottom-6 flex flex-col gap-2 pointer-events-none">
+            <div className="p-4 bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl pointer-events-auto">
+              <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Géolocalisés</p>
+              <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-bold text-white">
+                  {structures.filter(s => s.latitude && s.longitude).length}
+                </span>
+                <span className="text-xs text-slate-400">sites</span>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -458,6 +522,15 @@ export default function SuperAdminDashboard() {
           </div>
         </div>
       </section>
+
+      {/* View Modal */}
+      {selectedStructure && (
+        <StructureModal
+          mode="view"
+          structure={selectedStructure}
+          onClose={() => setSelectedStructure(null)}
+        />
+      )}
     </div>
   );
 }

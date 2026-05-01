@@ -63,6 +63,10 @@ export async function getAllStructures() {
   return apiFetch<MyStructure[]>("/structures/all");
 }
 
+export async function getPublicStructureDetails(id: string) {
+  return apiFetch<MyStructure>(`/structures/public/${id}`);
+}
+
 // ─── Types ──────────────────────────────────────────────────────
 
 export type MembreRole = "MEDECIN" | "PHARMACIEN" | "STRUCTURE_ADMIN";
@@ -91,6 +95,7 @@ export interface MyStructure {
   longitude?: number;
   horaires?: string;
   estDeGarde?: boolean;
+  estOuvertManuel?: boolean | null;
   isActive: boolean;
   isConfigured: boolean;
   admin?: { id: string; nom: string; prenom: string; email: string; telephone?: string };
@@ -109,6 +114,7 @@ export interface UpdateStructurePayload {
   longitude?: number;
   horaires?: string;
   estDeGarde?: boolean;
+  estOuvertManuel?: boolean | null;
 }
 
 export interface CreateMembrePayload {
@@ -174,6 +180,13 @@ export async function toggleMembreActive(structureId: string, membreId: string) 
   return authFetch<{ id: string; nom: string; prenom: string; role: string; isActive: boolean }>(
     `/structures/${structureId}/membres/${membreId}/toggle-active`,
     { method: "PATCH" }
+  );
+}
+
+export async function deleteMembre(structureId: string, membreId: string) {
+  return authFetch<null>(
+    `/structures/${structureId}/membres/${membreId}/delete`,
+    { method: "POST" }
   );
 }
 

@@ -9,8 +9,9 @@ interface GlobePickerProps {
   initialLat?: number;
   initialLng?: number;
   onLocationSelect?: (lat: number, lng: number) => void;
+  onStructureClick?: (id: string) => void;
   className?: string;
-  structures?: { lat: number; lng: number; label: string; type: string }[];
+  structures?: { id: string; lat: number; lng: number; label: string; type: string }[];
 }
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN;
@@ -19,6 +20,7 @@ export default function GlobePicker({
   initialLat,
   initialLng,
   onLocationSelect,
+  onStructureClick,
   structures,
   className = "",
 }: GlobePickerProps) {
@@ -31,6 +33,7 @@ export default function GlobePicker({
   );
 
   const [isSatellite, setIsSatellite] = useState(false);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     if (!mapContainer.current || !MAPBOX_TOKEN) return;
@@ -51,15 +54,67 @@ export default function GlobePicker({
     map.current.on("style.load", () => {
       if (!map.current) return;
       
-      // Re-add fog only for non-satellite styles
       const style = map.current.getStyle();
+      const isNight = style && (style.name?.toLowerCase().includes("night") || style.id?.toLowerCase().includes("night"));
+
+      // Use a more reliable GeoJSON source for continents
+      if (!map.current.getSource('continents')) {
+        map.current.addSource('continents', {
+          type: 'geojson',
+          data: 'https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/ne_110m_admin_0_countries.geojson'
+        });
+
+        // Find a safe layer to insert before (usually before labels)
+        const layers = map.current.getStyle().layers;
+        let firstLabelLayerId;
+        if (layers) {
+          for (const layer of layers) {
+            if (layer.type === 'symbol' || layer.id.includes('label')) {
+              firstLabelLayerId = layer.id;
+              break;
+            }
+          }
+        }
+
+        map.current.addLayer({
+          'id': 'continent-fill',
+          'type': 'fill',
+          'source': 'continents',
+          'paint': {
+            'fill-color': [
+              'match',
+              ['get', 'CONTINENT'],
+              'Africa', '#f59e0b',
+              'Asia', '#ef4444',
+              'Europe', '#3b82f6',
+              'North America', '#10b981',
+              'South America', '#ec4899',
+              'Oceania', '#8b5cf6',
+              'Antarctica', '#f1f5f9',
+              'rgba(148, 163, 184, 0.5)'
+            ],
+            'fill-opacity': isNight ? 0.25 : 0.2
+          }
+        }, firstLabelLayerId);
+
+        map.current.addLayer({
+          'id': 'continent-outline',
+          'type': 'line',
+          'source': 'continents',
+          'paint': {
+            'line-color': isNight ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+            'line-width': 0.8
+          }
+        }, firstLabelLayerId);
+      }
+      
       if (style && !style.name?.toLowerCase().includes("satellite")) {
         map.current.setFog({
-          color: "rgb(186, 210, 247)", 
-          "high-color": "rgb(36, 92, 223)",
+          color: isNight ? "rgb(15, 23, 42)" : "rgb(186, 210, 247)", 
+          "high-color": isNight ? "rgb(30, 41, 59)" : "rgb(36, 92, 223)",
           "horizon-blend": 0.02,
-          "space-color": "rgb(11, 11, 25)",
-          "star-intensity": 0.6,
+          "space-color": isNight ? "rgb(2, 6, 23)" : "rgb(255, 255, 255)",
+          "star-intensity": isNight ? 0.6 : 0,
         });
       }
     });
@@ -91,8 +146,21 @@ export default function GlobePicker({
 
   // Handle style toggle without re-init
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     if (!map.current) return;
-    map.current.setStyle(isSatellite ? "mapbox://styles/mapbox/satellite-v9" : "mapbox://styles/mapbox/navigation-night-v1");
+    
+    const setMapStyle = () => {
+      map.current?.setStyle(isSatellite ? "mapbox://styles/mapbox/satellite-v9" : "mapbox://styles/mapbox/navigation-night-v1");
+    };
+
+    if (!map.current.isStyleLoaded()) {
+      map.current.once("style.load", setMapStyle);
+    } else {
+      setMapStyle();
+    }
   }, [isSatellite]);
 
   // Handle structures markers updates
@@ -105,14 +173,49 @@ export default function GlobePicker({
 
     if (structures) {
       structures.forEach(s => {
-        const color = s.type === "HOPITAL" ? "#3b82f6" : s.type === "CLINIQUE" ? "#a855f7" : "#10b981";
-        const popup = new mapboxgl.Popup({ offset: 25 })
-          .setHTML(`<div class="p-2 text-slate-900 font-bold">${s.label}</div>`);
+        const el = document.createElement('div');
+        el.className = 'custom-marker group cursor-pointer';
+        
+        // Define colors and icons based on type
+        const config = s.type === "HOPITAL" 
+          ? { color: "#3b82f6", icon: `<path d="M19 14h-4v4h-4v-4H7v-4h4V6h4v4h4v4z"/><path d="M21 3H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/>` }
+          : s.type === "CLINIQUE" 
+          ? { color: "#a855f7", icon: `<path d="M3 21h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-4h18V3H3v2z"/>` } 
+          : { color: "#10b981", icon: `<path d="M10.5 20a1.5 1.5 0 0 0 3 0v-4.5H18a1.5 1.5 0 0 0 0-3h-4.5V8a1.5 1.5 0 0 0-3 0v4.5H6a1.5 1.5 0 0 0 0 3h4.5V20z"/>` };
 
-        const m = new mapboxgl.Marker({ color })
+        el.innerHTML = `
+          <div class="relative flex flex-col items-center">
+            <!-- Pin Body -->
+            <div class="relative flex items-center justify-center w-10 h-10 transform transition-all duration-300 group-hover:scale-110 group-hover:-translate-y-1">
+              <svg viewBox="0 0 24 24" class="w-full h-full drop-shadow-xl" style="fill: ${config.color}">
+                <path d="M12 0C7.58 0 4 3.58 4 8c0 5.25 7 13 8 16 1-3 8-10.75 8-16 0-4.42-3.58-8-8-8z"/>
+              </svg>
+              <div class="absolute inset-0 flex items-center justify-center pb-1">
+                <svg viewBox="0 0 24 24" class="w-4 h-4 text-white fill-current">
+                  ${config.icon}
+                </svg>
+              </div>
+            </div>
+            
+            <!-- Label -->
+            <div class="absolute top-10 mt-1 px-3 py-1.5 bg-slate-900/95 backdrop-blur-md rounded-xl border border-slate-700/50 shadow-2xl opacity-0 group-hover:opacity-100 transition-all scale-95 group-hover:scale-100 whitespace-nowrap z-10 pointer-events-none">
+              <p class="text-[11px] font-bold text-white mb-0.5">${s.label}</p>
+              <p class="text-[9px] text-slate-400 font-medium uppercase tracking-wider">${s.type}</p>
+            </div>
+            
+            <!-- Pulse effect -->
+            <div class="absolute -bottom-1 w-2 h-1 bg-black/40 rounded-full blur-[1px] group-hover:scale-150 transition-transform"></div>
+          </div>
+        `;
+
+        const m = new mapboxgl.Marker({ element: el, anchor: 'bottom' })
           .setLngLat([s.lng, s.lat])
-          .setPopup(popup)
           .addTo(map.current!);
+
+        el.addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (onStructureClick) onStructureClick(s.id);
+        });
         
         markers.current.push(m);
       });

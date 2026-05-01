@@ -11,6 +11,7 @@ import {
   logout as apiLogout,
   refreshAccessToken,
   verifyToken,
+  ApiError,
 } from "@/lib/api_auth";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -57,12 +58,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email: res.data.email,
         nom: res.data.nom,
         prenom: res.data.prenom,
+        telephone: res.data.telephone,
         role: res.data.role,
         structureId: res.data.structureId,
       };
       setUser(u);
       localStorage.setItem("user", JSON.stringify(u));
-    } catch {
+    } catch (err) {
+      // Si 404 (User non trouvé) ou 401 après refresh échoué → logout
+      if (err instanceof ApiError && (err.status === 404 || err.status === 401)) {
+        setUser(null);
+        setProfile(null);
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
+        router.push("/auth/login");
+        return;
+      }
+
       // Token principal expiré → tenter le refresh
       try {
         const refreshRes = await refreshAccessToken();
@@ -76,13 +89,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           email: retryRes.data.email,
           nom: retryRes.data.nom,
           prenom: retryRes.data.prenom,
+          telephone: retryRes.data.telephone,
           role: retryRes.data.role,
           structureId: retryRes.data.structureId,
         };
         setUser(u);
         localStorage.setItem("user", JSON.stringify(u));
-      } catch {
-        // Session complètement expirée
+      } catch (refreshErr) {
+        // Session complètement expirée ou compte supprimé
+        setUser(null);
+        setProfile(null);
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        localStorage.removeItem("user");
+      } catch (refreshErr) {
+        // Session complètement expirée ou compte supprimé
         setUser(null);
         setProfile(null);
         localStorage.removeItem("access_token");
@@ -90,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         localStorage.removeItem("user");
       }
     }
-  }, []);
+  }, [router]);
 
   // ── Connexion : met à jour le state + localStorage immédiatement ──
   const loginUser = useCallback(
@@ -168,7 +189,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     checkAuth();
-  }, [refreshProfile]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Redirection automatique si non connecté sur page protégée ──
   useEffect(() => {
