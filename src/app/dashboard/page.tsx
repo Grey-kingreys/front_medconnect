@@ -146,7 +146,7 @@ function getQuickActions(role: string): QuickAction[] {
     case "PHARMACIEN":
       return [
         {
-          label: "Stock Médicaments",
+          label: "Mon Stock",
           description: "Gérez votre inventaire de médicaments",
           href: "/dashboard/stock",
           icon: <Package className="w-6 h-6" />,
@@ -160,10 +160,10 @@ function getQuickActions(role: string): QuickAction[] {
           gradient: "from-primary-500 to-cyan-500",
         },
         {
-          label: "Recherche Médicaments",
-          description: "Recherchez dans la base de médicaments",
-          href: "/dashboard/medicaments",
-          icon: <Pill className="w-6 h-6" />,
+          label: "Ma Pharmacie",
+          description: "Gérez les informations de votre structure",
+          href: "/dashboard/structure",
+          icon: <Building2 className="w-6 h-6" />,
           gradient: "from-secondary-500 to-cyan-500",
         },
       ];
@@ -410,7 +410,7 @@ export default function DashboardPage() {
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
               {greeting},{" "}
-              <span className="gradient-text">{user.prenom}</span>
+              <span className="gradient-text">{user.prenom} {user.nom}</span>
               <span className="inline-block ml-2 text-amber-400">
                 <Sparkles className="w-5 h-5 animate-pulse" />
               </span>

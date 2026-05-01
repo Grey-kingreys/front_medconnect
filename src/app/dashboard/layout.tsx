@@ -106,7 +106,6 @@ function getNavSections(role: string): NavSection[] {
           items: [
             { label: "Stock Médicaments", href: "/dashboard/stock", icon: <Package className="w-5 h-5" /> },
             { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <ClipboardList className="w-5 h-5" /> },
-            { label: "Recherche Médicaments", href: "/dashboard/medicaments", icon: <Pill className="w-5 h-5" /> },
           ],
         },
         {
