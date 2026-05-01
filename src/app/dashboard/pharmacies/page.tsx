@@ -18,10 +18,12 @@ import {
   Package,
   ExternalLink
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { getAllStructures, MyStructure } from "@/lib/api_structure";
 import GlobePicker from "@/components/GlobePicker";
 
 export default function PharmaciesPage() {
+  const router = useRouter();
   const [pharmacies, setPharmacies] = useState<MyStructure[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -171,7 +173,10 @@ export default function PharmaciesPage() {
                   )}
                 </div>
 
-                <button className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2">
+                <button 
+                  onClick={() => router.push(`/dashboard/medicaments?pharmacieId=${selectedPharmacy.id}`)}
+                  className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold shadow-xl shadow-emerald-500/20 hover:bg-emerald-600 transition-all flex items-center justify-center gap-2"
+                >
                   Consulter le stock <Package className="w-4 h-4" />
                 </button>
               </div>
@@ -217,7 +222,10 @@ export default function PharmaciesPage() {
                     </button>
                   </div>
                   
-                  <button className="w-full py-4 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2">
+                  <button 
+                    onClick={() => router.push(`/dashboard/medicaments?pharmacieId=${p.id}`)}
+                    className="w-full py-4 bg-emerald-500/10 hover:bg-emerald-500 text-emerald-500 hover:text-white rounded-2xl font-bold text-sm transition-all flex items-center justify-center gap-2"
+                  >
                     Voir les stocks <Package className="w-4 h-4" />
                   </button>
                 </div>

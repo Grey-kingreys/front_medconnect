@@ -9,6 +9,7 @@ import { DonutChart } from "@/components/charts/DonutChart";
 import { StatCard } from "@/components/charts/StatCard";
 import { getMyStructure, updateMyStructure, MyStructure, UpdateStructurePayload, ApiError } from "@/lib/api_structure";
 import { StructureModal } from "@/components/modals/StructureModal";
+import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 
 const TYPE_LABEL: Record<string, string> = { HOPITAL: "Hôpital", CLINIQUE: "Clinique", PHARMACIE: "Pharmacie" };
@@ -21,6 +22,7 @@ const TYPE_GRADIENT: Record<string, string> = {
 
 
 export default function MyStructurePage() {
+  const { user } = useAuth();
   const [structure, setStructure] = useState<MyStructure | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -68,9 +70,11 @@ export default function MyStructurePage() {
               )}
             </div>
           </div>
-          <button onClick={() => setShowEdit(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-300 border border-slate-700/50 hover:border-primary-500/30 hover:text-slate-900 dark:text-white transition-all">
-            <Edit3 className="w-4 h-4" />Modifier
-          </button>
+          {user?.role === 'STRUCTURE_ADMIN' && (
+            <button onClick={() => setShowEdit(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-300 border border-slate-700/50 hover:border-primary-500/30 hover:text-slate-900 dark:text-white transition-all">
+              <Edit3 className="w-4 h-4" />Modifier
+            </button>
+          )}
         </div>
         <div className="relative mt-4 flex flex-wrap gap-4">
           {structure.email && <div className="flex items-center gap-2 text-sm text-slate-500"><Mail className="w-4 h-4 text-slate-600" />{structure.email}</div>}
@@ -104,7 +108,14 @@ export default function MyStructurePage() {
           <div className="space-y-3">
             <Link href="/dashboard/membres" className="group flex items-center gap-3 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-800 hover:border-primary-500/30 transition-all">
               <Users className="w-5 h-5 text-primary-500" />
-              <div><p className="text-sm font-medium text-slate-900 dark:text-white">Gérer l&apos;équipe</p><p className="text-xs text-slate-500">Ajouter médecins &amp; pharmaciens</p></div>
+              <div>
+                <p className="text-sm font-medium text-slate-900 dark:text-white">
+                  {user?.role === 'STRUCTURE_ADMIN' ? "Gérer l'équipe" : "Voir l'équipe"}
+                </p>
+                <p className="text-xs text-slate-500">
+                  {user?.role === 'STRUCTURE_ADMIN' ? "Ajouter médecins & pharmaciens" : "Consulter la liste des membres"}
+                </p>
+              </div>
             </Link>
           </div>
           {structure.admin && (

@@ -23,9 +23,11 @@ const navLinks = [
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const { user, isAuthenticated, loading, logout } = useAuth();
 
   useEffect(() => {
+    setMounted(true);
     const onScroll = () => setIsScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -78,7 +80,7 @@ export default function Navbar() {
         {/* Desktop CTA */}
         <div className="hidden lg:flex items-center gap-3">
           <ThemeSwitcher />
-          {!loading && isAuthenticated && user ? (
+          {mounted && !loading && isAuthenticated && user ? (
             <>
               {/* Bouton Mon espace */}
               <Link
@@ -101,7 +103,7 @@ export default function Navbar() {
                 </span>
               </div>
             </>
-          ) : !loading ? (
+          ) : mounted && !loading ? (
             <>
               <a
                 href="/auth/login"
@@ -121,7 +123,9 @@ export default function Navbar() {
                 </span>
               </a>
             </>
-          ) : null}
+          ) : (
+            <div className="w-[200px]" /> /* Placeholder during loading/mounting */
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -157,7 +161,7 @@ export default function Navbar() {
               <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thème</span>
               <ThemeSwitcher />
             </div>
-            {!loading && isAuthenticated && user ? (
+            {mounted && !loading && isAuthenticated && user ? (
               <>
                 {/* Mobile: Mon espace */}
                 <Link
@@ -180,7 +184,7 @@ export default function Navbar() {
                   Se déconnecter
                 </button>
               </>
-            ) : !loading ? (
+            ) : mounted && !loading ? (
               <>
                 <a
                   href="/auth/login"

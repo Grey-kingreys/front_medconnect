@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -71,7 +71,8 @@ function getNavSections(role: string): NavSection[] {
           items: [
             { label: "Auto-Diagnostic IA", href: "/dashboard/diagnostic", icon: <Bot className="w-5 h-5" /> },
             { label: "Trouver un Médecin", href: "/dashboard/map", icon: <MapPin className="w-5 h-5" /> },
-            { label: "Pharmacies", href: "/dashboard/pharmacies", icon: <Pill className="w-5 h-5" /> },
+            { label: "Recherche Médicaments", href: "/dashboard/medicaments", icon: <Pill className="w-5 h-5" /> },
+            { label: "Pharmacies", href: "/dashboard/pharmacies", icon: <Building2 className="w-5 h-5" /> },
             { label: "Rendez-vous", href: "/dashboard/rendez-vous", icon: <Calendar className="w-5 h-5" /> },
           ],
         },
@@ -138,6 +139,7 @@ function getNavSections(role: string): NavSection[] {
           items: [
             { label: "Utilisateurs", href: "/dashboard/utilisateurs", icon: <Users className="w-5 h-5" /> },
             { label: "Structures", href: "/dashboard/structures", icon: <Building2 className="w-5 h-5" /> },
+            { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
             { label: "Statistiques", href: "/dashboard/stats", icon: <Activity className="w-5 h-5" /> },
           ],
         },
@@ -156,6 +158,7 @@ function getNavSections(role: string): NavSection[] {
           items: [
             { label: "Utilisateurs", href: "/dashboard/utilisateurs", icon: <Users className="w-5 h-5" /> },
             { label: "Structures", href: "/dashboard/structures", icon: <Building2 className="w-5 h-5" /> },
+            { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
           ],
         },
         {
@@ -411,9 +414,14 @@ export default function DashboardLayout({
   const { user, loading } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
-  // Loading state
-  if (loading) {
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Loading state (server or client before mount)
+  if (!mounted || loading) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-[#030712] flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
