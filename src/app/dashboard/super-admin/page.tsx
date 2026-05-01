@@ -158,7 +158,7 @@ export default function SuperAdminDashboard() {
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
               {greeting},{" "}
-              <span className="gradient-text">{user?.prenom}</span>
+              <span className="gradient-text">{user?.prenom} {user?.nom}</span>
               <span className="inline-block ml-2 text-amber-400">
                 <Sparkles className="w-5 h-5 animate-pulse" />
               </span>

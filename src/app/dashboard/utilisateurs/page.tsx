@@ -341,7 +341,7 @@ export default function UtilisateursPage() {
                           {/* Toggle */}
                           <button
                             onClick={() => handleToggle(u)}
-                            disabled={!!actionLoading || u.role === "SUPER_ADMIN"}
+                            disabled={!!actionLoading || (u.role === "SUPER_ADMIN" && u.id === user?.id)}
                             title={u.isActive ? "Désactiver" : "Activer"}
                             className={`p-2 rounded-lg transition-all disabled:opacity-30 ${
                               u.isActive
@@ -361,7 +361,7 @@ export default function UtilisateursPage() {
                           {/* Delete */}
                           <button
                             onClick={() => setDeleteTarget(u)}
-                            disabled={u.role === "SUPER_ADMIN"}
+                            disabled={u.role === "SUPER_ADMIN" && u.id === user?.id}
                             title="Supprimer"
                             className="p-2 rounded-lg text-slate-500 hover:text-emergency-400 hover:bg-emergency-500/10 transition-all disabled:opacity-30"
                           >

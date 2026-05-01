@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { 
   Search, 
   Pill, 
@@ -29,7 +29,15 @@ import GlobePicker from "@/components/GlobePicker";
 function MedicamentsContent() {
   const { user } = useAuth();
   const searchParams = useSearchParams();
+  const router = useRouter();
   const pharmacieId = searchParams.get("pharmacieId");
+
+  // Rediriger le pharmacien vers son propre stock s'il tente d'accéder à la recherche globale
+  useEffect(() => {
+    if (user?.role === "PHARMACIEN") {
+      router.replace("/dashboard/stock");
+    }
+  }, [user, router]);
 
   const [results, setResults] = useState<StockMedicament[]>([]);
   const [loading, setLoading] = useState(false);
