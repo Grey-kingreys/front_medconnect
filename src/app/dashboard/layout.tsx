@@ -296,7 +296,7 @@ function Sidebar({
             href="/dashboard/profil"
             className={`
               group flex items-center gap-3 rounded-2xl transition-all duration-200
-              hover:bg-slate-800/40
+              hover:bg-slate-100 dark:hover:bg-slate-800/40
               ${collapsed ? "p-2 justify-center" : "p-3"}
             `}
             title="Voir mon profil"
@@ -304,7 +304,7 @@ function Sidebar({
             {/* Avatar */}
             <div className={`relative flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${roleGradient} flex items-center justify-center shadow-lg`}>
               <span className="text-sm font-bold text-slate-900 dark:text-white">{initials}</span>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary-500 rounded-full border-2 border-[#0a0f1e]" />
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary-500 rounded-full border-2 border-white dark:border-[#0a0f1e]" />
             </div>
 
             {/* Name & role */}

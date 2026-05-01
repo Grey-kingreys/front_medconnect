@@ -12,7 +12,7 @@ interface MapModalProps {
   initialLat?: number;
   initialLng?: number;
   onLocationSelect?: (lat: number, lng: number) => void;
-  structures?: any[]; // For viewer mode
+  structures?: Structure[]; // For viewer mode
   hideCloseButton?: boolean;
 }
 
@@ -54,21 +54,21 @@ export function MapModal({
       <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-xl" onClick={onClose} />
 
       <div 
-        className="relative w-full h-full md:h-screen md:w-screen bg-slate-900 shadow-2xl overflow-hidden flex flex-col"
+        className="relative w-full h-full md:h-screen md:w-screen bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         
         {/* Header - Adaptive based on mode */}
-        <div className="absolute top-0 inset-x-0 z-10 p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-b from-slate-900 via-slate-900/80 to-transparent">
+        <div className="absolute top-0 inset-x-0 z-10 p-4 md:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-b from-white dark:from-slate-900 via-white/80 dark:via-slate-900/80 to-transparent">
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-xl bg-primary-500/20 flex items-center justify-center border border-primary-500/30">
-              <Navigation className="w-5 h-5 text-primary-400" />
+            <div className="w-10 h-10 rounded-xl bg-primary-500/10 dark:bg-primary-500/20 flex items-center justify-center border border-primary-500/20 dark:border-primary-500/30">
+              <Navigation className="w-5 h-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-white tracking-tight">
+              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                 {mode === "picker" ? "Définir la localisation" : "Explorer les structures"}
               </h2>
-              <p className="text-xs text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 {mode === "picker" ? "Cliquez sur le globe pour placer votre structure" : "Trouvez les établissements de santé à proximité"}
               </p>
             </div>
@@ -83,14 +83,14 @@ export function MapModal({
                   placeholder="Rechercher une structure..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-800/50 backdrop-blur-md border border-slate-700/50 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 transition-all"
+                  className="w-full pl-10 pr-4 py-2.5 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 transition-all"
                 />
               </div>
               <div className="relative">
                 <select
                   value={filterType}
                   onChange={(e) => setFilterType(e.target.value)}
-                  className="pl-4 pr-10 py-2.5 bg-slate-800/50 backdrop-blur-md border border-slate-700/50 rounded-xl text-white appearance-none cursor-pointer focus:outline-none focus:border-primary-500/50"
+                  className="pl-4 pr-10 py-2.5 bg-slate-100 dark:bg-slate-800/50 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white appearance-none cursor-pointer focus:outline-none focus:border-primary-500/50"
                 >
                   <option value="ALL">Tous les types</option>
                   <option value="HOPITAL">Hôpitaux</option>
@@ -106,7 +106,7 @@ export function MapModal({
             <button
               type="button"
               onClick={onClose}
-              className="absolute top-4 right-4 p-2.5 rounded-xl bg-slate-800/50 hover:bg-slate-700/50 text-slate-400 hover:text-white transition-all border border-slate-700/50"
+              className="absolute top-4 right-4 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-slate-700/50"
             >
               <X className="w-5 h-5" />
             </button>
@@ -120,6 +120,7 @@ export function MapModal({
             initialLng={initialLng}
             onLocationSelect={onLocationSelect ? (lat, lng) => setSelectedCoords({ lat, lng }) : undefined}
             structures={filteredStructures.map(s => ({
+              id: s.id || s.nom,
               lat: s.latitude || 0,
               lng: s.longitude || 0,
               label: s.nom,
@@ -131,16 +132,16 @@ export function MapModal({
           {/* Legend/Info for Viewer mode */}
           {mode === "viewer" && (
             <div className="absolute left-6 bottom-6 space-y-2 pointer-events-none">
-              <div className="p-3 bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl flex flex-col gap-2 pointer-events-auto">
-                <div className="flex items-center gap-3 text-xs text-slate-300">
+              <div className="p-3 bg-white/90 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 rounded-2xl flex flex-col gap-2 pointer-events-auto">
+                <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
                   <div className="w-2 h-2 rounded-full bg-blue-500" />
                   <span>Hôpitaux ({structures.filter(s => s.type === "HOPITAL").length})</span>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-300">
+                <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
                   <div className="w-2 h-2 rounded-full bg-purple-500" />
                   <span>Cliniques ({structures.filter(s => s.type === "CLINIQUE").length})</span>
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-300">
+                <div className="flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
                   <div className="w-2 h-2 rounded-full bg-emerald-500" />
                   <span>Pharmacies ({structures.filter(s => s.type === "PHARMACIE").length})</span>
                 </div>
@@ -152,13 +153,13 @@ export function MapModal({
         {/* Footer for Picker mode */}
         {mode === "picker" && (
           <div className="absolute bottom-0 inset-x-0 p-6 bg-gradient-to-t from-slate-950/90 to-transparent backdrop-blur-sm border-t border-slate-800/50 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4 px-5 py-3 bg-slate-900/80 border border-slate-700/50 rounded-2xl shadow-xl">
+            <div className="flex items-center gap-4 px-5 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl shadow-xl">
               <div className="p-2 bg-primary-500/10 rounded-lg">
-                <MapPin className="w-5 h-5 text-primary-400" />
+                <MapPin className="w-5 h-5 text-primary-600 dark:text-primary-400" />
               </div>
               <div>
                 <p className="text-[10px] uppercase tracking-wider text-slate-500 font-bold">Coordonnées sélectionnées</p>
-                <p className="text-sm font-mono text-white">
+                <p className="text-sm font-mono text-slate-900 dark:text-white">
                   {selectedCoords 
                     ? `${selectedCoords.lat.toFixed(6)}, ${selectedCoords.lng.toFixed(6)}`
                     : "En attente de sélection..."}
@@ -170,7 +171,7 @@ export function MapModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 md:px-8 py-4 rounded-2xl text-sm font-semibold text-slate-400 border border-slate-700/50 hover:bg-slate-800/50 transition-all"
+                className="flex-1 md:px-8 py-4 rounded-2xl text-sm font-semibold text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all"
               >
                 Annuler
               </button>

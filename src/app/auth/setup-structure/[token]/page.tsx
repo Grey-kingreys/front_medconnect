@@ -6,6 +6,7 @@ import { Building2, Mail, Lock, User, Phone, MapPin, Loader2, ArrowRight, CheckC
 import Link from "next/link";
 import { verifyInviteToken, setupStructure, MyStructure } from "@/lib/api_structure";
 import { useAuth } from "@/hooks/useAuth";
+import { ApiError } from "@/lib/api_auth";
 
 export default function SetupStructurePage() {
   const router = useRouter();
@@ -39,8 +40,8 @@ export default function SetupStructurePage() {
         const res = await verifyInviteToken(token);
         setStructure(res.data);
         setForm((prev) => ({ ...prev, structureNom: res.data.nom }));
-      } catch (err: any) {
-        setError(err.message || "Lien invalide ou expiré.");
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Lien invalide ou expiré.");
       } finally {
         setLoading(false);
       }
@@ -85,8 +86,8 @@ export default function SetupStructurePage() {
         user: res.data.user,
       });
       router.push("/dashboard");
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue lors de la configuration.");
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Une erreur est survenue lors de la configuration.");
       setStep(1); // Go back if error to allow correcting
     } finally {
       setSaving(false);
@@ -94,7 +95,7 @@ export default function SetupStructurePage() {
   };
 
   const inputCls =
-    "w-full py-3 pr-4 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all text-sm";
+    "w-full py-3 pr-4 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all text-sm";
 
   if (loading) {
     return (
@@ -109,7 +110,7 @@ export default function SetupStructurePage() {
     return (
       <div className="w-full max-w-md mx-auto relative group">
         <div className="absolute -inset-1 bg-gradient-to-r from-emergency-500 to-rose-500 rounded-2xl blur opacity-20" />
-        <div className="relative bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-8 text-center shadow-2xl">
+        <div className="relative bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-8 text-center shadow-2xl">
           <div className="w-16 h-16 rounded-full bg-emergency-500/10 flex items-center justify-center mx-auto mb-6">
             <ShieldCheck className="w-8 h-8 text-emergency-500" />
           </div>
@@ -131,7 +132,7 @@ export default function SetupStructurePage() {
   return (
     <div className="w-full max-w-lg mx-auto relative group animate-fade-in">
       <div className="absolute -inset-1 bg-gradient-to-r from-primary-500 to-cyan-500 rounded-2xl blur opacity-20 group-hover:opacity-30 transition duration-1000" />
-      <div className="relative bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-8 shadow-2xl">
+      <div className="relative bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-8 shadow-2xl">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-primary-500/10 to-cyan-500/10 mb-4 border border-primary-500/20">
@@ -251,7 +252,7 @@ export default function SetupStructurePage() {
               </div>
 
               <div className="flex gap-3 mt-6">
-                <button type="button" onClick={() => setStep(1)} className="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-700/50 hover:bg-slate-800/50 transition-all">
+                <button type="button" onClick={() => setStep(1)} className="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-all">
                   Retour
                 </button>
                 <button type="submit" disabled={saving} className="flex-[2] group relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white overflow-hidden disabled:opacity-60">

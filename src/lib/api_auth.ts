@@ -20,6 +20,7 @@ export interface AuthUser {
   email: string;
   nom: string;
   prenom: string;
+  telephone?: string;
   role: string;
   structureId?: string;
 }
@@ -106,7 +107,7 @@ async function apiFetch<T>(
  * Fetch authentifié — ajoute automatiquement le Bearer token
  * En cas de 401 (token expiré), tente un refresh automatique et réessaie une fois.
  */
-async function authFetch<T>(
+export async function authFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {

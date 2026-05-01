@@ -129,7 +129,7 @@ export default function RegisterPage() {
                 value={form.nom}
                 onChange={handleChange}
                 placeholder="Diallo"
-                className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
               />
             </div>
           </div>
@@ -148,7 +148,7 @@ export default function RegisterPage() {
                 value={form.prenom}
                 onChange={handleChange}
                 placeholder="Mamadou"
-                className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+                className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
               />
             </div>
           </div>
@@ -169,7 +169,7 @@ export default function RegisterPage() {
               value={form.email}
               onChange={handleChange}
               placeholder="vous@exemple.com"
-              className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
           </div>
         </div>
@@ -188,7 +188,7 @@ export default function RegisterPage() {
               value={form.telephone}
               onChange={handleChange}
               placeholder="+224 622 123 456"
-              className="w-full pl-10 pr-3 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
           </div>
         </div>
@@ -209,7 +209,7 @@ export default function RegisterPage() {
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
-              className="w-full pl-10 pr-11 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              className="w-full pl-10 pr-11 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
             <button
               type="button"
@@ -258,12 +258,12 @@ export default function RegisterPage() {
               value={form.confirmPassword}
               onChange={handleChange}
               placeholder="••••••••"
-              className={`w-full pl-10 pr-3 py-3 bg-slate-900/60 border rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
+              className={`w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 transition-all duration-200 text-sm ${
                 form.confirmPassword.length > 0 && form.password !== form.confirmPassword
                   ? "border-emergency-500/50 focus:border-emergency-500/50 focus:ring-emergency-500/20"
                   : form.confirmPassword.length > 0 && form.password === form.confirmPassword
                     ? "border-secondary-500/50 focus:border-secondary-500/50 focus:ring-secondary-500/20"
-                    : "border-slate-700/50 focus:border-primary-500/50 focus:ring-primary-500/20"
+                    : "border-slate-200 dark:border-slate-700/50 focus:border-primary-500/50 focus:ring-primary-500/20"
               }`}
             />
           </div>

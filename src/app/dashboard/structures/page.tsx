@@ -19,6 +19,9 @@ import {
   ChevronDown,
   MapPin,
   Phone,
+  Map as MapIcon,
+  LayoutGrid,
+  Trash2,
 } from "lucide-react";
 import {
   getStructures,
@@ -30,6 +33,8 @@ import {
   ApiError,
 } from "@/lib/api_admin";
 import { StructureModal } from "@/components/modals/StructureModal";
+import { StructureDeleteModal } from "@/components/modals/StructureDeleteModal";
+import GlobePicker from "@/components/GlobePicker";
 
 // ─── Constants ──────────────────────────────────────────────────
 
@@ -41,7 +46,7 @@ const TYPE_LABELS: Record<StructureType, string> = {
 
 const TYPE_COLORS: Record<StructureType, { bg: string; text: string; dot: string }> = {
   HOPITAL: { bg: "bg-blue-500/10", text: "text-blue-400", dot: "bg-blue-500" },
-  CLINIQUE: { bg: "bg-cyan-500/10", text: "text-cyan-400", dot: "bg-cyan-500" },
+  CLINIQUE: { bg: "bg-purple-500/10", text: "text-purple-400", dot: "bg-purple-500" },
   PHARMACIE: { bg: "bg-emerald-500/10", text: "text-emerald-400", dot: "bg-emerald-500" },
 };
 
@@ -57,9 +62,12 @@ export default function StructuresPage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | StructureType>("ALL");
   const [filterStatus, setFilterStatus] = useState<"ALL" | "CONFIGURED" | "PENDING" | "INACTIVE">("ALL");
+  const [viewMode, setViewMode] = useState<"list" | "map">("list");
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [selectedStructure, setSelectedStructure] = useState<Structure | null>(null);
+  const [structureToDelete, setStructureToDelete] = useState<Structure | null>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -164,6 +172,22 @@ export default function StructuresPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <div className="flex items-center bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/50 rounded-xl p-1 mr-2">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === "list" ? "bg-primary-500 text-white shadow-lg" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+              title="Vue liste"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("map")}
+              className={`p-1.5 rounded-lg transition-all ${viewMode === "map" ? "bg-primary-500 text-white shadow-lg" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}
+              title="Vue carte"
+            >
+              <MapIcon className="w-4 h-4" />
+            </button>
+          </div>
           <button
             onClick={() => fetchData()}
             className="p-2.5 rounded-xl text-slate-500 dark:text-slate-400 border border-slate-700/50 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
@@ -256,183 +280,238 @@ export default function StructuresPage() {
         </div>
       )}
 
-      {/* Table */}
-      <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16">
-            <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-slate-600">
-            <Building2 className="w-10 h-10 mb-3 opacity-30" />
-            <p className="text-sm">Aucune structure trouvée</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800/50">
-                  {["Structure", "Type", "Email", "Localisation", "Statut", "Actions"].map((h) => (
-                    <th
-                      key={h}
-                      className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-600"
-                    >
-                      {h}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-800/30">
-                {filtered.map((s) => {
-                  const typeStyle = TYPE_COLORS[s.type];
-                  const isTogglingActive = actionLoading === s.id + "-toggle";
-                  const isResending = actionLoading === s.id + "-resend";
+      {/* Main Content */}
+      {viewMode === "list" ? (
+        <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-slate-600">
+              <Building2 className="w-10 h-10 mb-3 opacity-30" />
+              <p className="text-sm">Aucune structure trouvée</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800/50">
+                    {["Structure", "Type", "Email", "Localisation", "Statut", "Actions"].map((h) => (
+                      <th
+                        key={h}
+                        className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-wider text-slate-600"
+                      >
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/30">
+                  {filtered.map((s) => {
+                    const typeStyle = TYPE_COLORS[s.type];
+                    const isTogglingActive = actionLoading === s.id + "-toggle";
+                    const isResending = actionLoading === s.id + "-resend";
 
-                  return (
-                    <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
-                      {/* Name */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-3">
-                          <div
-                            className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${typeStyle.bg}`}
-                          >
-                            <Building2 className={`w-4 h-4 ${typeStyle.text}`} />
+                    return (
+                      <tr key={s.id} className="hover:bg-slate-50 dark:hover:bg-white/[0.02] transition-colors">
+                        {/* Name */}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div
+                              className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${typeStyle.bg}`}
+                            >
+                              <Building2 className={`w-4 h-4 ${typeStyle.text}`} />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-slate-900 dark:text-white">{s.nom}</p>
+                              {s.admin && (
+                                <p className="text-xs text-slate-600">
+                                  Admin: {s.admin.prenom} {s.admin.nom}
+                                </p>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <p className="text-sm font-medium text-slate-900 dark:text-white">{s.nom}</p>
-                            {s.admin && (
-                              <p className="text-xs text-slate-600">
-                                Admin: {s.admin.prenom} {s.admin.nom}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Type */}
-                      <td className="px-5 py-4">
-                        <span className={`flex items-center gap-1.5 text-xs font-medium ${typeStyle.text}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${typeStyle.dot}`} />
-                          {TYPE_LABELS[s.type]}
-                        </span>
-                      </td>
+                        {/* Type */}
+                        <td className="px-5 py-4">
+                          <span className={`flex items-center gap-1.5 text-xs font-medium ${typeStyle.text}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${typeStyle.dot}`} />
+                            {TYPE_LABELS[s.type]}
+                          </span>
+                        </td>
 
-                      {/* Email */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-1.5">
-                          <Mail className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
-                          <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[160px]">{s.email}</span>
-                        </div>
-                        {s.telephone && (
-                          <div className="flex items-center gap-1.5 mt-0.5">
-                            <Phone className="w-3 h-3 text-slate-700 flex-shrink-0" />
-                            <span className="text-xs text-slate-600">{s.telephone}</span>
-                          </div>
-                        )}
-                      </td>
-
-                      {/* Localisation */}
-                      <td className="px-5 py-4">
-                        {s.ville || s.adresse ? (
+                        {/* Email */}
+                        <td className="px-5 py-4">
                           <div className="flex items-center gap-1.5">
-                            <MapPin className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
-                            <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {[s.ville, s.adresse].filter(Boolean).join(" · ")}
+                            <Mail className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+                            <span className="text-xs text-slate-500 dark:text-slate-400 truncate max-w-[160px]">{s.email}</span>
+                          </div>
+                          {s.telephone && (
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <Phone className="w-3 h-3 text-slate-700 flex-shrink-0" />
+                              <span className="text-xs text-slate-600">{s.telephone}</span>
+                            </div>
+                          )}
+                        </td>
+
+                        {/* Localisation */}
+                        <td className="px-5 py-4">
+                          {s.ville || s.adresse ? (
+                            <div className="flex items-center gap-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-slate-600 flex-shrink-0" />
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                {[s.ville, s.adresse].filter(Boolean).join(" · ")}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-700">—</span>
+                          )}
+                        </td>
+
+                        {/* Status */}
+                        <td className="px-5 py-4">
+                          <div className="flex flex-col gap-1.5">
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${
+                                s.isConfigured
+                                  ? "bg-secondary-500/10 text-secondary-400"
+                                  : "bg-amber-500/10 text-amber-400"
+                              }`}
+                            >
+                              {s.isConfigured ? (
+                                <CheckCircle2 className="w-3 h-3" />
+                              ) : (
+                                <Clock className="w-3 h-3" />
+                              )}
+                              {s.isConfigured ? "Configurée" : "En attente"}
+                            </span>
+                            <span
+                              className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${
+                                s.isActive
+                                  ? "bg-green-500/10 text-green-400"
+                                  : "bg-slate-700/50 text-slate-500"
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${s.isActive ? "bg-green-500" : "bg-slate-600"}`}
+                              />
+                              {s.isActive ? "Active" : "Inactive"}
                             </span>
                           </div>
-                        ) : (
-                          <span className="text-xs text-slate-700">—</span>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Status */}
-                      <td className="px-5 py-4">
-                        <div className="flex flex-col gap-1.5">
-                          <span
-                            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${
-                              s.isConfigured
-                                ? "bg-secondary-500/10 text-secondary-400"
-                                : "bg-amber-500/10 text-amber-400"
-                            }`}
-                          >
-                            {s.isConfigured ? (
-                              <CheckCircle2 className="w-3 h-3" />
-                            ) : (
-                              <Clock className="w-3 h-3" />
+                        {/* Actions */}
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-2">
+                            {/* Resend invitation */}
+                            {!s.isConfigured && (
+                              <button
+                                type="button"
+                                onClick={() => handleResend(s)}
+                                disabled={!!actionLoading}
+                                title="Renvoyer l'invitation"
+                                className="p-2 rounded-lg text-slate-500 hover:text-primary-400 hover:bg-primary-500/10 transition-all disabled:opacity-50"
+                              >
+                                {isResending ? (
+                                  <Loader2 className="w-4 h-4 animate-spin" />
+                                ) : (
+                                  <Send className="w-4 h-4" />
+                                )}
+                              </button>
                             )}
-                            {s.isConfigured ? "Configurée" : "En attente"}
-                          </span>
-                          <span
-                            className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full w-fit ${
-                              s.isActive
-                                ? "bg-green-500/10 text-green-400"
-                                : "bg-slate-700/50 text-slate-500"
-                            }`}
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${s.isActive ? "bg-green-500" : "bg-slate-600"}`}
-                            />
-                            {s.isActive ? "Active" : "Inactive"}
-                          </span>
-                        </div>
-                      </td>
 
-                      {/* Actions */}
-                      <td className="px-5 py-4">
-                        <div className="flex items-center gap-2">
-                          {/* Resend invitation */}
-                          {!s.isConfigured && (
+                            {/* Toggle active */}
                             <button
-                              onClick={() => handleResend(s)}
+                              type="button"
+                              onClick={() => handleToggleActive(s)}
                               disabled={!!actionLoading}
-                              title="Renvoyer l'invitation"
-                              className="p-2 rounded-lg text-slate-500 hover:text-primary-400 hover:bg-primary-500/10 transition-all disabled:opacity-50"
+                              title={s.isActive ? "Désactiver" : "Activer"}
+                              className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
+                                s.isActive
+                                  ? "text-slate-500 hover:text-emergency-400 hover:bg-emergency-500/10"
+                                  : "text-slate-500 hover:text-secondary-400 hover:bg-secondary-500/10"
+                              }`}
                             >
-                              {isResending ? (
+                              {isTogglingActive ? (
                                 <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : s.isActive ? (
+                                <XCircle className="w-4 h-4" />
                               ) : (
-                                <Send className="w-4 h-4" />
+                                <Power className="w-4 h-4" />
                               )}
                             </button>
-                          )}
 
-                          {/* Toggle active */}
-                          <button
-                            onClick={() => handleToggleActive(s)}
-                            disabled={!!actionLoading}
-                            title={s.isActive ? "Désactiver" : "Activer"}
-                            className={`p-2 rounded-lg transition-all disabled:opacity-50 ${
-                              s.isActive
-                                ? "text-slate-500 hover:text-emergency-400 hover:bg-emergency-500/10"
-                                : "text-slate-500 hover:text-secondary-400 hover:bg-secondary-500/10"
-                            }`}
-                          >
-                            {isTogglingActive ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : s.isActive ? (
-                              <XCircle className="w-4 h-4" />
-                            ) : (
-                              <Power className="w-4 h-4" />
-                            )}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+                            {/* Delete structure */}
+                            <button
+                              type="button"
+                              onClick={() => setStructureToDelete(s)}
+                              disabled={!!actionLoading}
+                              title="Supprimer la structure"
+                              className="p-2 rounded-lg text-slate-500 hover:text-emergency-500 hover:bg-emergency-500/10 transition-all disabled:opacity-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
-        {/* Footer count */}
-        {!loading && filtered.length > 0 && (
-          <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800/50 text-xs text-slate-600">
-            {filtered.length} structure{filtered.length > 1 ? "s" : ""} affichée{filtered.length > 1 ? "s" : ""}
-            {structures.length !== filtered.length && ` sur ${structures.length}`}
+          {/* Footer count */}
+          {!loading && filtered.length > 0 && (
+            <div className="px-5 py-3 border-t border-slate-200 dark:border-slate-800/50 text-xs text-slate-600">
+              {filtered.length} structure{filtered.length > 1 ? "s" : ""} affichée{filtered.length > 1 ? "s" : ""}
+              {structures.length !== filtered.length && ` sur ${structures.length}`}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="relative h-[600px] rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800/50 shadow-2xl">
+          <GlobePicker
+            structures={filtered
+              .filter(s => s.latitude != null && s.longitude != null)
+              .map(s => ({
+                id: s.id,
+                lat: s.latitude!,
+                lng: s.longitude!,
+                label: s.nom,
+                type: s.type
+              }))}
+            onStructureClick={(id) => {
+              const s = structures.find(x => x.id === id);
+              if (s) setSelectedStructure(s);
+            }}
+            className="w-full h-full rounded-none"
+          />
+          
+          {/* Legend Overlay */}
+          <div className="absolute left-6 bottom-6 space-y-2 pointer-events-none">
+            <div className="p-4 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 rounded-2xl flex flex-col gap-3 pointer-events-auto shadow-2xl">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-1">Légende</p>
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 text-xs text-slate-900 dark:text-slate-200 font-medium">
+                  <div className="w-3 h-3 rounded-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)]" />
+                  <span>Hôpitaux ({filtered.filter(s => s.type === "HOPITAL").length})</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-900 dark:text-slate-200 font-medium">
+                  <div className="w-3 h-3 rounded-full bg-purple-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
+                  <span>Cliniques ({filtered.filter(s => s.type === "CLINIQUE").length})</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-900 dark:text-slate-200 font-medium">
+                  <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.5)]" />
+                  <span>Pharmacies ({filtered.filter(s => s.type === "PHARMACIE").length})</span>
+                </div>
+              </div>
+            </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Create Modal */}
       {showCreateModal && (
@@ -440,6 +519,24 @@ export default function StructuresPage() {
           mode="create"
           onClose={() => setShowCreateModal(false)}
           onSuccess={fetchData}
+        />
+      )}
+
+      {/* View Modal */}
+      {selectedStructure && (
+        <StructureModal
+          mode="view"
+          structure={selectedStructure}
+          onClose={() => setSelectedStructure(null)}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {structureToDelete && (
+        <StructureDeleteModal
+          structure={structureToDelete}
+          onClose={() => setStructureToDelete(null)}
+          onDeleted={fetchData}
         />
       )}
     </div>
