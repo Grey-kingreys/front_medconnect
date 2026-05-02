@@ -5,7 +5,7 @@ import type { MetadataRoute } from "next";
  * Optimisé pour le SEO et la sécurité
  */
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.gn";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
 
   return {
     rules: [

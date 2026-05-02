@@ -5,7 +5,7 @@ import type { MetadataRoute } from "next";
  * Génère automatiquement les URLs principales pour le SEO
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.gn";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
   const currentDate = new Date();
 
   // URLs statiques principales
