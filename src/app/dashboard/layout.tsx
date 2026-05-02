@@ -27,6 +27,7 @@ import {
   Activity,
   Bot,
   Loader2,
+  MessageSquare,
 } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
@@ -69,10 +70,12 @@ function getNavSections(role: string): NavSection[] {
         {
           title: "Services",
           items: [
+            { label: "Messagerie", href: "/dashboard/chat", icon: <MessageSquare className="w-5 h-5" /> },
             { label: "Auto-Diagnostic IA", href: "/dashboard/diagnostic", icon: <Bot className="w-5 h-5" /> },
             { label: "Trouver un Médecin", href: "/dashboard/map", icon: <MapPin className="w-5 h-5" /> },
             { label: "Recherche Médicaments", href: "/dashboard/medicaments", icon: <Pill className="w-5 h-5" /> },
             { label: "Pharmacies", href: "/dashboard/pharmacies", icon: <Building2 className="w-5 h-5" /> },
+            { label: "Mes Structures", href: "/dashboard/mes-structures", icon: <Building2 className="w-5 h-5" /> },
             { label: "Rendez-vous", href: "/dashboard/rendez-vous", icon: <Calendar className="w-5 h-5" /> },
           ],
         },
@@ -84,6 +87,7 @@ function getNavSections(role: string): NavSection[] {
         {
           title: "Pratique",
           items: [
+            { label: "Messagerie", href: "/dashboard/chat", icon: <MessageSquare className="w-5 h-5" /> },
             { label: "Mes Patients", href: "/dashboard/patients", icon: <Users className="w-5 h-5" /> },
             { label: "Consultations", href: "/dashboard/consultations", icon: <Stethoscope className="w-5 h-5" /> },
             { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <ClipboardList className="w-5 h-5" /> },

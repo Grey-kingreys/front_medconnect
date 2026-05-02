@@ -16,9 +16,11 @@ import {
   X,
   FileText,
   Clock,
-  Printer
+  Printer,
+  Plus
 } from "lucide-react";
 import { getOrdonnances, Ordonnance } from "@/lib/api_carnet";
+import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
 
 interface MedicamentItem {
   nom: string;
@@ -34,6 +36,9 @@ export default function OrdonnancesPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [selectedOrdonnance, setSelectedOrdonnance] = useState<Ordonnance | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const isDoctor = user?.role === "MEDECIN" || user?.role === "STRUCTURE_ADMIN";
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -86,17 +91,35 @@ export default function OrdonnancesPage() {
           <p className="text-slate-500 text-sm mt-1">Consultez et gérez vos prescriptions médicales.</p>
         </div>
         
-        <div className="relative flex-1 sm:w-80">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder="Rechercher un médicament, médecin..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-secondary-500 transition-all shadow-sm"
-          />
+        <div className="flex items-center gap-3">
+          {isDoctor && (
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-secondary-600 hover:bg-secondary-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-secondary-500/25 transition-all active:scale-95 whitespace-nowrap"
+            >
+              <Plus className="w-5 h-5" />
+              Nouvelle Ordonnance
+            </button>
+          )}
+          <div className="relative flex-1 sm:w-80">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input 
+              type="text" 
+              placeholder="Rechercher un médicament, médecin..." 
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-secondary-500 transition-all shadow-sm"
+            />
+          </div>
         </div>
       </div>
+      
+      <DoctorAddRecordModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        type="ordonnance" 
+        onSuccess={fetchData} 
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         

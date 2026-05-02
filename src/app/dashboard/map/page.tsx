@@ -20,6 +20,11 @@ import {
 import { getAllStructures, getPublicStructureDetails, MyStructure } from "@/lib/api_structure";
 import GlobePicker from "@/components/GlobePicker";
 import { MEDICAL_SPECIALTIES } from "@/components/modals/UserModal";
+import { useAuth } from "@/hooks/useAuth";
+import { autoriserStructure, designerMedecin, getAutorisations } from "@/lib/api_patients";
+import { startConversation } from "@/lib/api_chat";
+import { ShieldCheck, ShieldAlert, Star, Check, MessageSquare } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function MapPage() {
   const [structures, setStructures] = useState<MyStructure[]>([]);
@@ -31,6 +36,22 @@ export default function MapPage() {
   const [selectedStructureId, setSelectedStructureId] = useState<string | null>(null);
   const [structureDetails, setStructureDetails] = useState<MyStructure | null>(null);
   const [loadingDetails, setLoadingDetails] = useState(false);
+  const router = useRouter();
+
+  const { user } = useAuth();
+  const [autorisations, setAutorisations] = useState<any>(null);
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const fetchAutorisations = useCallback(async () => {
+    if (user?.role === 'PATIENT') {
+      try {
+        const res = await getAutorisations();
+        setAutorisations(res.data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  }, [user]);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -46,7 +67,8 @@ export default function MapPage() {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData]);
+    fetchAutorisations();
+  }, [fetchData, fetchAutorisations]);
 
   const handleSelectStructure = async (id: string) => {
     setSelectedStructureId(id);
@@ -116,6 +138,30 @@ export default function MapPage() {
     }
   };
 
+  const handleAutoriserStructure = async (structureId: string) => {
+    setActionLoading('struct-' + structureId);
+    try {
+      await autoriserStructure(structureId);
+      await fetchAutorisations();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleDesignerMedecin = async (medecinId: string) => {
+    setActionLoading('med-' + medecinId);
+    try {
+      await designerMedecin(medecinId);
+      await fetchAutorisations();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
   const renderDetails = () => {
     if (!structureDetails) return null;
     
@@ -128,6 +174,10 @@ export default function MapPage() {
     } catch {
       parsedSchedule = {};
     }
+
+    const isPatient = user?.role === 'PATIENT';
+    const hasAuthorizedStructure = autorisations?.autorisationsStructures?.some((a: any) => a.structureId === structureDetails.id);
+    const medecinTraitantId = autorisations?.medecinTraitantId;
 
     return (
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col h-full max-h-[80vh] overflow-y-auto custom-scrollbar">
@@ -182,6 +232,33 @@ export default function MapPage() {
               </div>
             )}
           </div>
+
+          {/* Authorization Section for Patient */}
+          {isPatient && (
+            <div className={`mt-4 p-4 rounded-2xl border ${hasAuthorizedStructure ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-400' : 'bg-primary-500/10 border-primary-500/20 text-primary-700 dark:text-primary-400'}`}>
+              <div className="flex items-start gap-3">
+                {hasAuthorizedStructure ? <ShieldCheck className="w-5 h-5 flex-shrink-0 mt-0.5" /> : <ShieldAlert className="w-5 h-5 flex-shrink-0 mt-0.5" />}
+                <div>
+                  <p className="text-sm font-bold mb-1">Dossier Médical</p>
+                  <p className="text-xs opacity-90 mb-3">
+                    {hasAuthorizedStructure 
+                      ? "Vous avez autorisé cette structure à consulter vos informations médicales basiques (allergies, groupe sanguin, consultations précédentes ici)."
+                      : "Partagez votre dossier médical avec cette structure pour une meilleure prise en charge par leur équipe."}
+                  </p>
+                  {!hasAuthorizedStructure && (
+                    <button 
+                      onClick={() => handleAutoriserStructure(structureDetails.id)}
+                      disabled={actionLoading === 'struct-' + structureDetails.id}
+                      className="px-4 py-2 bg-primary-500 text-white text-xs font-bold rounded-xl shadow-lg shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center gap-2"
+                    >
+                      {actionLoading === 'struct-' + structureDetails.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
+                      Autoriser la structure
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex-1">
@@ -208,11 +285,50 @@ export default function MapPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="pl-13 space-y-1 mt-3">
-                    {doc.telephone && (
-                      <p className="text-xs text-slate-500 flex items-center gap-2"><Phone className="w-3 h-3" /> {doc.telephone}</p>
+                  <div className="pl-13 space-y-3 mt-3">
+                    {/* Hide contact info for patients */}
+                    {!isPatient && (
+                      <div className="space-y-1">
+                        {doc.telephone && (
+                          <p className="text-xs text-slate-500 flex items-center gap-2"><Phone className="w-3 h-3" /> {doc.telephone}</p>
+                        )}
+                        <p className="text-xs text-slate-500 flex items-center gap-2"><Mail className="w-3 h-3" /> {doc.email}</p>
+                      </div>
                     )}
-                    <p className="text-xs text-slate-500 flex items-center gap-2"><Mail className="w-3 h-3" /> {doc.email}</p>
+                    
+                    {isPatient && hasAuthorizedStructure && (
+                      <div className="pt-2 border-t border-slate-200 dark:border-slate-700 flex flex-wrap gap-2">
+                        {medecinTraitantId === doc.id ? (
+                          <>
+                            <div className="flex items-center gap-2 text-xs font-bold text-amber-500 bg-amber-500/10 px-3 py-1.5 rounded-lg w-fit">
+                              <Star className="w-4 h-4 fill-amber-500" /> Médecin Traitant
+                            </div>
+                            <button 
+                              onClick={async () => {
+                                try {
+                                  await startConversation(doc.id, "PRIVE");
+                                  router.push('/dashboard/chat');
+                                } catch (e) {
+                                  console.error(e);
+                                }
+                              }}
+                              className="flex items-center gap-2 text-xs font-bold text-primary-500 bg-primary-500/10 hover:bg-primary-500/20 px-3 py-1.5 rounded-lg transition-all w-fit"
+                            >
+                              <MessageSquare className="w-4 h-4" /> Message
+                            </button>
+                          </>
+                        ) : (
+                          <button 
+                            onClick={() => handleDesignerMedecin(doc.id)}
+                            disabled={!!actionLoading}
+                            className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-amber-500 hover:bg-amber-500/10 px-3 py-1.5 rounded-lg transition-all border border-slate-200 dark:border-slate-700 hover:border-amber-500/30 w-fit"
+                          >
+                            {actionLoading === 'med-' + doc.id ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
+                            Désigner comme médecin
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

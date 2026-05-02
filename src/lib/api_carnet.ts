@@ -80,6 +80,24 @@ export interface AutoDiagnostic {
   createdAt: string;
 }
 
+export type AppointmentStatus = "PROGRAMME" | "CONFIRME" | "ANNULE" | "TERMINE";
+
+export interface RendezVous {
+  id: string;
+  patientId: string;
+  patient?: { id: string; nom: string; prenom: string };
+  medecinId: string;
+  medecin?: { id: string; nom: string; prenom: string; specialite: string };
+  structureId: string | null;
+  structure?: { id: string; nom: string };
+  date: string;
+  motif: string;
+  notes: string | null;
+  status: AppointmentStatus;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CarnetResume {
   profil: ProfilMedical | null;
   stats: {
@@ -104,7 +122,7 @@ export const upsertProfilMedical = (data: Partial<ProfilMedical>) =>
 
 export const getConsultations = () => authFetch<Consultation[]>("/carnet-sante/consultations");
 
-export const createConsultation = (data: Partial<Consultation>) =>
+export const createConsultation = (data: any) =>
   authFetch<Consultation>("/carnet-sante/consultations", {
     method: "POST",
     body: JSON.stringify(data),
@@ -112,9 +130,41 @@ export const createConsultation = (data: Partial<Consultation>) =>
 
 export const getOrdonnances = () => authFetch<Ordonnance[]>("/carnet-sante/ordonnances");
 
+export const createOrdonnance = (data: any) =>
+  authFetch<Ordonnance>("/carnet-sante/ordonnances", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
 export const getVaccinations = () => authFetch<Vaccination[]>("/carnet-sante/vaccinations");
 
+export const createVaccination = (data: any) =>
+  authFetch<Vaccination>("/carnet-sante/vaccinations", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
 export const getAnalyses = () => authFetch<ResultatAnalyse[]>("/carnet-sante/analyses");
+
+export const createAnalyse = (data: any) =>
+  authFetch<ResultatAnalyse>("/carnet-sante/analyses", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const getRendezVous = () => authFetch<RendezVous[]>("/carnet-sante/rendez-vous");
+
+export const createRendezVous = (data: any) =>
+  authFetch<RendezVous>("/carnet-sante/rendez-vous", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const updateRendezVousStatus = (id: string, status: string) =>
+  authFetch<RendezVous>(`/carnet-sante/rendez-vous/${id}/status`, {
+    method: "POST",
+    body: JSON.stringify({ status }),
+  });
 
 export const getAutoDiagnostics = () => authFetch<AutoDiagnostic[]>("/carnet-sante/auto-diagnostics");
 
@@ -123,3 +173,19 @@ export const createAutoDiagnostic = (symptomes: string) =>
     method: "POST",
     body: JSON.stringify({ symptomes }),
   });
+
+// ─── Vue Médecin ─────────────────────────────────────────────
+
+export interface PatientCarnet {
+  patient: { id: string; nom: string; prenom: string; email: string; telephone: string };
+  isMedecinTraitant: boolean;
+  profil: ProfilMedical | null;
+  consultations: Consultation[];
+  ordonnances: Ordonnance[];
+  analyses: ResultatAnalyse[];
+  vaccinations: Vaccination[];
+  stats: { consultations: number; ordonnances: number; analyses: number; vaccinations: number };
+}
+
+export const getPatientCarnet = (patientId: string) =>
+  authFetch<PatientCarnet>(`/carnet-sante/patient/${patientId}`);

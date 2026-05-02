@@ -209,4 +209,25 @@ export async function createSuperAdmin(data: CreateSuperAdminPayload) {
   );
 }
 
+// ─── Patient : Autorisations ──────────────────────────────────────
+
+export interface Autorisation {
+  id: string;
+  structureId: string;
+  createdAt: string;
+  structure: { id: string; nom: string; type: string };
+}
+
+export async function getMesAutorisations() {
+  return authFetch<{ autorisationsStructures: Autorisation[] }>("/users/patient/autorisations");
+}
+
+export async function autoriserStructure(structureId: string) {
+  return authFetch<any>(`/users/patient/autoriser-structure/${structureId}`, { method: "POST" });
+}
+
+export async function revoquerStructure(structureId: string) {
+  return authFetch<any>(`/users/patient/revoquer-structure/${structureId}`, { method: "DELETE" });
+}
+
 export { ApiError };

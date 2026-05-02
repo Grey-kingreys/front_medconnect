@@ -21,9 +21,11 @@ import {
   Heart,
   Clock,
   Sparkles,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { getMyStructure, MyStructure } from "@/lib/api_structure";
+import DashboardCharts from "@/components/DashboardCharts";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -433,17 +435,29 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Membership info for patient */}
+        {/* Membership info & SOS for patient */}
         {user.role === "PATIENT" && profile && (
-          <div className="relative mt-4 flex items-center gap-2 text-xs text-slate-500">
-            <Heart className="w-3.5 h-3.5 text-primary-400" />
-            <span>
-              Membre depuis{" "}
-              {new Date(profile.createdAt).toLocaleDateString("fr-FR", {
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
+          <div className="relative mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+              <Heart className="w-3.5 h-3.5 text-primary-400" />
+              <span>
+                Membre depuis{" "}
+                {new Date(profile.createdAt).toLocaleDateString("fr-FR", {
+                  month: "long",
+                  year: "numeric",
+                })}
+              </span>
+            </div>
+            
+            <button 
+              className="group relative flex items-center justify-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white overflow-hidden transition-all duration-300 hover:shadow-xl hover:shadow-emergency-500/30 active:scale-95"
+            >
+              <span className="absolute inset-0 bg-gradient-to-r from-emergency-600 to-rose-500" />
+              <span className="absolute inset-0 bg-gradient-to-r from-emergency-500 to-rose-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:4px_4px] opacity-30 mix-blend-overlay" />
+              <AlertCircle className="relative w-5 h-5 animate-pulse" />
+              <span className="relative tracking-wide">Urgence S.O.S</span>
+            </button>
           </div>
         )}
 
@@ -467,6 +481,20 @@ export default function DashboardPage() {
           <StatsGrid cards={statsCards} />
         </section>
       )}
+
+      {/* Charts Section */}
+      <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
+            Analyses et Tendances
+          </h2>
+          <div className="flex items-center gap-2 px-3 py-1 bg-primary-500/10 rounded-full">
+            <TrendingUp className="w-3.5 h-3.5 text-primary-500" />
+            <span className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">En direct</span>
+          </div>
+        </div>
+        <DashboardCharts role={user.role} />
+      </section>
 
       {/* Quick Actions */}
       <section>

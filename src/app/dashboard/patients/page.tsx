@@ -17,12 +17,14 @@ import {
 } from "lucide-react";
 import { getMyPatients, PatientSummary } from "@/lib/api_patients";
 import Link from "next/link";
+import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
 
 export default function PatientsPage() {
   const [patients, setPatients] = useState<PatientSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [error, setError] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   useEffect(() => {
     fetchPatients();
@@ -61,14 +63,21 @@ export default function PatientsPage() {
           </p>
         </div>
         
-        <Link 
-          href="/dashboard/consultations"
+        <button 
+          onClick={() => setIsAddModalOpen(true)}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-semibold transition-all shadow-lg shadow-primary-500/25 active:scale-95"
         >
           <Plus className="w-5 h-5" />
           Nouvelle Consultation
-        </Link>
+        </button>
       </div>
+
+      <DoctorAddRecordModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        type="consultation" 
+        onSuccess={fetchPatients} 
+      />
 
       {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-4">

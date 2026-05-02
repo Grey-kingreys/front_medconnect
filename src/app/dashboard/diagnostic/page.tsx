@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Bot, 
   Send, 
@@ -13,36 +13,56 @@ import {
   ArrowRight,
   Loader2,
   ShieldCheck,
-  Info
+  Info,
+  Clock,
+  X
 } from "lucide-react";
 import Link from "next/link";
+import { createAutoDiagnostic, getAutoDiagnostics, AutoDiagnostic } from "@/lib/api_carnet";
 
 export default function DiagnosticPage() {
   const [symptomes, setSymptomes] = useState("");
+  const [lastSymptomes, setLastSymptomes] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [history, setHistory] = useState<AutoDiagnostic[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const res = await getAutoDiagnostics();
+      setHistory(res.data);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
 
   const handleAnalyze = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!symptomes.trim()) return;
+    const message = symptomes.trim();
+    if (!message) return;
 
+    setLastSymptomes(message); // Garder trace de la question
+    setSymptomes(""); 
     setAnalyzing(true);
     setResult(null);
 
-    // Mock AI Analysis delay
-    await new Promise(resolve => setTimeout(resolve, 3000));
-
-    // Mock Result
-    setResult({
-      potentialCauses: [
-        { name: "Grippe saisonnière", probability: "Élevée", description: "Infection virale courante se manifestant par de la fièvre et des courbatures." },
-        { name: "Fatigue chronique", probability: "Moyenne", description: "État de fatigue persistant pouvant être lié au stress ou au manque de sommeil." }
-      ],
-      recommendation: "CONSULTATION",
-      advice: "Reposez-vous, hydratez-vous abondamment et surveillez votre température. Si la fièvre persiste plus de 48h, consultez un médecin.",
-      urgencyLevel: "MODERATE"
-    });
-    setAnalyzing(false);
+    try {
+      const res = await createAutoDiagnostic(message);
+      setResult(res.data.analyseia);
+      fetchHistory();
+    } catch (err: any) {
+      setSymptomes(message);
+      alert(err.message || "Erreur lors de l'analyse");
+    } finally {
+      setAnalyzing(false);
+    }
   };
 
   return (
@@ -83,45 +103,79 @@ export default function DiagnosticPage() {
         
         {/* Input Section */}
         <div className="lg:col-span-7 space-y-6">
-          <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2.5rem] p-8 shadow-xl">
-            <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
-              <span className="w-8 h-8 rounded-lg bg-primary-500/10 flex items-center justify-center text-primary-500 text-sm">1</span>
-              Quels sont vos symptômes ?
-            </h3>
-            
-            <form onSubmit={handleAnalyze} className="space-y-6">
-              <div className="relative">
-                <textarea 
-                  value={symptomes}
-                  onChange={(e) => setSymptomes(e.target.value)}
-                  placeholder="Ex: J'ai mal à la tête depuis ce matin, j'ai un peu de fièvre et je me sens très fatigué..."
-                  className="w-full h-48 px-6 py-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-3xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 transition-all text-base leading-relaxed resize-none"
-                  disabled={analyzing}
-                />
-                <div className="absolute bottom-4 right-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  {symptomes.length} caractères
-                </div>
+          {result ? (
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2.5rem] p-8 shadow-xl h-full">
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-3">
+                <span className="w-8 h-8 rounded-lg bg-indigo-500/10 flex items-center justify-center text-indigo-500 text-sm">
+                  <Bot className="w-4 h-4" />
+                </span>
+                Votre description
+              </h3>
+              <div className="p-6 bg-slate-50 dark:bg-slate-900/50 rounded-3xl border border-slate-100 dark:border-slate-800">
+                <p className="text-slate-700 dark:text-slate-300 leading-relaxed italic font-medium">
+                  "{lastSymptomes}"
+                </p>
               </div>
-
-              <button 
-                type="submit" 
-                disabled={analyzing || !symptomes.trim()}
-                className="group w-full py-5 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white rounded-[1.5rem] font-bold shadow-xl shadow-primary-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
-              >
-                {analyzing ? (
-                  <>
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                    <span>Analyse en cours...</span>
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
-                    <span>Lancer l'analyse intelligente</span>
-                  </>
+              <div className="mt-8 pt-8 border-t border-slate-100 dark:border-slate-800/50">
+                 <button 
+                  onClick={() => {setResult(null); setSymptomes("");}}
+                  className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-400 rounded-xl font-bold transition-all flex items-center gap-2"
+                >
+                  <ArrowRight className="w-4 h-4 rotate-180" /> Nouvelle analyse
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2.5rem] p-8 shadow-xl">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-3">
+                  <span className="w-8 h-8 rounded-lg bg-primary-500/10 flex items-center justify-center text-primary-500 text-sm">1</span>
+                  Quels sont vos symptômes ?
+                </h3>
+                {symptomes && (
+                  <button 
+                    onClick={() => setSymptomes("")}
+                    className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-rose-500 hover:text-rose-600 transition-colors bg-rose-500/5 px-3 py-1.5 rounded-full"
+                  >
+                    <X className="w-3 h-3" /> Vider le champ
+                  </button>
                 )}
-              </button>
-            </form>
-          </div>
+              </div>
+              
+              <form onSubmit={handleAnalyze} className="space-y-6">
+                <div className="relative">
+                  <textarea 
+                    value={symptomes}
+                    onChange={(e) => setSymptomes(e.target.value)}
+                    placeholder="Ex: J'ai mal à la tête depuis ce matin, j'ai un peu de fièvre et je me sens très fatigué..."
+                    className="w-full h-48 px-6 py-5 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-3xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500 transition-all text-base leading-relaxed resize-none"
+                    disabled={analyzing}
+                  />
+                  <div className="absolute bottom-4 right-6 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {symptomes.length} caractères
+                  </div>
+                </div>
+
+                <button 
+                  type="submit" 
+                  disabled={analyzing || !symptomes.trim()}
+                  className="group w-full py-5 bg-primary-500 hover:bg-primary-600 disabled:opacity-50 text-white rounded-[1.5rem] font-bold shadow-xl shadow-primary-500/20 transition-all flex items-center justify-center gap-3 active:scale-95"
+                >
+                  {analyzing ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      <span>Analyse en cours...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-5 h-5 group-hover:translate-x-1 group-hover:-translate-y-1 transition-transform" />
+                      <span>Lancer l'analyse intelligente</span>
+                    </>
+                  )}
+                </button>
+              </form>
+            </div>
+          )}
 
           <div className="p-6 bg-amber-500/5 border border-amber-500/10 rounded-3xl flex items-start gap-4">
             <AlertTriangle className="w-6 h-6 text-amber-500 shrink-0" />
@@ -150,9 +204,9 @@ export default function DiagnosticPage() {
                 <Bot className="absolute inset-0 m-auto w-12 h-12 text-primary-500 animate-pulse" />
               </div>
               <div className="space-y-2">
-                <p className="text-xl font-bold text-slate-900 dark:text-white">Traitement des données...</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">Analyse médicale IA...</p>
                 <div className="flex flex-col gap-1">
-                  {["Analyse sémantique", "Consultation de la base médicale", "Calcul des probabilités"].map((step, i) => (
+                  {["Traitement du langage naturel", "Identification des pathologies", "Génération des recommandations"].map((step, i) => (
                     <div key={i} className="flex items-center justify-center gap-2 text-xs text-slate-500">
                       <div className="w-1.5 h-1.5 rounded-full bg-primary-500 animate-ping" style={{ animationDelay: `${i*0.5}s` }} />
                       {step}
@@ -164,36 +218,20 @@ export default function DiagnosticPage() {
           ) : (
             <div className="animate-slide-up space-y-6">
               <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800 rounded-[2.5rem] overflow-hidden shadow-2xl">
-                <div className={`p-6 ${result.urgencyLevel === 'HIGH' ? 'bg-emergency-500' : 'bg-secondary-500'} text-white`}>
+                <div className={`p-6 ${result.confiance > 0.7 ? 'bg-emerald-500' : result.confiance > 0.4 ? 'bg-amber-500' : 'bg-rose-500'} text-white`}>
                    <div className="flex items-center justify-between mb-4">
-                     <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Recommandation</span>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-white/70">Analyse terminée</span>
                      <div className="p-2 bg-white/20 rounded-lg"><Stethoscope className="w-4 h-4" /></div>
                    </div>
-                   <h4 className="text-2xl font-black uppercase tracking-tight">{result.recommendation}</h4>
+                   <h4 className="text-2xl font-black tracking-tight">{result.maladie}</h4>
+                   <p className="text-xs text-white/80 mt-1">Indice de confiance : {(result.confiance * 100).toFixed(0)}%</p>
                 </div>
 
                 <div className="p-8 space-y-8">
-                  <div className="space-y-4">
-                    <h5 className="text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-                      <Info className="w-4 h-4" /> Causes potentielles
-                    </h5>
-                    <div className="space-y-3">
-                      {result.potentialCauses.map((cause: any, i: number) => (
-                        <div key={i} className="p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl group">
-                          <div className="flex items-center justify-between mb-2">
-                            <span className="font-bold text-slate-900 dark:text-white">{cause.name}</span>
-                            <span className="text-[10px] font-black text-secondary-500 bg-secondary-500/10 px-2 py-0.5 rounded-full">{cause.probability}</span>
-                          </div>
-                          <p className="text-xs text-slate-500 leading-relaxed">{cause.description}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
                   <div className="space-y-3">
-                    <h5 className="text-xs font-black uppercase tracking-widest text-slate-400">Conseils d'action</h5>
+                    <h5 className="text-xs font-black uppercase tracking-widest text-slate-400">Analyse & Conseils</h5>
                     <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed font-medium">
-                      {result.advice}
+                      {result.reponse}
                     </p>
                   </div>
 
@@ -206,14 +244,59 @@ export default function DiagnosticPage() {
               </div>
               
               <button 
-                onClick={() => {setResult(null); setSymptomes("");}}
+                onClick={() => {setResult(null); setSymptomes(""); setLastSymptomes("");}}
                 className="w-full py-4 text-slate-500 font-bold hover:text-slate-900 dark:hover:text-white transition-colors flex items-center justify-center gap-2"
               >
-                Nouvelle analyse
+                <X className="w-4 h-4" /> Fermer l'analyse
               </button>
             </div>
           )}
         </div>
+      </div>
+
+      {/* History Section */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <History className="w-6 h-6 text-slate-400" />
+          <h2 className="text-xl font-bold text-slate-900 dark:text-white">Historique de mes analyses</h2>
+        </div>
+
+        {loadingHistory ? (
+          <div className="flex justify-center py-10">
+            <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
+          </div>
+        ) : history.length === 0 ? (
+          <div className="p-10 text-center bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">
+            <p className="text-slate-500 text-sm">Aucun historique d'analyse disponible.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {history.map((diag) => (
+              <div key={diag.id} className="p-6 bg-white dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-[2rem] space-y-4 hover:shadow-lg transition-all group">
+                <div className="flex items-start justify-between">
+                  <div className="p-2 bg-slate-50 dark:bg-slate-800 rounded-xl text-slate-400"><Clock className="w-4 h-4" /></div>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    {new Date(diag.createdAt).toLocaleDateString()}
+                  </span>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-400 font-medium line-clamp-2 italic mb-2">"{diag.symptomes}"</p>
+                  <h4 className="font-bold text-slate-900 dark:text-white">{diag.recommendation || "Analyse en attente"}</h4>
+                </div>
+                <button 
+                  onClick={() => {
+                    const parsed = typeof diag.analyseia === 'string' ? JSON.parse(diag.analyseia) : diag.analyseia;
+                    setResult(parsed);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  className="text-xs font-bold text-primary-500 hover:text-primary-600 transition-colors flex items-center gap-1"
+                >
+                  Voir les détails <ArrowRight className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
