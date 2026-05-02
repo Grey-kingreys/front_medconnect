@@ -6,7 +6,7 @@
  */
 
 export default function StructuredData() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.gn";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
 
   // Schema Organization
   const organizationSchema = {
@@ -24,7 +24,7 @@ export default function StructuredData() {
     description:
       "Plateforme de santé numérique 360° en Guinée. Carnet de santé intelligent, diagnostic IA, pharmacie en ligne, urgences 24/7 et géolocalisation médicale.",
     telephone: "+224-622-000-000",
-    email: "contact@medconnect.gn",
+    email: "contact@kingreys.fr",
     address: {
       "@type": "PostalAddress",
       streetAddress: "Quartier Kaloum",

@@ -18,7 +18,7 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.gn"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr"),
   title: {
     default: "MedConnect — Plateforme de Santé Numérique en Guinée",
     template: "%s | MedConnect Guinée",
@@ -45,7 +45,7 @@ export const metadata: Metadata = {
     "consultation médicale distance",
     "suivi médical digital",
   ],
-  authors: [{ name: "MedConnect Team", url: "https://medconnect.gn/about" }],
+  authors: [{ name: "MedConnect Team", url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr"}/about` }],
   creator: "MedConnect",
   publisher: "MedConnect Guinée",
   formatDetection: {
@@ -56,7 +56,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "fr_GN",
-    url: "https://medconnect.gn",
+    url: process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr",
     siteName: "MedConnect Guinée",
     title: "MedConnect — Votre santé connectée en Guinée",
     description:
@@ -81,10 +81,10 @@ export const metadata: Metadata = {
     site: "@MedConnectGN",
   },
   alternates: {
-    canonical: "https://medconnect.gn",
+    canonical: process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr",
     languages: {
-      "fr-GN": "https://medconnect.gn",
-      "fr": "https://medconnect.gn/fr",
+      "fr-GN": process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr",
+      "fr": `${process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr"}/fr`,
     },
   },
   robots: {
@@ -99,7 +99,7 @@ export const metadata: Metadata = {
     },
   },
   verification: {
-    google: "your-google-verification-token",
+    google: process.env.NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION || "",
   },
   category: "health",
   classification: "Healthcare Technology",
@@ -109,6 +109,7 @@ export const metadata: Metadata = {
     "application-name": "MedConnect",
     "msapplication-TileColor": "#3b82f6",
     "msapplication-config": "/browserconfig.xml",
+    "twitter:domain": "medconnect.kingreys.fr",
   },
 };
 

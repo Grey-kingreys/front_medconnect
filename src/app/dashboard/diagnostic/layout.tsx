@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.gn";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
 
   return {
     title: "Diagnostic Médical par Intelligence Artificielle",
