@@ -17,6 +17,7 @@ import {
   Search
 } from "lucide-react";
 import { getVaccinations, Vaccination } from "@/lib/api_carnet";
+import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
 
 export default function VaccinationsPage() {
   const { user } = useAuth();
@@ -24,6 +25,9 @@ export default function VaccinationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const isDoctor = user?.role === "MEDECIN" || user?.role === "STRUCTURE_ADMIN";
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -124,10 +128,22 @@ export default function VaccinationsPage() {
                 className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-cyan-500 transition-all shadow-sm"
               />
             </div>
-            <button className="flex items-center gap-2 px-6 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:text-cyan-500 transition-all shadow-sm">
-              <Plus className="w-4 h-4" /> Ajouter
-            </button>
+            {isDoctor && (
+              <button 
+                onClick={() => setIsAddModalOpen(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-cyan-600 hover:bg-cyan-700 text-white rounded-2xl text-sm font-bold shadow-lg shadow-cyan-500/25 transition-all active:scale-95"
+              >
+                <Plus className="w-4 h-4" /> Ajouter
+              </button>
+            )}
           </div>
+
+          <DoctorAddRecordModal 
+            isOpen={isAddModalOpen} 
+            onClose={() => setIsAddModalOpen(false)} 
+            type="vaccin" 
+            onSuccess={fetchData} 
+          />
 
           <div className="space-y-4">
             {filtered.length === 0 ? (

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ArrowRight,
   Shield,
@@ -158,8 +158,10 @@ function PhoneMockup() {
 export default function HeroSection() {
   const sectionRef = useRef<HTMLElement>(null);
   const { isAuthenticated } = useAuth();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const el = sectionRef.current;
     if (!el) return;
     el.classList.add("animate-fade-in");
@@ -204,7 +206,7 @@ export default function HeroSection() {
 
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start animate-slide-up animate-delay-300">
-              {isAuthenticated ? (
+              {mounted && isAuthenticated ? (
                 <a
                   href="/dashboard"
                   id="hero-cta-primary"

@@ -18,6 +18,7 @@ import {
   Plus
 } from "lucide-react";
 import { getConsultations, Consultation } from "@/lib/api_carnet";
+import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
 
 export default function ConsultationsPage() {
   const { user } = useAuth();
@@ -26,6 +27,9 @@ export default function ConsultationsPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null);
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  const isDoctor = user?.role === "MEDECIN" || user?.role === "STRUCTURE_ADMIN";
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -72,6 +76,15 @@ export default function ConsultationsPage() {
         </div>
         
         <div className="flex items-center gap-3">
+          {isDoctor && (
+            <button 
+              onClick={() => setIsAddModalOpen(true)}
+              className="flex items-center gap-2 px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-primary-500/25 transition-all active:scale-95 whitespace-nowrap"
+            >
+              <Plus className="w-5 h-5" />
+              Nouvelle Consultation
+            </button>
+          )}
           <div className="relative flex-1 sm:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input 
@@ -224,6 +237,13 @@ export default function ConsultationsPage() {
           </div>
         )}
       </div>
+      
+      <DoctorAddRecordModal 
+        isOpen={isAddModalOpen} 
+        onClose={() => setIsAddModalOpen(false)} 
+        type="consultation" 
+        onSuccess={fetchData} 
+      />
     </div>
   );
 }
