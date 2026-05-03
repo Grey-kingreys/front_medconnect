@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { getMyStructure, MyStructure } from "@/lib/api_structure";
 import DashboardCharts from "@/components/DashboardCharts";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -351,13 +352,18 @@ export default function DashboardPage() {
   const [structureStats, setStructureStats] = useState<{ medecins: number; pharmaciens: number; actifs: number; }>({
     medecins: 0, pharmaciens: 0, actifs: 0
   });
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Redirect SUPER_ADMIN to their dedicated dashboard
   useEffect(() => {
-    if (user?.role === "SUPER_ADMIN") {
+    if (mounted && user?.role === "SUPER_ADMIN") {
       router.replace("/dashboard/super-admin");
     }
-  }, [user, router]);
+  }, [user, router, mounted]);
 
   useEffect(() => {
     if (user?.role === "STRUCTURE_ADMIN") {
@@ -372,8 +378,8 @@ export default function DashboardPage() {
     }
   }, [user]);
 
-  if (!user) return null;
-  if (user.role === "SUPER_ADMIN") return null; // Redirecting...
+  if (!mounted || !user) return <LoadingSpinner fullPage message="Vérification de l'accès..." />;
+  if (user.role === "SUPER_ADMIN") return <LoadingSpinner fullPage message="Redirection vers l'espace Super Admin..." />;
 
   const welcomeMessage = getWelcomeMessage(user.role);
   const quickActions = getQuickActions(user.role);

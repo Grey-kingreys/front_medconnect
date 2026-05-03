@@ -27,7 +27,14 @@ async function apiFetch<T>(
     },
   });
 
-  const body = await res.json();
+  const text = await res.text();
+  let body: any = {};
+  try {
+    body = text ? JSON.parse(text) : {};
+  } catch (e) {
+    console.error("Erreur de parsing JSON:", e, "Texte reçu:", text);
+    body = { message: "Erreur de réponse du serveur" };
+  }
 
   if (!res.ok) {
     const errorMessage =
