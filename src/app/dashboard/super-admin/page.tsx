@@ -31,6 +31,7 @@ import {
 } from "@/lib/api_admin";
 import GlobePicker from "@/components/GlobePicker";
 import { StructureModal } from "@/components/modals/StructureModal";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 // ─── Color palette ──────────────────────────────────────────────
 const STRUCTURE_COLORS: Record<string, string> = {
@@ -68,6 +69,11 @@ export default function SuperAdminDashboard() {
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [selectedStructure, setSelectedStructure] = useState<Structure | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
@@ -123,16 +129,7 @@ export default function SuperAdminDashboard() {
   const recentStructures = structures.slice(0, 5);
 
   if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 text-primary-400 animate-spin" />
-            <p className="text-sm text-slate-500 dark:text-slate-400">Chargement des statistiques...</p>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner message="Chargement des statistiques..." />;
   }
 
   return (
@@ -268,131 +265,125 @@ export default function SuperAdminDashboard() {
       </section>
 
       {/* ── Global Coverage Map ──────────────────────────────────── */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2
-            className="text-lg font-semibold text-slate-900 dark:text-white"
-            style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
-          >
-            Couverture Globale
-          </h2>
-          <div className="hidden sm:flex items-center gap-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-blue-500" />
-              <span>Hôpitaux</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-purple-500" />
-              <span>Cliniques</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-              <span>Pharmacies</span>
-            </div>
-          </div>
-        </div>
-        <div className="relative h-[400px] rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800/50 shadow-2xl group">
-          <GlobePicker
-            structures={structures
-              .filter(s => s.latitude != null && s.longitude != null)
-              .map(s => ({
-                id: s.id,
-                lat: s.latitude!,
-                lng: s.longitude!,
-                label: s.nom,
-                type: s.type
-              }))}
-            onStructureClick={(id) => {
-              const s = structures.find(x => x.id === id);
-              if (s) setSelectedStructure(s);
-            }}
-            className="w-full h-full rounded-none"
-          />
-          
-          {/* Stats Overlay */}
-          <div className="absolute right-6 bottom-6 flex flex-col gap-2 pointer-events-none">
-            <div className="p-4 bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl pointer-events-auto">
-              <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Géolocalisés</p>
-              <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-bold text-white">
-                  {structures.filter(s => s.latitude && s.longitude).length}
-                </span>
-                <span className="text-xs text-slate-400">sites</span>
+      {mounted && (
+        <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2
+              className="text-lg font-semibold text-slate-900 dark:text-white"
+              style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
+            >
+              Couverture Globale
+            </h2>
+            <div className="hidden sm:flex items-center gap-4 text-[10px] uppercase tracking-widest font-bold text-slate-500">
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-blue-500" />
+                <span>Hôpitaux</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-purple-500" />
+                <span>Cliniques</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span>Pharmacies</span>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+          <div className="relative h-[400px] rounded-3xl overflow-hidden border border-slate-200 dark:border-slate-800/50 shadow-2xl group">
+            <GlobePicker
+              structures={structures
+                .filter(s => s.latitude != null && s.longitude != null)
+                .map(s => ({
+                  id: s.id,
+                  lat: s.latitude!,
+                  lng: s.longitude!,
+                  label: s.nom,
+                  type: s.type
+                }))}
+              onStructureClick={(id) => {
+                const s = structures.find(x => x.id === id);
+                if (s) setSelectedStructure(s);
+              }}
+              className="w-full h-full rounded-none"
+            />
+            
+            {/* Stats Overlay */}
+            <div className="absolute right-6 bottom-6 flex flex-col gap-2 pointer-events-none">
+              <div className="p-4 bg-slate-900/80 backdrop-blur-md border border-slate-700/50 rounded-2xl pointer-events-auto">
+                <p className="text-[10px] text-slate-500 font-bold uppercase mb-2">Géolocalisés</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-white">
+                    {structures.filter(s => s.latitude && s.longitude).length}
+                  </span>
+                  <span className="text-xs text-slate-400">sites</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ── Charts ─────────────────────────────────────────────── */}
-      <section>
-        <h2
-          className="text-lg font-semibold text-slate-900 dark:text-white mb-4"
-          style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
-        >
-          Répartition
-        </h2>
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-
-          {/* Donut : structures par type */}
-          <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Structures par type</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {globalStats?.totalStructures ?? 0} structures au total
-                </p>
-              </div>
-              <div className="p-2 rounded-xl bg-cyan-500/10 text-cyan-400">
-                <Building2 className="w-5 h-5" />
-              </div>
-            </div>
-            <DonutChart
-              data={structureDonutData}
-              centerLabel={String(globalStats?.totalStructures ?? 0)}
-              centerSub="Structures"
-              size={160}
-              thickness={28}
-            />
-          </div>
-
-          {/* Bar : utilisateurs par rôle */}
-          <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h3 className="text-base font-semibold text-slate-900 dark:text-white">Utilisateurs par rôle</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  {userStats?.total ?? 0} comptes inscrits
-                </p>
-              </div>
-              <div className="p-2 rounded-xl bg-primary-500/10 text-primary-400">
-                <Users className="w-5 h-5" />
+      {mounted && (
+        <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <h2
+            className="text-lg font-semibold text-slate-900 dark:text-white mb-4"
+            style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
+          >
+            Répartition
+          </h2>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Donut : structures par type */}
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Structures par type</h3>
+              <DonutChart
+                data={globalStats?.parType.map(pt => ({
+                  label: pt.type,
+                  value: pt._count,
+                  color: STRUCTURE_COLORS[pt.type] || "#cbd5e1"
+                })) || []}
+                centerLabel={globalStats?.totalStructures.toString() || "0"}
+                centerSub="Total"
+              />
+              <div className="mt-6 grid grid-cols-3 gap-2">
+                {Object.entries(STRUCTURE_COLORS).map(([type, color]) => (
+                  <div key={type} className="flex flex-col items-center p-2 rounded-xl bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-700/30">
+                    <span className="text-[10px] font-bold text-slate-500 mb-1">{type}</span>
+                    <span className="text-sm font-bold" style={{ color }}>
+                      {globalStats?.parType.find(pt => pt.type === type)?._count || 0}
+                    </span>
+                  </div>
+                ))}
               </div>
             </div>
-            {userBarData.length > 0 ? (
-              <BarChart data={userBarData} />
-            ) : (
-              <div className="flex items-center justify-center h-32 text-slate-600 text-sm">
-                Aucune donnée
-              </div>
-            )}
 
-            {/* Actifs / Inactifs */}
-            {userStats && (
-              <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-800/50 grid grid-cols-2 gap-3">
-                <div className="p-3 rounded-xl bg-secondary-500/5 border border-secondary-500/10">
-                  <p className="text-xl font-bold text-secondary-400">{userStats.actifs}</p>
-                  <p className="text-xs text-slate-600">Comptes actifs</p>
+            {/* Bar : utilisateurs par rôle */}
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-6">
+              <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-6">Utilisateurs par rôle</h3>
+              <BarChart
+                data={userStats?.parRole.map(pr => ({
+                  label: pr.role,
+                  value: pr._count,
+                  color: ROLE_COLORS[pr.role] || "#94a3b8"
+                })) || []}
+              />
+              <div className="mt-4 flex items-center justify-between px-2">
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    <span className="text-[10px] font-medium text-slate-400">{userStats?.actifs || 0} Actifs</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <div className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                    <span className="text-[10px] font-medium text-slate-400">{userStats?.inactifs || 0} Inactifs</span>
+                  </div>
                 </div>
-                <div className="p-3 rounded-xl bg-emergency-500/5 border border-emergency-500/10">
-                  <p className="text-xl font-bold text-emergency-500">{userStats.inactifs}</p>
-                  <p className="text-xs text-slate-600">Comptes inactifs</p>
-                </div>
+                <span className="text-[10px] font-bold text-primary-400">Total: {userStats?.total || 0}</span>
               </div>
-            )}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       {/* ── Recent Structures + Quick Actions ─────────────────── */}
       <section>

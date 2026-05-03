@@ -226,9 +226,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // ── Redirection automatique si non connecté sur page protégée ──
   useEffect(() => {
-    if (loading) return;
+    if (!mounted || loading) return;
 
     const isProtectedRoute =
       pathname?.startsWith("/dashboard") || pathname?.startsWith("/profil");
@@ -242,7 +248,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user && isAuthRoute) {
       router.push("/dashboard");
     }
-  }, [user, loading, pathname, router]);
+  }, [user, loading, pathname, router, mounted]);
 
   return (
     <AuthContext.Provider

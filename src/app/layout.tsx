@@ -5,6 +5,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import StructuredData from "@/components/StructuredData";
 
+
 const inter = Inter({
   variable: "--font-inter",
   subsets: ["latin"],
@@ -23,6 +24,7 @@ export const metadata: Metadata = {
     default: "MedConnect — Plateforme de Santé Numérique en Guinée",
     template: "%s | MedConnect Guinée",
   },
+  manifest: "/manifest.json",
   description:
     "Carnet de santé numérique, diagnostic IA, pharmacie en ligne et urgences 24/7 en Guinée. Géolocalisez hôpitaux et cliniques à Conakry, Labé, Kindia. Gratuit, sécurisé, hors-ligne.",
   keywords: [
@@ -140,8 +142,22 @@ export default function RootLayout({
           <AuthProvider>
             <StructuredData />
             {children}
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                      for(let registration of registrations) {
+                        registration.unregister();
+                      }
+                    });
+                  }
+                `,
+              }}
+            />
           </AuthProvider>
         </ThemeProvider>
+
       </body>
     </html>
   );

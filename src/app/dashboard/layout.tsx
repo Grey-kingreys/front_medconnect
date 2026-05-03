@@ -30,6 +30,8 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { PWAInstallButton } from "@/components/PWAInstallButton";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -383,7 +385,8 @@ function Sidebar({
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800/50">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800/50 space-y-2">
+          {!collapsed && <PWAInstallButton />}
           <button
             onClick={logout}
             title={collapsed ? "Se déconnecter" : undefined}
@@ -426,23 +429,7 @@ export default function DashboardLayout({
 
   // Loading state (server or client before mount)
   if (!mounted || loading) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#030712] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Image
-            src="/images/logo.png"
-            alt="MedConnect"
-            width={48}
-            height={48}
-            className="rounded-2xl animate-pulse-glow"
-          />
-          <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
-            <Loader2 className="w-4 h-4 animate-spin" />
-            <span className="text-sm">Chargement...</span>
-          </div>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner fullPage message="Chargement du dashboard..." />;
   }
 
   // Non connecté — le hook redirigera vers /auth/login

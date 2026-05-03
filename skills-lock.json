@@ -25,6 +25,12 @@
       "skillPath": "skills/next-best-practices/SKILL.md",
       "computedHash": "db85045827ebeb83ac8dbc992b69188755eeb74dcf01cbf5e694d58aa494a106"
     },
+    "nextjs-pwa": {
+      "source": "just-mpm/conformai",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/nextjs-pwa/SKILL.md",
+      "computedHash": "6415dc9116f163d265857caeacdd8ba860d106c7ff7c104b0699a0dd5ef254f6"
+    },
     "nextjs-seo": {
       "source": "laguagu/claude-code-nextjs-skills",
       "sourceType": "github",

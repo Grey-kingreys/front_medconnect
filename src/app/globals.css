@@ -171,12 +171,18 @@ body {
   56% { transform: scale(1); }
 }
 
+@keyframes loading-bar {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(200%); }
+}
+
 /* ===== Animation Utilities ===== */
 
 .animate-float { animation: float 6s ease-in-out infinite; }
 .animate-float-delayed { animation: float-delayed 7s ease-in-out infinite; }
 .animate-float-slow { animation: float-slow 8s ease-in-out infinite; }
 .animate-pulse-glow { animation: pulse-glow 3s ease-in-out infinite; }
+.animate-loading-bar { animation: loading-bar 1.5s infinite linear; }
 .animate-pulse-ring { animation: pulse-ring 1.5s ease-out infinite; }
 .animate-gradient { animation: gradient-shift 8s ease infinite; background-size: 200% 200%; }
 .animate-slide-up { animation: slide-up 0.8s ease-out forwards; }
