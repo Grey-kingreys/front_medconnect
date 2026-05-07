@@ -59,15 +59,28 @@ export default function CarnetPage() {
     allergies: [] as string[],
     pathologies: [] as string[],
     traitements: [] as string[],
-    taille: "" as string | number,
-    poids: "" as string | number,
-    genre: "" as string,
+    taille: "Inconnu" as string | number,
+    poids: "Inconnu" as string | number,
+    genre: "Inconnu" as string,
     contactUrgence: "",
     dateNaissance: "",
   });
 
   const [newAllergy, setNewAllergy] = useState("");
   const [newPathology, setNewPathology] = useState("");
+
+  const calculateAge = (dateNaissance: string): number => {
+    const birthDate = new Date(dateNaissance);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -87,7 +100,7 @@ export default function CarnetPage() {
           allergies: profRes.data.allergies,
           pathologies: profRes.data.pathologies,
           traitements: profRes.data.traitements,
-          taille: profRes.data.taille || "",
+                    taille: profRes.data.taille || "",
           poids: profRes.data.poids || "",
           genre: profRes.data.genre || "",
           contactUrgence: profRes.data.contactUrgence || "",
@@ -187,9 +200,15 @@ export default function CarnetPage() {
               {user?.prenom} {user?.nom}
             </h1>
             <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-white/80 text-sm">
-              <span className="flex items-center gap-2"><Calendar className="w-4 h-4" /> {form.dateNaissance ? new Date(form.dateNaissance).toLocaleDateString('fr-FR') : "Âge inconnu"}</span>
+              {/* Âge calculé dynamiquement — jamais la date brute */}
+              <span className="flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                {form.dateNaissance ? `${calculateAge(form.dateNaissance)} ans` : "Âge non renseigné"}
+              </span>
               <span className="flex items-center gap-2"><UserIcon className="w-4 h-4" /> {form.genre || "Genre non défini"}</span>
               <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> {user?.telephone || "Pas de téléphone"}</span>
+              {user?.taille && <span className="flex items-center gap-2"><Ruler className="w-4 h-4" /> {user.taille} cm</span>}
+              {user?.poids && <span className="flex items-center gap-2"><Scale className="w-4 h-4" /> {user.poids} kg</span>}
             </div>
             
             <div className="pt-4 flex flex-wrap justify-center sm:justify-start gap-3">
@@ -277,7 +296,7 @@ export default function CarnetPage() {
                   <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Date de naissance</label>
                   <input type="date" value={form.dateNaissance} onChange={e => setForm(p => ({ ...p, dateNaissance: e.target.value }))} className={inputCls} />
                 </div>
-                <div>
+                                <div>
                   <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Contact d&apos;urgence</label>
                   <input type="text" value={form.contactUrgence} onChange={e => setForm(p => ({ ...p, contactUrgence: e.target.value }))} className={inputCls} placeholder="Nom - Téléphone" />
                 </div>

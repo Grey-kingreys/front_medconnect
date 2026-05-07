@@ -162,6 +162,9 @@ export interface AdminUser {
   role: string;
   isActive: boolean;
   telephone?: string;
+  dateNaissance?: string;
+  taille?: number;
+  poids?: number;
   structureId?: string;
   structure?: { id: string; nom: string; type: string };
   createdAt: string;

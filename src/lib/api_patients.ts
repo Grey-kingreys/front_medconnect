@@ -6,6 +6,9 @@ export interface PatientSummary {
   prenom: string;
   email: string;
   telephone: string;
+  dateNaissance?: string;
+  taille?: number;
+  poids?: number;
   derniereConsultation: string;
   dernierMotif: string;
   profilMedical?: {

@@ -177,7 +177,7 @@ export const createAutoDiagnostic = (symptomes: string) =>
 // ─── Vue Médecin ─────────────────────────────────────────────
 
 export interface PatientCarnet {
-  patient: { id: string; nom: string; prenom: string; email: string; telephone: string };
+  patient: { id: string; nom: string; prenom: string; email: string; telephone: string; dateNaissance?: string; taille?: number; poids?: number };
   isMedecinTraitant: boolean;
   profil: ProfilMedical | null;
   consultations: Consultation[];

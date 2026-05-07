@@ -21,6 +21,9 @@ export interface AuthUser {
   nom: string;
   prenom: string;
   telephone?: string;
+  dateNaissance?: string;
+  taille?: number;
+  poids?: number;
   role: string;
   structureId?: string;
 }
@@ -31,6 +34,9 @@ export interface UserProfile {
   nom: string;
   prenom: string;
   telephone?: string;
+  dateNaissance?: string;
+  taille?: number;
+  poids?: number;
   role: string;
   isActive: boolean;
   specialite?: string;
@@ -203,6 +209,9 @@ export async function register(data: {
   nom: string;
   prenom: string;
   telephone?: string;
+  dateNaissance?: string;
+  taille?: number;
+  poids?: number;
 }) {
   return apiFetch<RegisterResponse>("/auth/register", {
     method: "POST",
@@ -256,6 +265,9 @@ export async function updateProfile(data: {
   prenom?: string;
   email?: string;
   telephone?: string;
+  dateNaissance?: string;
+  taille?: number;
+  poids?: number;
 }) {
   return authFetch<UserProfile>("/auth/profile", {
     method: "PATCH",

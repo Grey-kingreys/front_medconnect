@@ -3,12 +3,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
-  Activity, Calendar, AlertCircle, 
+  Activity, AlertCircle, 
   Loader2, ShieldAlert, Droplet, User as UserIcon, Phone,
-  ClipboardList, CheckCircle2, ArrowLeft, Plus
+  ClipboardList, CheckCircle2, ArrowLeft, Plus, Ruler, Scale
 } from "lucide-react";
 import { getPatientCarnet, PatientCarnet } from "@/lib/api_carnet";
 import AddRecordForms from "./components/AddRecordForms";
+
+const calculateAge = (dateNaissance: string): number => {
+  const birthDate = new Date(dateNaissance);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
 
 
 const BLOOD_GROUPS = [
@@ -115,9 +128,15 @@ export default function PatientCarnetViewPage() {
               {patient.prenom} {patient.nom}
             </h1>
             <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-white/80 text-sm">
-              <span className="flex items-center gap-2"><Calendar className="w-4 h-4" /> {profil?.dateNaissance ? new Date(profil.dateNaissance).toLocaleDateString('fr-FR') : "Âge inconnu"}</span>
+              {/* Âge calculé dynamiquement — la date brute n'est jamais affichée */}
+              <span className="flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                {profil?.dateNaissance ? `${calculateAge(profil.dateNaissance)} ans` : "Âge non renseigné"}
+              </span>
               <span className="flex items-center gap-2"><UserIcon className="w-4 h-4" /> {profil?.genre || "Genre non défini"}</span>
               <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> {patient.telephone || "Pas de téléphone"}</span>
+              {patient.taille && <span className="flex items-center gap-2"><Ruler className="w-4 h-4" /> {patient.taille} cm</span>}
+              {patient.poids && <span className="flex items-center gap-2"><Scale className="w-4 h-4" /> {patient.poids} kg</span>}
             </div>
             
             <div className="pt-4 flex flex-wrap justify-center sm:justify-start gap-3">
