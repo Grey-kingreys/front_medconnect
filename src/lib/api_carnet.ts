@@ -37,6 +37,7 @@ export interface Ordonnance {
   id: string;
   patientId: string;
   consultationId: string | null;
+  consultation?: Consultation;
   medecinNom: string | null;
   medicaments: string; // JSON string
   notes: string | null;
