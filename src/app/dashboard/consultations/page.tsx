@@ -18,6 +18,7 @@ import {
   Plus
 } from "lucide-react";
 import { getConsultations, Consultation } from "@/lib/api_carnet";
+import Link from "next/link";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
 
 export default function ConsultationsPage() {
@@ -136,7 +137,7 @@ export default function ConsultationsPage() {
                     </div>
                     <h3 className="text-base font-bold text-slate-900 dark:text-white truncate mb-1">{c.motif}</h3>
                     <div className="flex items-center gap-3 text-xs text-slate-500">
-                      <span className="flex items-center gap-1.5"><Stethoscope className="w-3 h-3" /> Dr. {c.medecinNom || "Inconnu"}</span>
+                      <span className="flex items-center gap-1.5"><Stethoscope className="w-3 h-3" /> {c.medecinNom || "Médecin non renseigné"}</span>
                       {c.structure && <span className="flex items-center gap-1.5"><Building2 className="w-3 h-3" /> {c.structure.nom}</span>}
                     </div>
                   </div>
@@ -181,11 +182,13 @@ export default function ConsultationsPage() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                       <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Médecin</p>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">Dr. {selectedConsultation.medecinNom || "Inconnu"}</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                        {selectedConsultation.medecinNom || "Non renseigné"}
+                      </p>
                     </div>
                     <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
-                      <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Structure</p>
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedConsultation.structure?.nom || "Non spécifiée"}</p>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Établissement</p>
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedConsultation.structure?.nom || "Non renseigné"}</p>
                     </div>
                   </div>
                 </div>
@@ -217,14 +220,32 @@ export default function ConsultationsPage() {
                 )}
 
                 {/* Links to prescriptions/analysis */}
-                <div className="pt-4 grid grid-cols-1 gap-3">
-                  <button className="flex items-center justify-between p-4 bg-secondary-500/10 hover:bg-secondary-500/20 border border-secondary-500/20 rounded-2xl transition-all group">
-                    <div className="flex items-center gap-3 text-secondary-400">
-                      <ClipboardList className="w-5 h-5" />
-                      <span className="text-sm font-bold">Voir l'ordonnance liée</span>
+                <div className="pt-4 space-y-3">
+                  {selectedConsultation.ordonnances && selectedConsultation.ordonnances.length > 0 ? (
+                    <>
+                      <h4 className="text-xs font-black uppercase tracking-widest text-slate-400">Ordonnances liées</h4>
+                      {selectedConsultation.ordonnances.map((ord: any) => (
+                        <Link 
+                          key={ord.id}
+                          href="/dashboard/ordonnances"
+                          className="flex items-center justify-between p-4 bg-secondary-500/10 hover:bg-secondary-500/20 border border-secondary-500/20 rounded-2xl transition-all group"
+                        >
+                          <div className="flex items-center gap-3 text-secondary-400">
+                            <ClipboardList className="w-5 h-5" />
+                            <div>
+                              <p className="text-sm font-bold">Ordonnance du {new Date(ord.dateEmission).toLocaleDateString('fr-FR')}</p>
+                              <p className="text-[10px] opacity-70">Par {ord.medecinNom || "Médecin non renseigné"}</p>
+                            </div>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-secondary-400 group-hover:translate-x-1 transition-transform" />
+                        </Link>
+                      ))}
+                    </>
+                  ) : (
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-center">
+                      <p className="text-xs text-slate-400 italic">Aucune ordonnance liée à cette consultation.</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-secondary-400 group-hover:translate-x-1 transition-transform" />
-                  </button>
+                  )}
                 </div>
               </div>
               

@@ -29,7 +29,15 @@ import {
   ProfilMedical, 
   GroupeSanguin,
   getCarnetResume,
-  CarnetResume
+  CarnetResume,
+  getConsultations,
+  getOrdonnances,
+  getVaccinations,
+  getAnalyses,
+  Consultation,
+  Ordonnance,
+  Vaccination,
+  ResultatAnalyse
 } from "@/lib/api_carnet";
 
 const BLOOD_GROUPS: { value: GroupeSanguin; label: string }[] = [
@@ -65,6 +73,11 @@ export default function CarnetPage() {
     contactUrgence: "",
     dateNaissance: "",
   });
+  
+  const [consultations, setConsultations] = useState<Consultation[]>([]);
+  const [ordonnances, setOrdonnances] = useState<Ordonnance[]>([]);
+  const [vaccinations, setVaccinations] = useState<Vaccination[]>([]);
+  const [analyses, setAnalyses] = useState<ResultatAnalyse[]>([]);
 
   const [newAllergy, setNewAllergy] = useState("");
   const [newPathology, setNewPathology] = useState("");
@@ -86,13 +99,21 @@ export default function CarnetPage() {
     setLoading(true);
     setError("");
     try {
-      const [profRes, resumeRes] = await Promise.all([
+      const [profRes, resumeRes, consRes, ordRes, vacRes, anaRes] = await Promise.all([
         getProfilMedical(),
-        getCarnetResume()
+        getCarnetResume(),
+        getConsultations(),
+        getOrdonnances(),
+        getVaccinations(),
+        getAnalyses()
       ]);
       
       setProfile(profRes.data);
       setResume(resumeRes.data);
+      setConsultations(consRes.data);
+      setOrdonnances(ordRes.data);
+      setVaccinations(vacRes.data);
+      setAnalyses(anaRes.data);
       
       if (profRes.data) {
         setForm({
@@ -100,7 +121,7 @@ export default function CarnetPage() {
           allergies: profRes.data.allergies,
           pathologies: profRes.data.pathologies,
           traitements: profRes.data.traitements,
-                    taille: profRes.data.taille || "",
+          taille: profRes.data.taille || "",
           poids: profRes.data.poids || "",
           genre: profRes.data.genre || "",
           contactUrgence: profRes.data.contactUrgence || "",
@@ -203,12 +224,12 @@ export default function CarnetPage() {
               {/* Âge calculé dynamiquement — jamais la date brute */}
               <span className="flex items-center gap-2">
                 <Activity className="w-4 h-4" />
-                {form.dateNaissance ? `${calculateAge(form.dateNaissance)} ans` : "Âge non renseigné"}
+                {(form.dateNaissance || user?.dateNaissance) ? `${calculateAge(form.dateNaissance || (user?.dateNaissance as any))} ans` : "Âge non renseigné"}
               </span>
               <span className="flex items-center gap-2"><UserIcon className="w-4 h-4" /> {form.genre || "Genre non défini"}</span>
               <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> {user?.telephone || "Pas de téléphone"}</span>
-              {user?.taille && <span className="flex items-center gap-2"><Ruler className="w-4 h-4" /> {user.taille} cm</span>}
-              {user?.poids && <span className="flex items-center gap-2"><Scale className="w-4 h-4" /> {user.poids} kg</span>}
+              {(form.taille || user?.taille) && <span className="flex items-center gap-2"><Ruler className="w-4 h-4" /> {form.taille || user?.taille} cm</span>}
+              {(form.poids || user?.poids) && <span className="flex items-center gap-2"><Scale className="w-4 h-4" /> {form.poids || user?.poids} kg</span>}
             </div>
             
             <div className="pt-4 flex flex-wrap justify-center sm:justify-start gap-3">
@@ -218,7 +239,9 @@ export default function CarnetPage() {
               </div>
               <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-bold text-white">{form.poids || "—"} kg / {form.taille || "—"} cm</span>
+                <span className="text-sm font-bold text-white">
+                  {(form.poids || user?.poids) || "—"} kg / {(form.taille || user?.taille) || "—"} cm
+                </span>
               </div>
             </div>
           </div>
@@ -447,6 +470,123 @@ export default function CarnetPage() {
           )}
         </div>
       </div>
+
+      {/* History Section for Patient */}
+      {!editing && (
+        <div className="space-y-6">
+          <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+            <ClipboardList className="w-4 h-4 text-primary-500" /> Votre Historique Médical
+          </h3>
+          
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Consultations List */}
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
+              <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-primary-500" /> Vos Consultations
+              </h4>
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+                {consultations.map((c) => (
+                  <div key={c.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-500/30 transition-all group">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-xs font-bold text-primary-500">{new Date(c.dateConsultation).toLocaleDateString('fr-FR')}</span>
+                      <span className="text-[10px] bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-full text-slate-500">{c.structure?.nom || "Externe"}</span>
+                    </div>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{c.motif}</p>
+                    <p className="text-xs text-slate-500 line-clamp-2">{c.diagnostic || "Aucun diagnostic renseigné"}</p>
+                    {c.medecinNom && <p className="text-[10px] text-slate-400 mt-2 italic">Par {c.medecinNom}</p>}
+                  </div>
+                ))}
+                {consultations.length === 0 && (
+                  <div className="text-center py-10 opacity-50">
+                    <Activity className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                    <p className="text-sm">Aucune consultation enregistrée</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Ordonnances List */}
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
+              <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                <ClipboardList className="w-5 h-5 text-secondary-500" /> Vos Ordonnances
+              </h4>
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+                {ordonnances.map((o) => (
+                  <div key={o.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-secondary-500/30 transition-all">
+                    <div className="flex justify-between items-start mb-3">
+                      <span className="text-xs font-bold text-secondary-500">{new Date(o.dateEmission).toLocaleDateString('fr-FR')}</span>
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                    </div>
+                    <div className="space-y-1">
+                      {Array.isArray(o.medicaments) ? o.medicaments.map((m: any, idx: number) => (
+                        <p key={idx} className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-secondary-400" />
+                          <strong>{m.nom}</strong> — {m.dosage}
+                        </p>
+                      )) : <p className="text-xs text-slate-500 italic">Format invalide</p>}
+                    </div>
+                  </div>
+                ))}
+                {ordonnances.length === 0 && (
+                  <div className="text-center py-10 opacity-50">
+                    <ClipboardList className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                    <p className="text-sm">Aucune ordonnance</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* Vaccinations List */}
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
+              <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                <Droplet className="w-5 h-5 text-accent-500" /> Vos Vaccinations
+              </h4>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                {vaccinations.map((v) => (
+                  <div key={v.id} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="w-10 h-10 rounded-xl bg-accent-500/10 flex items-center justify-center text-accent-500">
+                      <Droplet className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{v.vaccin}</p>
+                      <p className="text-[10px] text-slate-500">{new Date(v.dateVaccin).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                    {v.prochainRappel && (
+                      <div className="text-right">
+                        <p className="text-[9px] font-black text-slate-400 uppercase">Prochain rappel</p>
+                        <p className="text-[10px] font-bold text-amber-500">{new Date(v.prochainRappel).toLocaleDateString('fr-FR')}</p>
+                      </div>
+                    )}
+                  </div>
+                ))}
+                {vaccinations.length === 0 && <p className="text-center py-6 text-sm text-slate-500 italic">Aucun vaccin</p>}
+              </div>
+            </div>
+
+            {/* Lab Results (Analyses) */}
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
+              <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-rose-500" /> Vos Résultats d&apos;Analyses
+              </h4>
+              <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+                {analyses.map((a) => (
+                  <div key={a.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <div className="flex justify-between items-start mb-2">
+                      <p className="text-sm font-bold text-slate-900 dark:text-white">{a.typeAnalyse}</p>
+                      <span className="text-[10px] font-bold text-rose-500">{new Date(a.dateAnalyse).toLocaleDateString('fr-FR')}</span>
+                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1">{a.resultats}</p>
+                    {a.laboratoire && <p className="text-[9px] text-slate-500 mt-2 uppercase tracking-wider font-bold">{a.laboratoire}</p>}
+                  </div>
+                ))}
+                {analyses.length === 0 && <p className="text-center py-6 text-sm text-slate-500 italic">Aucune analyse</p>}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

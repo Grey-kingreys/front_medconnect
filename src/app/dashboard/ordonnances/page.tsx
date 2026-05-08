@@ -153,7 +153,7 @@ export default function OrdonnancesPage() {
                         </p>
                         {isExpired && <span className="px-2 py-0.5 bg-rose-500/10 text-rose-500 text-[10px] font-bold rounded-full">Expirée</span>}
                       </div>
-                      <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">Ordonnance • Dr. {o.medecinNom || "Inconnu"}</h3>
+                      <h3 className="text-base font-bold text-slate-900 dark:text-white truncate">Ordonnance • {o.medecinNom || "Médecin non renseigné"}</h3>
                       <p className="text-xs text-slate-500 mt-1 truncate">
                         {meds.map(m => m.nom).join(', ')}
                       </p>
@@ -182,8 +182,12 @@ export default function OrdonnancesPage() {
                     <div className="flex items-center gap-3">
                       <div className="p-2 bg-white/20 backdrop-blur-md rounded-xl border border-white/30"><ClipboardList className="w-5 h-5" /></div>
                       <div>
-                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">Prescription Médicale</p>
-                        <p className="text-xl font-black">Dr. {selectedOrdonnance.medecinNom || "Inconnu"}</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/70">
+                          {selectedOrdonnance.consultation?.structure?.nom || "Prescription Médicale"}
+                        </p>
+                        <p className="text-xl font-black">
+                          {selectedOrdonnance.medecinNom || "Médecin non renseigné"}
+                        </p>
                       </div>
                     </div>
                     
