@@ -8,6 +8,7 @@ import {
 import { 
   createConsultation, createOrdonnance, createVaccination, createRendezVous 
 } from "@/lib/api_carnet";
+import { useAuth } from "@/hooks/useAuth";
 import { getMyPatients, PatientSummary } from "@/lib/api_patients";
 
 interface ModalProps {
@@ -18,6 +19,7 @@ interface ModalProps {
 }
 
 export default function DoctorAddRecordModal({ isOpen, onClose, type, onSuccess }: ModalProps) {
+  const { user: currentUser } = useAuth();
   const [step, setStep] = useState<"select_patient" | "fill_form">("select_patient");
   const [selectedPatient, setSelectedPatient] = useState<PatientSummary | null>(null);
   const [patients, setPatients] = useState<PatientSummary[]>([]);
@@ -180,9 +182,9 @@ export default function DoctorAddRecordModal({ isOpen, onClose, type, onSuccess 
                 </button>
               </div>
 
-              {type === "consultation" && <ConsultationForm patientId={selectedPatient!.id} onCancel={() => setStep("select_patient")} onFinish={handleSuccess} setSubmitting={setSubmitting} submitting={submitting} />}
-              {type === "ordonnance" && <OrdonnanceForm patientId={selectedPatient!.id} onCancel={() => setStep("select_patient")} onFinish={handleSuccess} setSubmitting={setSubmitting} submitting={submitting} />}
-              {type === "vaccin" && <VaccinForm patientId={selectedPatient!.id} onCancel={() => setStep("select_patient")} onFinish={handleSuccess} setSubmitting={setSubmitting} submitting={submitting} />}
+              {type === "consultation" && <ConsultationForm patientId={selectedPatient!.id} currentUser={currentUser} onCancel={() => setStep("select_patient")} onFinish={handleSuccess} setSubmitting={setSubmitting} submitting={submitting} />}
+              {type === "ordonnance" && <OrdonnanceForm patientId={selectedPatient!.id} currentUser={currentUser} onCancel={() => setStep("select_patient")} onFinish={handleSuccess} setSubmitting={setSubmitting} submitting={submitting} />}
+              {type === "vaccin" && <VaccinForm patientId={selectedPatient!.id} currentUser={currentUser} onCancel={() => setStep("select_patient")} onFinish={handleSuccess} setSubmitting={setSubmitting} submitting={submitting} />}
               {type === "rendezvous" && <RendezVousForm patientId={selectedPatient!.id} onCancel={() => setStep("select_patient")} onFinish={handleSuccess} setSubmitting={setSubmitting} submitting={submitting} />}
             </div>
           )}
@@ -194,14 +196,15 @@ export default function DoctorAddRecordModal({ isOpen, onClose, type, onSuccess 
 
 // ─── Sub-forms (Extracted for readability) ──────────────────────
 
-function ConsultationForm({ patientId, onFinish, setSubmitting, submitting }: any) {
+function ConsultationForm({ patientId, currentUser, onFinish, setSubmitting, submitting }: any) {
   const [form, setForm] = useState({ motif: "", diagnostic: "", notes: "", dateConsultation: new Date().toISOString().split('T')[0] });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createConsultation({ ...form, patientId });
+      const medecinNom = `Dr. ${currentUser?.prenom || ""} ${currentUser?.nom || ""}`.trim();
+      await createConsultation({ ...form, patientId, medecinNom });
       onFinish();
     } catch (err) {
       console.error(err);
@@ -237,7 +240,7 @@ function ConsultationForm({ patientId, onFinish, setSubmitting, submitting }: an
   );
 }
 
-function OrdonnanceForm({ patientId, onFinish, setSubmitting, submitting }: any) {
+function OrdonnanceForm({ patientId, currentUser, onFinish, setSubmitting, submitting }: any) {
   const [medicaments, setMedicaments] = useState([{ nom: "", dosage: "", duree: "", instructions: "" }]);
   const [notes, setNotes] = useState("");
 
@@ -245,7 +248,8 @@ function OrdonnanceForm({ patientId, onFinish, setSubmitting, submitting }: any)
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createOrdonnance({ patientId, medicaments, notes });
+      const medecinNom = `Dr. ${currentUser?.prenom || ""} ${currentUser?.nom || ""}`.trim();
+      await createOrdonnance({ patientId, medicaments, notes, medecinNom });
       onFinish();
     } catch (err) {
       console.error(err);
@@ -279,14 +283,15 @@ function OrdonnanceForm({ patientId, onFinish, setSubmitting, submitting }: any)
   );
 }
 
-function VaccinForm({ patientId, onFinish, setSubmitting, submitting }: any) {
+function VaccinForm({ patientId, currentUser, onFinish, setSubmitting, submitting }: any) {
   const [form, setForm] = useState({ vaccin: "", dateVaccin: new Date().toISOString().split('T')[0], prochainRappel: "", lotNumero: "", notes: "" });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await createVaccination({ ...form, patientId });
+      const administrePar = `Dr. ${currentUser?.prenom || ""} ${currentUser?.nom || ""}`.trim();
+      await createVaccination({ ...form, patientId, administrePar });
       onFinish();
     } catch (err) {
       console.error(err);

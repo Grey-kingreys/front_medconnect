@@ -1,9 +1,9 @@
 import {
-  Heart,
   Mail,
   Phone,
   MapPin,
 } from "lucide-react";
+import Image from "next/image";
 
 /* Custom SVG icons for social media (removed from lucide-react) */
 function FacebookIcon({ className }: { className?: string }) {
@@ -85,9 +85,13 @@ export default function Footer() {
           {/* Brand */}
           <div className="col-span-2">
             <a href="#" className="flex items-center gap-2.5 mb-4 group">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25">
-                <Heart className="w-5 h-5 text-white fill-white" />
-              </div>
+              <Image
+                src="/images/logo.png"
+                alt="MedConnect Logo"
+                width={40}
+                height={40}
+                className="rounded-xl shadow-lg shadow-primary-500/25 transition-transform duration-300 group-hover:scale-105"
+              />
               <span
                 className="text-xl font-bold tracking-tight"
                 style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}

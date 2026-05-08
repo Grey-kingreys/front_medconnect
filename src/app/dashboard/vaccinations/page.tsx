@@ -14,7 +14,8 @@ import {
   Syringe,
   Info,
   Clock,
-  Search
+  Search,
+  X
 } from "lucide-react";
 import { getVaccinations, Vaccination } from "@/lib/api_carnet";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
@@ -25,6 +26,7 @@ export default function VaccinationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [selectedVaccination, setSelectedVaccination] = useState<Vaccination | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
   const isDoctor = user?.role === "MEDECIN" || user?.role === "STRUCTURE_ADMIN";
@@ -115,8 +117,8 @@ export default function VaccinationsPage() {
            </div>
         </div>
 
-        {/* Right: History */}
-        <div className="lg:col-span-2 space-y-6">
+        {/* Right: History & Details */}
+        <div className={`lg:col-span-2 space-y-6 ${selectedVaccination ? 'lg:col-span-1' : 'lg:col-span-2'}`}>
           <div className="flex items-center justify-between gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
@@ -138,13 +140,6 @@ export default function VaccinationsPage() {
             )}
           </div>
 
-          <DoctorAddRecordModal 
-            isOpen={isAddModalOpen} 
-            onClose={() => setIsAddModalOpen(false)} 
-            type="vaccin" 
-            onSuccess={fetchData} 
-          />
-
           <div className="space-y-4">
             {filtered.length === 0 ? (
               <div className="py-20 text-center bg-white dark:bg-slate-900 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-slate-800">
@@ -153,45 +148,89 @@ export default function VaccinationsPage() {
               </div>
             ) : (
               filtered.map((v) => (
-                <div key={v.id} className="group bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[1.5rem] p-6 hover:border-cyan-500/30 transition-all shadow-sm">
-                  <div className="flex items-center gap-6">
-                    <div className="w-14 h-14 rounded-2xl bg-slate-50 dark:bg-slate-800 flex flex-col items-center justify-center border border-slate-100 dark:border-slate-700">
-                      <span className="text-xs font-black text-slate-400 leading-none">{new Date(v.dateVaccin).getFullYear()}</span>
-                      <span className="text-lg font-black text-slate-900 dark:text-white leading-none mt-1">{new Date(v.dateVaccin).getDate()}</span>
-                      <span className="text-[10px] font-bold text-cyan-500 uppercase leading-none mt-0.5">{new Date(v.dateVaccin).toLocaleDateString('fr-FR', { month: 'short' })}</span>
+                <div 
+                  key={v.id} 
+                  onClick={() => setSelectedVaccination(v)}
+                  className={`group bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border transition-all shadow-sm rounded-[1.5rem] p-6 cursor-pointer ${selectedVaccination?.id === v.id ? 'border-cyan-500 shadow-lg' : 'border-slate-200 dark:border-slate-800/50 hover:border-cyan-500/30'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex flex-col items-center justify-center border transition-colors ${selectedVaccination?.id === v.id ? 'bg-cyan-500 text-white border-cyan-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-400 border-slate-100 dark:border-slate-700 group-hover:bg-cyan-500/10 group-hover:text-cyan-400'}`}>
+                      <span className="text-[10px] font-black leading-none">{new Date(v.dateVaccin).getFullYear()}</span>
+                      <span className="text-base font-black leading-none mt-0.5">{new Date(v.dateVaccin).getDate()}</span>
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                       <h4 className="text-lg font-bold text-slate-900 dark:text-white mb-1">{v.vaccin}</h4>
-                       <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                         <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {v.administrePar || "Non spécifié"}</span>
-                         {v.lotNumero && <span className="flex items-center gap-1.5">Lot: <span className="font-mono bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded uppercase">{v.lotNumero}</span></span>}
-                       </div>
+                       <h4 className="text-base font-bold text-slate-900 dark:text-white truncate">{v.vaccin}</h4>
+                       <p className="text-[10px] text-slate-500 truncate">{v.administrePar || "Non renseigné"}</p>
                     </div>
 
-                    <div className="flex items-center gap-3">
-                      {v.prochainRappel && (
-                        <div className="px-3 py-1.5 bg-cyan-500/10 border border-cyan-500/20 rounded-xl">
-                          <p className="text-[9px] font-black text-cyan-500 uppercase tracking-widest leading-none mb-1">Rappel</p>
-                          <p className="text-[10px] font-bold text-slate-700 dark:text-cyan-100 leading-none">{new Date(v.prochainRappel).toLocaleDateString('fr-FR', { year: 'numeric' })}</p>
-                        </div>
-                      )}
-                      <div className="w-8 h-8 rounded-full bg-secondary-500/10 flex items-center justify-center text-secondary-500 border border-secondary-500/20 shadow-sm shadow-secondary-500/10">
-                        <CheckCircle2 className="w-4 h-4" />
-                      </div>
-                    </div>
+                    <ChevronRight className={`w-4 h-4 transition-transform ${selectedVaccination?.id === v.id ? 'translate-x-1 text-cyan-500' : 'text-slate-300'}`} />
                   </div>
-                  
-                  {v.notes && (
-                    <div className="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800/50">
-                      <p className="text-xs text-slate-500 italic leading-relaxed">"{v.notes}"</p>
-                    </div>
-                  )}
                 </div>
               ))
             )}
           </div>
         </div>
+
+        {/* Detail Column */}
+        {selectedVaccination && (
+          <div className="lg:col-span-1 animate-slide-up sticky top-8">
+            <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
+              <div className="p-8 bg-gradient-to-br from-cyan-600 to-blue-600 text-white relative">
+                <button onClick={() => setSelectedVaccination(null)} className="absolute top-4 right-4 p-2 hover:bg-white/10 rounded-full transition-colors"><X className="w-5 h-5" /></button>
+                <div className="space-y-4">
+                  <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center border border-white/30"><Syringe className="w-6 h-6" /></div>
+                  <div>
+                    <h3 className="text-2xl font-black">{selectedVaccination.vaccin}</h3>
+                    <p className="text-cyan-100/70 text-xs font-bold uppercase tracking-widest mt-1">Détails de vaccination</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Date</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{new Date(selectedVaccination.dateVaccin).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  </div>
+                  <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Lot</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white font-mono uppercase">{selectedVaccination.lotNumero || "—"}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase ml-1">Administré par</p>
+                  <div className="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <div className="w-8 h-8 rounded-lg bg-cyan-500/10 flex items-center justify-center text-cyan-500"><User className="w-4 h-4" /></div>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{selectedVaccination.administrePar || "Non renseigné"}</p>
+                  </div>
+                </div>
+
+                {selectedVaccination.prochainRappel && (
+                  <div className="p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl">
+                    <div className="flex items-center gap-2 text-amber-500 mb-1">
+                      <Clock className="w-4 h-4" />
+                      <p className="text-[10px] font-black uppercase tracking-widest">Prochain Rappel</p>
+                    </div>
+                    <p className="text-sm font-black text-slate-900 dark:text-white pl-6">
+                      {new Date(selectedVaccination.prochainRappel).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })}
+                    </p>
+                  </div>
+                )}
+
+                {selectedVaccination.notes && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-slate-500 uppercase ml-1">Notes & Observations</p>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                      <p className="text-sm text-slate-600 dark:text-slate-400 italic">"{selectedVaccination.notes}"</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

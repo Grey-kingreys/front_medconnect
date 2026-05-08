@@ -25,6 +25,9 @@ import {
   Pencil,
   X,
   Stethoscope,
+  Activity,
+  Ruler,
+  Scale,
 } from "lucide-react";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -65,6 +68,9 @@ export default function ProfilePage() {
     prenom: "",
     email: "",
     telephone: "",
+    dateNaissance: "",
+    taille: "",
+    poids: "",
   });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
@@ -94,6 +100,11 @@ export default function ProfilePage() {
         prenom: profile.prenom || "",
         email: profile.email || "",
         telephone: profile.telephone || "",
+        dateNaissance: profile.dateNaissance
+          ? new Date(profile.dateNaissance).toISOString().split('T')[0]
+          : "",
+        taille: profile.taille?.toString() || "",
+        poids: profile.poids?.toString() || "",
       });
     }
   }, [profile]);
@@ -104,7 +115,22 @@ export default function ProfilePage() {
   const roleLabel = getRoleLabel(user.role);
   const initials = `${user.prenom[0] || ""}${user.nom[0] || ""}`.toUpperCase();
 
-  // ─── Handlers ───────────────────────────────────────────────
+  // ─── Utils ───────────────────────────────────────────────
+
+  const calculateAge = (dateNaissance: string): number => {
+    const birthDate = new Date(dateNaissance);
+    const today = new Date();
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age;
+  };
+
+// ─── Handlers ───────────────────────────────────────────────
 
   const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -119,12 +145,23 @@ export default function ProfilePage() {
     setSaving(true);
 
     try {
-      const updateData: Record<string, string> = {};
+      const updateData: Record<string, any> = {};
       if (form.nom !== profile.nom) updateData.nom = form.nom;
       if (form.prenom !== profile.prenom) updateData.prenom = form.prenom;
       if (form.email !== profile.email) updateData.email = form.email;
       if (form.telephone !== (profile.telephone || ""))
         updateData.telephone = form.telephone;
+      // dateNaissance : comparer avec la valeur actuelle du profil
+      const profileDob = profile.dateNaissance
+        ? new Date(profile.dateNaissance).toISOString().split('T')[0]
+        : "";
+      if (form.dateNaissance !== profileDob && form.dateNaissance !== "")
+        updateData.dateNaissance = form.dateNaissance;
+      // taille et poids : convertir en nombre
+      if (form.taille !== (profile.taille?.toString() || "") && form.taille !== "")
+        updateData.taille = Number(form.taille);
+      if (form.poids !== (profile.poids?.toString() || "") && form.poids !== "")
+        updateData.poids = Number(form.poids);
 
       if (Object.keys(updateData).length === 0) {
         setSaveSuccess("Aucune modification détectée.");
@@ -200,6 +237,11 @@ export default function ProfilePage() {
       prenom: profile.prenom || "",
       email: profile.email || "",
       telephone: profile.telephone || "",
+      dateNaissance: profile.dateNaissance
+        ? new Date(profile.dateNaissance).toISOString().split('T')[0]
+        : "",
+      taille: profile.taille?.toString() || "",
+      poids: profile.poids?.toString() || "",
     });
     setEditing(false);
     setSaveError("");
@@ -246,6 +288,15 @@ export default function ProfilePage() {
               {profile.prenom} {profile.nom}
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{profile.email}</p>
+            <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2 text-sm text-slate-500 dark:text-slate-400">
+              {/* Âge calculé dynamiquement depuis la date de naissance — jamais la date brute */}
+              {profile.dateNaissance
+                ? <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> {calculateAge(profile.dateNaissance)} ans</span>
+                : <span className="flex items-center gap-1 italic opacity-60"><Activity className="w-3 h-3" /> Âge non renseigné</span>
+              }
+              {profile.taille && <span className="flex items-center gap-1"><Ruler className="w-3 h-3" /> {profile.taille} cm</span>}
+              {profile.poids && <span className="flex items-center gap-1"><Scale className="w-3 h-3" /> {profile.poids} kg</span>}
+            </div>
             <div className="mt-3 flex flex-wrap items-center justify-center sm:justify-start gap-3">
               <span className={`inline-flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full bg-gradient-to-r ${roleGradient} text-slate-900 dark:text-white`}>
                 <Shield className="w-3 h-3" />
@@ -389,6 +440,66 @@ export default function ProfilePage() {
                 onChange={handleFormChange}
                 disabled={!editing}
                 placeholder="Non renseigné"
+                className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* Date de naissance */}
+          <div>
+            <label htmlFor="dateNaissance" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+              Date de naissance
+            </label>
+            <div className="relative">
+              <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <input
+                id="dateNaissance"
+                name="dateNaissance"
+                type="date"
+                value={form.dateNaissance || ''}
+                onChange={handleFormChange}
+                disabled={!editing}
+                className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* Taille */}
+          <div>
+            <label htmlFor="taille" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+              Taille (cm)
+            </label>
+            <div className="relative">
+              <Ruler className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <input
+                id="taille"
+                name="taille"
+                type="number"
+                value={form.taille || ''}
+                onChange={handleFormChange}
+                disabled={!editing}
+                placeholder="175"
+                className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              />
+            </div>
+          </div>
+
+          {/* Poids */}
+          <div>
+            <label htmlFor="poids" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
+              Poids (kg)
+            </label>
+            <div className="relative">
+              <Scale className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500" />
+              <input
+                id="poids"
+                name="poids"
+                type="number"
+                step="0.1"
+                value={form.poids || ''}
+                onChange={handleFormChange}
+                disabled={!editing}
+                placeholder="70.5"
                 className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
               />
             </div>

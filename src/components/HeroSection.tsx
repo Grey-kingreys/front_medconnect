@@ -80,11 +80,11 @@ function PhoneMockup() {
             {/* Header */}
             <div className="flex items-center justify-between pt-2">
               <div>
-                <p className="text-[10px] text-slate-500">Bonjour 👋</p>
-                <p className="text-sm font-semibold text-white">Souleymane</p>
+                <p className="text-[10px] text-slate-500">Bonjour</p>
+                <p className="text-sm font-semibold text-white">Momo</p>
               </div>
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center">
-                <span className="text-xs font-bold text-white">S</span>
+                <span className="text-xs font-bold text-white">M</span>
               </div>
             </div>
 
@@ -200,7 +200,7 @@ export default function HeroSection() {
             {/* Subtitle */}
             <p className="text-lg sm:text-xl text-slate-600 dark:text-slate-400 max-w-lg mx-auto lg:mx-0 leading-relaxed animate-slide-up animate-delay-200">
               Carnet de santé numérique, géolocalisation médicale, assistance
-              d&apos;urgence et diagnostic IA — tout ce dont vous avez besoin, dans
+              d&apos;urgence et diagnostic IA tout ce dont vous avez besoin, dans
               votre poche.
             </p>
 

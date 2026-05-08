@@ -14,6 +14,9 @@ import {
   Loader2,
   AlertCircle,
   Check,
+  Calendar,
+  Ruler,
+  Scale,
 } from "lucide-react";
 import { register, ApiError } from "@/lib/api_auth";
 import { useAuth } from "@/hooks/useAuth";
@@ -33,6 +36,9 @@ export default function RegisterPage() {
     prenom: "",
     email: "",
     telephone: "",
+    dateNaissance: "",
+    taille: "",
+    poids: "",
     password: "",
     confirmPassword: "",
   });
@@ -70,6 +76,9 @@ export default function RegisterPage() {
         email: form.email,
         password: form.password,
         telephone: form.telephone || undefined,
+        dateNaissance: form.dateNaissance || undefined,
+        taille: form.taille ? Number(form.taille) : undefined,
+        poids: form.poids ? Number(form.poids) : undefined,
       });
 
       // Mettre à jour le contexte Auth (stocke les tokens + set le user)
@@ -177,7 +186,7 @@ export default function RegisterPage() {
         {/* Téléphone (optionnel) */}
         <div>
           <label htmlFor="telephone" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
-            Téléphone <span className="text-slate-600">(optionnel)</span>
+            Téléphone <span className="text-slate-400 text-xs">(optionnel)</span>
           </label>
           <div className="relative">
             <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
@@ -190,6 +199,68 @@ export default function RegisterPage() {
               placeholder="+224 622 123 456"
               className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
             />
+          </div>
+        </div>
+
+        {/* Date de naissance */}
+        <div>
+          <label htmlFor="dateNaissance" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+            Date de naissance <span className="text-slate-400 text-xs">(optionnel)</span>
+          </label>
+          <div className="relative">
+            <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+            <input
+              id="dateNaissance"
+              name="dateNaissance"
+              type="date"
+              value={form.dateNaissance}
+              onChange={handleChange}
+              max={new Date().toISOString().split('T')[0]}
+              className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+            />
+          </div>
+        </div>
+
+        {/* Taille + Poids */}
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor="taille" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+              Taille <span className="text-slate-400 text-xs">(cm)</span>
+            </label>
+            <div className="relative">
+              <Ruler className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                id="taille"
+                name="taille"
+                type="number"
+                min="50"
+                max="250"
+                value={form.taille}
+                onChange={handleChange}
+                placeholder="175"
+                className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label htmlFor="poids" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1.5">
+              Poids <span className="text-slate-400 text-xs">(kg)</span>
+            </label>
+            <div className="relative">
+              <Scale className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+              <input
+                id="poids"
+                name="poids"
+                type="number"
+                min="1"
+                max="500"
+                step="0.1"
+                value={form.poids}
+                onChange={handleChange}
+                placeholder="70"
+                className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              />
+            </div>
           </div>
         </div>
 

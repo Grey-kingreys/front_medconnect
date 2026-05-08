@@ -3,12 +3,25 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { 
-  Activity, Calendar, AlertCircle, 
+  Activity, AlertCircle, 
   Loader2, ShieldAlert, Droplet, User as UserIcon, Phone,
-  ClipboardList, CheckCircle2, ArrowLeft, Plus
+  ClipboardList, CheckCircle2, ArrowLeft, Plus, Ruler, Scale
 } from "lucide-react";
 import { getPatientCarnet, PatientCarnet } from "@/lib/api_carnet";
 import AddRecordForms from "./components/AddRecordForms";
+
+const calculateAge = (dateNaissance: string): number => {
+  const birthDate = new Date(dateNaissance);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
 
 
 const BLOOD_GROUPS = [
@@ -72,7 +85,7 @@ export default function PatientCarnetViewPage() {
     );
   }
 
-  const { patient, profil, stats, isMedecinTraitant } = data;
+  const { patient, profil, stats, isMedecinTraitant, consultations, ordonnances, analyses, vaccinations } = data;
   const allergies = profil?.allergies || [];
   const pathologies = profil?.pathologies || [];
   const traitements = profil?.traitements || [];
@@ -90,9 +103,8 @@ export default function PatientCarnetViewPage() {
         <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl text-amber-700 dark:text-amber-400">
           <ShieldAlert className="w-5 h-5 shrink-0" />
           <p className="text-sm">
-            <strong>Accès restreint (Niveau Structure) :</strong> Vous n'êtes pas le médecin traitant de ce patient. 
-            L'historique affiché se limite uniquement aux consultations et ordonnances réalisées au sein de votre structure. 
-            <strong> Le profil médical complet et les informations de contact personnelles sont masqués pour des raisons de confidentialité.</strong>
+            <strong>Accès Structure Médicale :</strong> Vous n'êtes pas le médecin traitant principal de ce patient. 
+            L'historique complet est réservé au médecin traitant, mais vous avez accès aux informations essentielles (allergies, profil) et à l'historique lié à votre structure.
           </p>
         </div>
       )}
@@ -115,7 +127,11 @@ export default function PatientCarnetViewPage() {
               {patient.prenom} {patient.nom}
             </h1>
             <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-white/80 text-sm">
-              <span className="flex items-center gap-2"><Calendar className="w-4 h-4" /> {profil?.dateNaissance ? new Date(profil.dateNaissance).toLocaleDateString('fr-FR') : "Âge inconnu"}</span>
+              {/* Âge calculé dynamiquement — la date brute n'est jamais affichée */}
+              <span className="flex items-center gap-2">
+                <Activity className="w-4 h-4" />
+                {(profil?.dateNaissance || patient.dateNaissance) ? `${calculateAge(profil?.dateNaissance || (patient as any).dateNaissance)} ans` : "Âge non renseigné"}
+              </span>
               <span className="flex items-center gap-2"><UserIcon className="w-4 h-4" /> {profil?.genre || "Genre non défini"}</span>
               <span className="flex items-center gap-2"><Phone className="w-4 h-4" /> {patient.telephone || "Pas de téléphone"}</span>
             </div>
@@ -127,7 +143,9 @@ export default function PatientCarnetViewPage() {
               </div>
               <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-400" />
-                <span className="text-sm font-bold text-white">{profil?.poids || "—"} kg / {profil?.taille || "—"} cm</span>
+                <span className="text-sm font-bold text-white">
+                  {(profil?.poids || patient.poids) || "—"} kg / {(profil?.taille || patient.taille) || "—"} cm
+                </span>
               </div>
             </div>
           </div>
@@ -177,14 +195,14 @@ export default function PatientCarnetViewPage() {
 
         {/* Right Column: Details */}
         <div className="lg:col-span-2 space-y-6">
-          {!isMedecinTraitant ? (
+          {!profil ? (
             <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-12 shadow-xl flex flex-col items-center justify-center text-center h-full min-h-[400px]">
               <div className="w-20 h-20 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mb-6">
                 <ShieldAlert className="w-10 h-10 text-slate-400" />
               </div>
-              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Profil Médical Protégé</h3>
+              <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-2">Profil Médical Masqué</h3>
               <p className="text-slate-500 max-w-md">
-                Les informations médicales personnelles (allergies, pathologies, traitements) sont confidentielles et réservées au médecin traitant du patient.
+                Les informations médicales personnelles (allergies, pathologies, traitements) ne sont pas accessibles sans une autorisation explicite du patient ou un lien de médecin traitant.
               </p>
             </div>
           ) : (
@@ -261,6 +279,121 @@ export default function PatientCarnetViewPage() {
               </div>
             </>
           )}
+        </div>
+      </div>
+      
+      {/* History Section */}
+      <div className="space-y-6">
+        <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+          <ClipboardList className="w-4 h-4 text-primary-500" /> Historique Médical
+        </h3>
+        
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Consultations List */}
+          <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
+            <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-primary-500" /> Consultations
+            </h4>
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+              {consultations.map((c) => (
+                <div key={c.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-500/30 transition-all group">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="text-xs font-bold text-primary-500">{new Date(c.dateConsultation).toLocaleDateString('fr-FR')}</span>
+                    <span className="text-[10px] bg-slate-200 dark:bg-slate-800 px-2 py-1 rounded-full text-slate-500">{c.structure?.nom || "Externe"}</span>
+                  </div>
+                  <p className="text-sm font-bold text-slate-900 dark:text-white mb-1">{c.motif}</p>
+                  <p className="text-xs text-slate-500 line-clamp-2">{c.diagnostic || "Aucun diagnostic renseigné"}</p>
+                  {c.medecinNom && <p className="text-[10px] text-slate-400 mt-2 italic">Par {c.medecinNom}</p>}
+                </div>
+              ))}
+              {consultations.length === 0 && (
+                <div className="text-center py-10 opacity-50">
+                  <Activity className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                  <p className="text-sm">Aucune consultation enregistrée</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Ordonnances List */}
+          <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
+            <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+              <ClipboardList className="w-5 h-5 text-secondary-500" /> Ordonnances
+            </h4>
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+              {ordonnances.map((o) => (
+                <div key={o.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-secondary-500/30 transition-all">
+                  <div className="flex justify-between items-start mb-3">
+                    <span className="text-xs font-bold text-secondary-500">{new Date(o.dateEmission).toLocaleDateString('fr-FR')}</span>
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                  </div>
+                  <div className="space-y-1">
+                    {Array.isArray(o.medicaments) ? o.medicaments.map((m: any, idx: number) => (
+                      <p key={idx} className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-secondary-400" />
+                        <strong>{m.nom}</strong> — {m.dosage}
+                      </p>
+                    )) : <p className="text-xs text-slate-500 italic">Format invalide</p>}
+                  </div>
+                </div>
+              ))}
+              {ordonnances.length === 0 && (
+                <div className="text-center py-10 opacity-50">
+                  <ClipboardList className="w-10 h-10 mx-auto mb-2 text-slate-300" />
+                  <p className="text-sm">Aucune ordonnance</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Vaccinations List */}
+          <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
+            <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+              <Droplet className="w-5 h-5 text-accent-500" /> Vaccinations
+            </h4>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+              {vaccinations.map((v) => (
+                <div key={v.id} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="w-10 h-10 rounded-xl bg-accent-500/10 flex items-center justify-center text-accent-500">
+                    <Droplet className="w-5 h-5" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{v.vaccin}</p>
+                    <p className="text-[10px] text-slate-500">{new Date(v.dateVaccin).toLocaleDateString('fr-FR')}</p>
+                  </div>
+                  {v.prochainRappel && (
+                    <div className="text-right">
+                      <p className="text-[9px] font-black text-slate-400 uppercase">Prochain rappel</p>
+                      <p className="text-[10px] font-bold text-amber-500">{new Date(v.prochainRappel).toLocaleDateString('fr-FR')}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+              {vaccinations.length === 0 && <p className="text-center py-6 text-sm text-slate-500 italic">Aucun vaccin</p>}
+            </div>
+          </div>
+
+          {/* Lab Results (Analyses) */}
+          <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
+            <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
+              <Activity className="w-5 h-5 text-rose-500" /> Résultats d'Analyses
+            </h4>
+            <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
+              {analyses.map((a) => (
+                <div key={a.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
+                  <div className="flex justify-between items-start mb-2">
+                    <p className="text-sm font-bold text-slate-900 dark:text-white">{a.typeAnalyse}</p>
+                    <span className="text-[10px] font-bold text-rose-500">{new Date(a.dateAnalyse).toLocaleDateString('fr-FR')}</span>
+                  </div>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-1">{a.resultats}</p>
+                  {a.laboratoire && <p className="text-[9px] text-slate-500 mt-2 uppercase tracking-wider font-bold">{a.laboratoire}</p>}
+                </div>
+              ))}
+              {analyses.length === 0 && <p className="text-center py-6 text-sm text-slate-500 italic">Aucune analyse</p>}
+            </div>
+          </div>
         </div>
       </div>
     </div>

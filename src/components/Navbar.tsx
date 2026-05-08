@@ -5,11 +5,11 @@ import Link from "next/link";
 import {
   Menu,
   X,
-  Heart,
   ChevronRight,
   LayoutDashboard,
   LogOut,
 } from "lucide-react";
+import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
@@ -42,23 +42,24 @@ export default function Navbar() {
       id="navbar"
       className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
         isScrolled
-          ? "bg-[#0b1120]/95 backdrop-blur-xl shadow-lg shadow-black/10 py-3 border-b border-white/5"
+          ? "bg-white/80 dark:bg-[#0b1120]/90 backdrop-blur-xl shadow-lg shadow-black/5 dark:shadow-black/20 py-3 border-b border-slate-200 dark:border-white/5"
           : "bg-transparent py-5"
       }`}
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
-        {/* Logo */}
         <a href="#" className="flex items-center gap-2.5 group">
-          <div className="relative w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-lg shadow-primary-500/25 group-hover:shadow-primary-500/40 transition-shadow duration-300">
-            <Heart className="w-5 h-5 text-white fill-white" />
-            <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary-400 to-cyan-400 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <Heart className="absolute w-5 h-5 text-white fill-white z-10" />
-          </div>
+          <Image
+            src="/images/logo.png"
+            alt="MedConnect Logo"
+            width={40}
+            height={40}
+            className="rounded-xl shadow-lg shadow-primary-500/25 group-hover:shadow-primary-500/40 transition-all duration-300 group-hover:scale-105"
+          />
           <span
             className="text-xl font-bold tracking-tight"
             style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
           >
-            <span className="text-white">Med</span>
+            <span className="text-slate-900 dark:text-white">Med</span>
             <span className="gradient-text">Connect</span>
           </span>
         </a>
@@ -69,7 +70,7 @@ export default function Navbar() {
             <a
               key={link.href}
               href={link.href}
-              className="relative px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors duration-300 group"
+              className="relative px-4 py-2 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white transition-colors duration-300 group"
             >
               {link.label}
               <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-gradient-to-r from-primary-500 to-cyan-500 group-hover:w-3/4 transition-all duration-300 rounded-full" />
@@ -94,11 +95,11 @@ export default function Navbar() {
               </Link>
 
               {/* Avatar + nom */}
-              <div className="flex items-center gap-2 pl-2 border-l border-slate-700/50">
+              <div className="flex items-center gap-2 pl-2 border-l border-slate-200 dark:border-slate-700/50">
                 <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center">
                   <span className="text-xs font-bold text-white">{initials}</span>
                 </div>
-                <span className="text-sm text-slate-300 font-medium max-w-[100px] truncate">
+                <span className="text-sm text-slate-600 dark:text-slate-300 font-medium max-w-[100px] truncate">
                   {user.prenom}
                 </span>
               </div>
@@ -107,7 +108,7 @@ export default function Navbar() {
             <>
               <a
                 href="/auth/login"
-                className="px-5 py-2.5 text-sm font-medium text-slate-300 hover:text-white border border-slate-700 hover:border-slate-500 rounded-xl transition-all duration-300"
+                className="px-5 py-2.5 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 rounded-xl transition-all duration-300"
               >
                 Se connecter
               </a>
@@ -128,10 +129,9 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Mobile toggle */}
         <button
           onClick={() => setIsMobileOpen(!isMobileOpen)}
-          className="lg:hidden p-2 text-slate-300 hover:text-white transition-colors"
+          className="lg:hidden p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors"
           aria-label="Toggle menu"
           id="mobile-menu-toggle"
         >
@@ -145,13 +145,13 @@ export default function Navbar() {
           isMobileOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
         }`}
       >
-        <div className="glass-strong mx-4 mt-3 rounded-2xl p-4 space-y-1 border border-slate-800">
+        <div className="glass-strong mx-4 mt-3 rounded-2xl p-4 space-y-1 border border-slate-200 dark:border-slate-800">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
               onClick={() => setIsMobileOpen(false)}
-              className="block px-4 py-3 text-sm font-medium text-slate-300 hover:text-white hover:bg-white/5 rounded-xl transition-all duration-200"
+              className="block px-4 py-3 text-sm font-medium text-slate-600 dark:text-slate-300 hover:text-primary-600 dark:hover:text-white hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl transition-all duration-200"
             >
               {link.label}
             </a>
@@ -178,7 +178,7 @@ export default function Navbar() {
                     setIsMobileOpen(false);
                     logout();
                   }}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium text-slate-400 border border-slate-700 rounded-xl hover:bg-white/5 hover:text-emergency-500 hover:border-emergency-500/30 transition-all"
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 hover:text-emergency-500 hover:border-emergency-500/30 transition-all"
                 >
                   <LogOut className="w-4 h-4" />
                   Se déconnecter
@@ -188,7 +188,7 @@ export default function Navbar() {
               <>
                 <a
                   href="/auth/login"
-                  className="block px-4 py-3 text-sm font-medium text-center text-slate-300 border border-slate-700 rounded-xl hover:bg-white/5 transition-all"
+                  className="block px-4 py-3 text-sm font-medium text-center text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 transition-all"
                 >
                   Se connecter
                 </a>

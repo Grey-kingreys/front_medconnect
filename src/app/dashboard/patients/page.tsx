@@ -13,11 +13,27 @@ import {
   Loader2, 
   AlertCircle,
   Plus,
+  Activity,
+  Ruler,
+  Scale,
   Filter
 } from "lucide-react";
 import { getMyPatients, PatientSummary } from "@/lib/api_patients";
 import Link from "next/link";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
+
+const calculateAge = (dateNaissance: string): number => {
+  const birthDate = new Date(dateNaissance);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const monthDiff = today.getMonth() - birthDate.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  
+  return age;
+};
 
 export default function PatientsPage() {
   const [patients, setPatients] = useState<PatientSummary[]>([]);
@@ -152,6 +168,24 @@ export default function PatientsPage() {
                   <div className="flex items-center gap-2 text-sm text-slate-500">
                     <Phone className="w-3.5 h-3.5" />
                     <span>{patient.telephone}</span>
+                  </div>
+                )}
+                {patient.dateNaissance && (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Activity className="w-3.5 h-3.5" />
+                    <span>{calculateAge(patient.dateNaissance)} ans</span>
+                  </div>
+                )}
+                {patient.taille && (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Ruler className="w-3.5 h-3.5" />
+                    <span>{patient.taille} cm</span>
+                  </div>
+                )}
+                {patient.poids && (
+                  <div className="flex items-center gap-2 text-sm text-slate-500">
+                    <Scale className="w-3.5 h-3.5" />
+                    <span>{patient.poids} kg</span>
                   </div>
                 )}
               </div>

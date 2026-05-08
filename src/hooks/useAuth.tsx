@@ -70,6 +70,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         nom: res.data.nom,
         prenom: res.data.prenom,
         telephone: res.data.telephone,
+        dateNaissance: res.data.dateNaissance,
+        taille: res.data.taille,
+        poids: res.data.poids,
         role: res.data.role,
         structureId: res.data.structureId,
       };
@@ -101,6 +104,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           nom: retryRes.data.nom,
           prenom: retryRes.data.prenom,
           telephone: retryRes.data.telephone,
+          dateNaissance: retryRes.data.dateNaissance,
+          taille: retryRes.data.taille,
+          poids: retryRes.data.poids,
           role: retryRes.data.role,
           structureId: retryRes.data.structureId,
         };

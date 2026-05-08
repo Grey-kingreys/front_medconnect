@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Download, Smartphone, Heart } from "lucide-react";
+import { ArrowRight, Download, Smartphone } from "lucide-react";
+import Image from "next/image";
 
 export default function CTASection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -35,13 +36,18 @@ export default function CTASection() {
         className={`relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center transition-all duration-700 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
           }`}
       >
-        {/* Icon */}
         <div className="inline-flex mb-8">
           <div className="relative">
-            <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-primary-500 to-cyan-500 flex items-center justify-center shadow-2xl shadow-primary-500/30">
-              <Heart className="w-10 h-10 text-white fill-white animate-heartbeat" />
+            <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center shadow-2xl shadow-primary-500/30 overflow-hidden">
+              <Image
+                src="/images/logo.png"
+                alt="MedConnect Logo"
+                width={64}
+                height={64}
+                className="animate-pulse-glow"
+              />
             </div>
-            <div className="absolute inset-0 w-20 h-20 rounded-3xl bg-gradient-to-br from-primary-500 to-cyan-500 animate-pulse-ring opacity-30" />
+            <div className="absolute inset-0 w-20 h-20 rounded-3xl bg-gradient-to-br from-primary-500 to-cyan-500 animate-pulse-ring opacity-30 -z-10" />
           </div>
         </div>
 
