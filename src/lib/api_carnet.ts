@@ -28,6 +28,7 @@ export interface Consultation {
   diagnostic: string | null;
   notes: string | null;
   dateConsultation: string;
+  ordonnances?: Ordonnance[];
   createdAt: string;
   updatedAt: string;
 }
