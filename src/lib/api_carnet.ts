@@ -13,9 +13,21 @@ export interface ProfilMedical {
   poids: number | null;
   dateNaissance: string | null;
   genre: string | null;
-  contactUrgence: string | null;
+  contactNom: string | null;
+  contactTelephone: string | null;
+  contactEmail: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Urgence {
+  id: string;
+  patientId: string;
+  latitude?: number;
+  longitude?: number;
+  message?: string;
+  status: 'LANCE' | 'PRIS_EN_CHARGE' | 'TERMINE' | 'ANNULE';
+  createdAt: string;
 }
 
 export interface Consultation {
@@ -147,6 +159,19 @@ export const createVaccination = (data: any) =>
   });
 
 export const getAnalyses = () => authFetch<ResultatAnalyse[]>("/carnet-sante/analyses");
+
+export const createUrgence = (data: { latitude?: number; longitude?: number; message?: string }) =>
+  authFetch<Urgence>("/carnet-sante/sos", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+
+export const getActiveUrgences = () => authFetch<Urgence[]>("/carnet-sante/sos/actives");
+
+export const takeChargeSOS = (id: string) =>
+  authFetch<Urgence>(`/carnet-sante/sos/${id}/take-charge`, {
+    method: "POST",
+  });
 
 export const createAnalyse = (data: any) =>
   authFetch<ResultatAnalyse>("/carnet-sante/analyses", {

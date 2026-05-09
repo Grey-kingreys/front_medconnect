@@ -272,7 +272,9 @@ export default function PatientCarnetViewPage() {
                     </div>
                     <div>
                       <p className="text-white/50 text-xs uppercase font-black tracking-widest mb-1">Personne à prévenir</p>
-                      <p className="text-xl font-bold tracking-tight">{profil?.contactUrgence || "Non renseigné"}</p>
+                      <p className="text-xl font-bold tracking-tight">{profil?.contactNom || "Non renseigné"}</p>
+                      {profil?.contactTelephone && <p className="text-sm font-medium mt-1">{profil.contactTelephone}</p>}
+                      {profil?.contactEmail && <p className="text-[10px] opacity-60">{profil.contactEmail}</p>}
                     </div>
                   </div>
                 </div>

@@ -137,43 +137,33 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
               <input required disabled={mode === "view"} value={form.nom} onChange={e => setForm(p => ({ ...p, nom: e.target.value }))} className={cls} placeholder="Ex: Hôpital Donka" />
             </div>
 
-            {mode === "create" ? (
-              <div>
-                <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Type <span className="text-emergency-500">*</span></label>
-                <div className="relative">
-                  <select disabled={false} value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as StructureType }))} className={`${cls} appearance-none pr-10 cursor-pointer`}>
-                    <option value="HOPITAL">Hôpital</option>
-                    <option value="CLINIQUE">Clinique</option>
-                    <option value="PHARMACIE">Pharmacie</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
-                </div>
+            <div>
+              <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Type <span className="text-emergency-500">*</span></label>
+              <div className="relative">
+                <select disabled={mode === "view" || mode === "edit"} value={form.type} onChange={e => setForm(p => ({ ...p, type: e.target.value as StructureType }))} className={`${cls} appearance-none pr-10 cursor-pointer`}>
+                  <option value="HOPITAL">Hôpital</option>
+                  <option value="CLINIQUE">Clinique</option>
+                  <option value="PHARMACIE">Pharmacie</option>
+                </select>
+                <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 pointer-events-none" />
               </div>
-            ) : (
-              <div>
-                <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Téléphone</label>
-                <input type="tel" disabled={mode === "view"} value={form.telephone} onChange={e => setForm(p => ({ ...p, telephone: e.target.value }))} className={cls} placeholder="+224 622 000 000" />
-              </div>
-            )}
-          </div>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {mode === "create" && (
-              <>
-                <div>
-                  <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Email Administrateur <span className="text-emergency-500">*</span></label>
-                  <input required disabled={false} type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={cls} placeholder="admin@structure.com" />
-                </div>
-                <div>
-                  <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Téléphone Admin</label>
-                  <input type="tel" disabled={false} value={form.telephone} onChange={e => setForm(p => ({ ...p, telephone: e.target.value }))} className={cls} placeholder="+224 622 000 000" />
-                </div>
-              </>
-            )}
+            <div>
+              <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Téléphone</label>
+              <input type="tel" disabled={mode === "view"} value={form.telephone} onChange={e => setForm(p => ({ ...p, telephone: e.target.value }))} className={cls} placeholder="+224 622 000 000" />
+            </div>
+
+            <div>
+              <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Email Contact / Admin</label>
+              <input disabled={mode === "view" || mode === "edit"} type="email" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} className={cls} placeholder="admin@structure.com" />
+            </div>
+
             <div>
               <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Ville</label>
               <input disabled={mode === "view"} value={form.ville} onChange={e => setForm(p => ({ ...p, ville: e.target.value }))} className={cls} placeholder="Conakry" />
             </div>
+
             <div>
               <label className="block text-sm text-slate-600 dark:text-slate-300 mb-1.5">Adresse</label>
               <input disabled={mode === "view"} value={form.adresse} onChange={e => setForm(p => ({ ...p, adresse: e.target.value }))} className={cls} placeholder="Quartier, commune..." />
