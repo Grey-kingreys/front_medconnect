@@ -32,6 +32,8 @@ import {
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
+import EmergencyButton from "@/components/EmergencyButton";
+import EmergencyListener from "@/components/EmergencyListener";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -492,6 +494,8 @@ export default function DashboardLayout({
           {children}
         </main>
       </div>
+      <EmergencyButton />
+      <EmergencyListener />
     </div>
   );
 }

@@ -70,7 +70,9 @@ export default function CarnetPage() {
     taille: "Inconnu" as string | number,
     poids: "Inconnu" as string | number,
     genre: "Inconnu" as string,
-    contactUrgence: "",
+    contactNom: "",
+    contactTelephone: "",
+    contactEmail: "",
     dateNaissance: "",
   });
   
@@ -124,7 +126,9 @@ export default function CarnetPage() {
           taille: profRes.data.taille || "",
           poids: profRes.data.poids || "",
           genre: profRes.data.genre || "",
-          contactUrgence: profRes.data.contactUrgence || "",
+          contactNom: profRes.data.contactNom || "",
+          contactTelephone: profRes.data.contactTelephone || "",
+          contactEmail: profRes.data.contactEmail || "",
           dateNaissance: profRes.data.dateNaissance ? profRes.data.dateNaissance.split('T')[0] : "",
         });
       }
@@ -320,8 +324,16 @@ export default function CarnetPage() {
                   <input type="date" value={form.dateNaissance} onChange={e => setForm(p => ({ ...p, dateNaissance: e.target.value }))} className={inputCls} />
                 </div>
                                 <div>
-                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Contact d&apos;urgence</label>
-                  <input type="text" value={form.contactUrgence} onChange={e => setForm(p => ({ ...p, contactUrgence: e.target.value }))} className={inputCls} placeholder="Nom - Téléphone" />
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Proche : Nom complet</label>
+                  <input type="text" value={form.contactNom} onChange={e => setForm(p => ({ ...p, contactNom: e.target.value }))} className={inputCls} placeholder="Mamadou Diallo" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Proche : Téléphone</label>
+                  <input type="tel" value={form.contactTelephone} onChange={e => setForm(p => ({ ...p, contactTelephone: e.target.value }))} className={inputCls} placeholder="+224 622 00 00 00" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Proche : Email</label>
+                  <input type="email" value={form.contactEmail} onChange={e => setForm(p => ({ ...p, contactEmail: e.target.value }))} className={inputCls} placeholder="proche@email.com" />
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-slate-600 dark:text-slate-400 mb-2">Taille (cm)</label>
@@ -460,7 +472,9 @@ export default function CarnetPage() {
                     </div>
                     <div>
                       <p className="text-white/70 text-xs uppercase font-black tracking-widest mb-1">Personne à prévenir</p>
-                      <p className="text-xl font-bold tracking-tight">{form.contactUrgence || "Non configuré"}</p>
+                      <p className="text-xl font-bold tracking-tight">{form.contactNom || "Non configuré"}</p>
+                      <p className="text-sm font-medium">{form.contactTelephone}</p>
+                      <p className="text-[10px] opacity-70">{form.contactEmail}</p>
                     </div>
                     <p className="text-rose-100/60 text-[10px] leading-relaxed">Ce numéro sera affiché sur votre écran de verrouillage si vous activez le mode "S.O.S Médical".</p>
                   </div>
