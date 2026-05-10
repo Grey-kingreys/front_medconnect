@@ -70,7 +70,7 @@ const footerLinks = {
 };
 
 const socialLinks = [
-  { icon: FacebookIcon, href: "#", label: "Facebook" },
+  { icon: FacebookIcon, href: "https://www.facebook.com/thiernooumar.diallo.9469", label: "Facebook" },
   { icon: TwitterIcon, href: "#", label: "Twitter" },
   { icon: InstagramIcon, href: "#", label: "Instagram" },
   { icon: LinkedinIcon, href: "#", label: "LinkedIn" },
@@ -109,22 +109,22 @@ export default function Footer() {
             {/* Contact info */}
             <div className="space-y-2">
               <a
-                href="mailto:contact@medconnect.app"
+                href="mailto:contact@medconnect.kingreys.fr"
                 className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-primary-500 transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                contact@medconnect.app
+                contact@medconnect.kingreys.fr
               </a>
               <a
-                href="tel:+221770000000"
+                href="tel:+224624815998"
                 className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-primary-500 transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                +221 77 000 00 00
+                +224 624 81 59 98
               </a>
               <span className="flex items-center gap-2 text-sm text-[var(--muted)]">
                 <MapPin className="w-4 h-4" />
-                Dakar, Sénégal
+                Conakry, République de Guinée
               </span>
             </div>
           </div>
