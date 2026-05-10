@@ -216,3 +216,9 @@ export interface PatientCarnet {
 
 export const getPatientCarnet = (patientId: string) =>
   authFetch<PatientCarnet>(`/carnet-sante/patient/${patientId}`);
+
+export const getAiFirstAid = (question: string) =>
+  authFetch<{ tag: string; reponse: string; similarite: number; certain: boolean }>("/carnet-sante/sos/ai-instructions", {
+    method: "POST",
+    body: JSON.stringify({ question }),
+  });

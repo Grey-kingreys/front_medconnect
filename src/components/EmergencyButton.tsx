@@ -18,7 +18,7 @@ import {
   User
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { getProfilMedical, ProfilMedical, createUrgence } from "@/lib/api_carnet";
+import { getProfilMedical, ProfilMedical, createUrgence, getAiFirstAid } from "@/lib/api_carnet";
 
 export default function EmergencyButton() {
   const { user } = useAuth();
@@ -29,6 +29,10 @@ export default function EmergencyButton() {
   const [countdown, setCountdown] = useState(5);
   const [timerActive, setTimerActive] = useState(false);
   const [profile, setProfile] = useState<ProfilMedical | null>(null);
+  const [aiResponse, setAiResponse] = useState<{ tag: string; reponse: string; certain: boolean; similarite: number } | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [customQuestion, setCustomQuestion] = useState("");
+  const [activeQuestion, setActiveQuestion] = useState("");
 
   useEffect(() => {
     if (user?.role === "PATIENT") {
@@ -106,12 +110,33 @@ export default function EmergencyButton() {
     }
   };
 
+  const handleGetFirstAid = async (label: string) => {
+    const query = label || customQuestion;
+    if (!query.trim()) return;
+
+    setAiLoading(true);
+    setAiResponse(null);
+    setActiveQuestion(query);
+    try {
+      const res = await getAiFirstAid(query);
+      if (res.success) {
+        setAiResponse(res.data);
+        setCustomQuestion("");
+      }
+    } catch (err) {
+      console.error("Erreur secours IA", err);
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const reset = () => {
     setIsOpen(false);
     setTimeout(() => {
       setView("sos_confirm");
       setCountdown(5);
       setTimerActive(false);
+      setAiResponse(null);
     }, 300);
   };
 
@@ -236,26 +261,102 @@ export default function EmergencyButton() {
               )}
 
               {view === "first_aid" && (
-                <div className="space-y-4">
-                  <button onClick={() => setView("sos_confirm")} className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-primary-500 transition-colors mb-2"><ChevronRight className="w-4 h-4 rotate-180" /> Retour</button>
-                  <div className="p-4 bg-accent-500/5 border border-accent-500/10 rounded-3xl flex items-start gap-4 mb-4">
-                    <Bot className="w-6 h-6 text-accent-500 shrink-0 mt-1" />
-                    <div><p className="text-sm font-bold text-slate-900 dark:text-white">Assistant Premiers Secours</p><p className="text-xs text-slate-500">Sélectionnez la situation pour des instructions de survie.</p></div>
-                  </div>
+                <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-300">
+                  <button onClick={() => { setView("sos_confirm"); setAiResponse(null); }} className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-primary-500 transition-colors mb-2"><ChevronRight className="w-4 h-4 rotate-180" /> Retour</button>
+                  
+                  {!aiResponse && (
+                    <>
+                      <div className="p-4 bg-accent-500/5 border border-accent-500/10 rounded-3xl flex items-start gap-4 mb-4">
+                        <Bot className="w-6 h-6 text-accent-500 shrink-0 mt-1" />
+                        <div>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">Assistant Premiers Secours</p>
+                          <p className="text-xs text-slate-500">Posez une question ou choisissez une situation critique.</p>
+                        </div>
+                      </div>
 
-                  <div className="grid grid-cols-1 gap-2">
-                    {[
-                      { label: "Étouffement (Manoeuvre de Heimlich)", icon: <Zap className="w-4 h-4" />, color: "bg-amber-500" },
-                      { label: "Arrêt Cardiaque (Massage)", icon: <Heart className="w-4 h-4" />, color: "bg-emergency-500" },
-                      { label: "Inconscience (Position PLS)", icon: <AlertCircle className="w-4 h-4" />, color: "bg-primary-500" },
-                      { label: "Hémorragie (Compression)", icon: <Zap className="w-4 h-4" />, color: "bg-rose-600" },
-                    ].map((cat, i) => (
-                      <button key={i} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 rounded-2xl hover:border-accent-500/50 transition-all text-left">
-                        <div className={`w-10 h-10 rounded-xl ${cat.color} text-white flex items-center justify-center shrink-0`}>{cat.icon}</div>
-                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200">{cat.label}</span>
+                      {/* Barre de recherche IA */}
+                      <div className="relative mb-6">
+                        <input
+                          type="text"
+                          value={customQuestion}
+                          onChange={(e) => setCustomQuestion(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && customQuestion.trim() && handleGetFirstAid(customQuestion)}
+                          placeholder="Ex: Que faire pour une brûlure ?"
+                          className="w-full py-4 pl-5 pr-14 bg-slate-50 dark:bg-slate-900/50 border-2 border-slate-100 dark:border-slate-800 rounded-2xl text-sm focus:border-accent-500/50 focus:outline-none transition-all"
+                        />
+                        <button 
+                          disabled={!customQuestion.trim() || aiLoading}
+                          onClick={() => handleGetFirstAid(customQuestion)}
+                          className="absolute right-2 top-2 bottom-2 px-4 bg-accent-500 text-white rounded-xl disabled:opacity-30 transition-all hover:bg-accent-600"
+                        >
+                          {aiLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+                        </button>
+                      </div>
+
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 ml-2">Situations Critiques (IA)</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { label: "Étouffement", query: "Que faire en cas d'étouffement?", icon: <Zap className="w-4 h-4" />, color: "bg-amber-500" },
+                          { label: "Arrêt Cardiaque", query: "Comment faire la RCP??", icon: <Heart className="w-4 h-4" />, color: "bg-emergency-500" },
+                          { label: "Crise Épileptique", query: "Comment traiter une crise epileptique?", icon: <AlertCircle className="w-4 h-4" />, color: "bg-purple-600" },
+                          { label: "Fracture", query: "Comment traiter une fracture?", icon: <Zap className="w-4 h-4" />, color: "bg-slate-600" },
+                          { label: "Empoisonnement", query: "Comment traiter un empoisonnement?", icon: <Info className="w-4 h-4" />, color: "bg-emerald-600" },
+                          { label: "Morsure de Serpent", query: "Comment traiter une morsure de serpent?", icon: <Zap className="w-4 h-4" />, color: "bg-orange-600" },
+                          { label: "Blessure Oculaire", query: "Comment traiter une blessure oculaire?", icon: <Zap className="w-4 h-4" />, color: "bg-blue-500" },
+                          { label: "Brûlure Chimique", query: "Comment traiter une brulure chimique?", icon: <Zap className="w-4 h-4" />, color: "bg-rose-600" },
+                        ].map((cat, i) => (
+                          <button 
+                            key={i} 
+                            disabled={aiLoading}
+                            onClick={() => handleGetFirstAid(cat.query)}
+                            className="flex items-center gap-3 p-3 bg-white dark:bg-slate-900/30 border border-slate-100 dark:border-slate-800 rounded-2xl hover:border-accent-500/50 hover:shadow-lg hover:shadow-accent-500/5 transition-all text-left group disabled:opacity-50"
+                          >
+                            <div className={`w-8 h-8 rounded-lg ${cat.color} text-white flex items-center justify-center shrink-0 group-hover:scale-110 transition-transform`}>{cat.icon}</div>
+                            <span className="text-[11px] font-bold text-slate-700 dark:text-slate-200 leading-tight">{cat.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+
+                  {aiResponse && (
+                    <div className="space-y-4 animate-in zoom-in duration-300">
+                      <div className="p-5 bg-slate-900 text-white rounded-[2rem] border-2 border-accent-500/30">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 bg-accent-500 rounded-lg flex items-center justify-center"><Bot className="w-5 h-5" /></div>
+                            <h5 className="font-black text-xs uppercase tracking-widest text-accent-400">Assistant IA</h5>
+                          </div>
+                          <span className="px-3 py-1 bg-accent-500/20 border border-accent-500/30 rounded-full text-[10px] font-black text-accent-400 uppercase tracking-tighter">
+                            Tag: {aiResponse.tag}
+                          </span>
+                        </div>
+
+                        <div className="mb-4 pb-4 border-b border-slate-800">
+                          <p className="text-[10px] text-slate-500 uppercase font-bold mb-1">Votre question :</p>
+                          <p className="text-sm font-bold text-slate-300 italic">"{activeQuestion}"</p>
+                        </div>
+
+                        <div className="prose prose-invert prose-sm">
+                          <p className="text-sm leading-relaxed text-slate-200 font-medium whitespace-pre-line">
+                            {aiResponse.reponse}
+                          </p>
+                        </div>
+                        {!aiResponse.certain && (
+                          <div className="mt-4 p-3 bg-emergency-500/10 border border-emergency-500/20 rounded-xl flex items-start gap-2">
+                            <AlertTriangle className="w-4 h-4 text-emergency-500 shrink-0 mt-0.5" />
+                            <p className="text-[10px] text-emergency-500 font-bold leading-tight">Attention : Matching faible ({Math.round(aiResponse.similarite * 100)}%). Appelez les secours.</p>
+                          </div>
+                        )}
+                      </div>
+                      <button 
+                        onClick={() => setAiResponse(null)}
+                        className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-bold text-xs uppercase tracking-widest hover:bg-slate-200 transition-colors"
+                      >
+                        Autre situation
                       </button>
-                    ))}
-                  </div>
+                    </div>
+                  )}
                 </div>
               )}
 
