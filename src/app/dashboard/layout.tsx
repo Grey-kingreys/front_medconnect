@@ -34,6 +34,7 @@ import { PWAInstallButton } from "@/components/PWAInstallButton";
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 import EmergencyButton from "@/components/EmergencyButton";
 import EmergencyListener from "@/components/EmergencyListener";
+import NotificationBell from "@/components/NotificationBell";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -95,6 +96,7 @@ function getNavSections(role: string): NavSection[] {
             { label: "Mes Patients", href: "/dashboard/patients", icon: <Users className="w-5 h-5" /> },
             { label: "Consultations", href: "/dashboard/consultations", icon: <Stethoscope className="w-5 h-5" /> },
             { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <ClipboardList className="w-5 h-5" /> },
+            { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
             { label: "Rendez-vous", href: "/dashboard/rendez-vous", icon: <Calendar className="w-5 h-5" /> },
           ],
         },
@@ -113,6 +115,7 @@ function getNavSections(role: string): NavSection[] {
           title: "Pharmacie",
           items: [
             { label: "Stock Médicaments", href: "/dashboard/stock", icon: <Package className="w-5 h-5" /> },
+            { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
             { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <ClipboardList className="w-5 h-5" /> },
           ],
         },
@@ -245,7 +248,7 @@ function Sidebar({
         className={`
           fixed top-0 left-0 h-full z-50 flex flex-col
           bg-white dark:bg-[#0a0f1e]/95 backdrop-blur-2xl border-r border-slate-200 dark:border-slate-800/50
-          transition-all duration-300 ease-in-out
+          transition-all duration-300 ease-in-out overflow-visible
           ${collapsed ? "w-[72px]" : "w-[280px]"}
           ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
@@ -288,17 +291,20 @@ function Sidebar({
             <X className="w-5 h-5" />
           </button>
 
-          {/* Collapse button desktop */}
-          <button
-            onClick={() => setCollapsed(!collapsed)}
-            className="hidden lg:flex p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
-          >
-            {collapsed ? (
-              <ChevronRight className="w-4 h-4" />
-            ) : (
-              <ChevronLeft className="w-4 h-4" />
-            )}
-          </button>
+          {/* Notification Bell + Collapse button desktop */}
+          <div className="hidden lg:flex items-center gap-1">
+            <NotificationBell align="left" />
+            <button
+              onClick={() => setCollapsed(!collapsed)}
+              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
+            >
+              {collapsed ? (
+                <ChevronRight className="w-4 h-4" />
+              ) : (
+                <ChevronLeft className="w-4 h-4" />
+              )}
+            </button>
+          </div>
         </div>
 
         {/* User card */}
@@ -486,7 +492,10 @@ export default function DashboardLayout({
               <span className="gradient-text">Connect</span>
             </span>
           </Link>
-          <ThemeSwitcher />
+          <div className="flex items-center gap-1">
+            <NotificationBell />
+            <ThemeSwitcher />
+          </div>
         </header>
 
         {/* Page content */}

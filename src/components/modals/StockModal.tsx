@@ -2,16 +2,17 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Search, Pill, Loader2, Save, Plus, Package, Info, AlertCircle, ChevronDown, CheckCircle2 } from "lucide-react";
-import { getCatalogue, Medicament, upsertStock, createMedicament } from "@/lib/api_pharmacie";
+import { getCatalogue, Medicament, upsertStock, createMedicament, StockMedicament } from "@/lib/api_pharmacie";
 
 interface StockModalProps {
   isOpen: boolean;
   onClose: () => void;
   structureId: string;
   onSuccess: () => void;
+  editItem?: StockMedicament | null; // Optional item to edit
 }
 
-export default function StockModal({ isOpen, onClose, structureId, onSuccess }: StockModalProps) {
+export default function StockModal({ isOpen, onClose, structureId, onSuccess, editItem }: StockModalProps) {
   const [search, setSearch] = useState("");
   const [catalogue, setCatalogue] = useState<Medicament[]>([]);
   const [loadingCatalogue, setLoadingCatalogue] = useState(false);
@@ -35,6 +36,26 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
+  // Initialize for edit if editItem is provided
+  useEffect(() => {
+    if (editItem) {
+      setSelectedMed(editItem.medicament);
+      setSearch(editItem.medicament.nom);
+      setForm({
+        quantite: editItem.quantite,
+        prixUnitaire: editItem.prixUnitaire?.toString() || "",
+        dateExpiration: editItem.dateExpiration ? new Date(editItem.dateExpiration).toISOString().split('T')[0] : "",
+        notes: editItem.notes || "",
+        categorie: editItem.medicament.categorie,
+        nomGenerique: editItem.medicament.nomGenerique || "",
+        ordonnanceRequise: editItem.medicament.ordonnanceRequise
+      });
+      setIsCreatingNew(false);
+    } else {
+      reset();
+    }
+  }, [editItem]);
+
   const searchCatalogue = useCallback(async (q: string) => {
     if (q.length < 2) {
       setCatalogue([]);
@@ -54,10 +75,10 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      if (search && !selectedMed && !isCreatingNew) searchCatalogue(search);
+      if (search && !selectedMed && !isCreatingNew && !editItem) searchCatalogue(search);
     }, 500);
     return () => clearTimeout(timer);
-  }, [search, searchCatalogue, selectedMed, isCreatingNew]);
+  }, [search, searchCatalogue, selectedMed, isCreatingNew, editItem]);
 
   // Close dropdown on click outside
   useEffect(() => {
@@ -109,7 +130,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
 
       if (!finalMedId) throw new Error("ID du médicament manquant");
 
-      // 2. Add to stock
+      // 2. Add to stock / Update stock
       await upsertStock(structureId, {
         medicamentId: finalMedId,
         quantite: form.quantite,
@@ -153,14 +174,16 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
         {/* Header */}
         <div className="p-8 border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500">
-              <Plus className="w-6 h-6" />
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${editItem ? 'bg-amber-500/10 text-amber-500' : 'bg-primary-500/10 text-primary-500'}`}>
+              {editItem ? <Save className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
             </div>
             <div>
               <h2 className="text-xl font-black text-slate-900 dark:text-white">
-                Ajouter au stock
+                {editItem ? "Modifier le stock" : "Ajouter au stock"}
               </h2>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">Nouvel arrivage de médicament</p>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
+                {editItem ? `Gestion du stock : ${editItem.medicament.nom}` : "Nouvel arrivage de médicament"}
+              </p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
@@ -171,13 +194,14 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
         <div className="p-8">
           <form onSubmit={handleSubmit} className="space-y-6">
             
-            {/* Medicament Selection Field */}
+            {/* Medicament Selection Field (Disabled in edit mode) */}
             <div className="space-y-2 relative" ref={dropdownRef}>
               <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Médicament</label>
               <div className="relative group">
                 <Pill className={`absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 transition-colors ${selectedMed || isCreatingNew ? 'text-primary-500' : 'text-slate-400 group-focus-within:text-primary-500'}`} />
                 <input 
                   type="text" 
+                  disabled={!!editItem}
                   placeholder="Tapez le nom du médicament..." 
                   value={search}
                   onChange={(e) => {
@@ -185,18 +209,20 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
                     if (selectedMed) setSelectedMed(null);
                     if (isCreatingNew) setIsCreatingNew(false);
                   }}
-                  onFocus={() => search.length >= 2 && !selectedMed && setShowDropdown(true)}
-                  className={`w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl text-sm focus:outline-none transition-all shadow-inner ${selectedMed || isCreatingNew ? 'border-primary-500/50 ring-2 ring-primary-500/10' : 'border-slate-200 dark:border-slate-800 focus:border-primary-500'}`}
+                  onFocus={() => search.length >= 2 && !selectedMed && !editItem && setShowDropdown(true)}
+                  className={`w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl text-sm focus:outline-none transition-all shadow-inner disabled:opacity-70 disabled:cursor-not-allowed ${selectedMed || isCreatingNew ? 'border-primary-500/50 ring-2 ring-primary-500/10' : 'border-slate-200 dark:border-slate-800 focus:border-primary-500'}`}
                 />
-                {loadingCatalogue ? (
-                  <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-500 animate-spin" />
-                ) : (
-                  <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                {!editItem && (
+                  loadingCatalogue ? (
+                    <Loader2 className="absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-primary-500 animate-spin" />
+                  ) : (
+                    <ChevronDown className={`absolute right-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+                  )
                 )}
               </div>
 
               {/* Search Results Dropdown */}
-              {showDropdown && (
+              {showDropdown && !editItem && (
                 <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-h-[300px] overflow-y-auto scrollbar-thin animate-slide-down">
                   {catalogue.map((med) => (
                     <button
@@ -236,7 +262,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
             </div>
 
             {/* Fields for New Medicament (Conditional) */}
-            {isCreatingNew && (
+            {isCreatingNew && !editItem && (
               <div className="p-6 bg-primary-500/5 border border-primary-500/20 rounded-[2rem] space-y-4 animate-fade-in">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="w-4 h-4 text-primary-500" />
@@ -250,7 +276,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
                       placeholder="Ex: Antipaludéen"
                       value={form.categorie}
                       onChange={(e) => setForm({...form, categorie: e.target.value})}
-                      className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:border-primary-500 transition-all"
+                      className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
                     />
                   </div>
                   <div className="space-y-1">
@@ -260,7 +286,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
                       placeholder="Ex: Paracétamol"
                       value={form.nomGenerique}
                       onChange={(e) => setForm({...form, nomGenerique: e.target.value})}
-                      className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:border-primary-500 transition-all"
+                      className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
                     />
                   </div>
                 </div>
@@ -282,11 +308,11 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
                 <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Quantité</label>
                 <input 
                   type="number" 
-                  min="1"
+                  min="0"
                   required
-                  value={form.quantite || ''}
+                  value={form.quantite}
                   onChange={(e) => setForm({...form, quantite: e.target.value === '' ? 0 : parseInt(e.target.value)})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -296,7 +322,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
                   placeholder="Ex: 35000"
                   value={form.prixUnitaire}
                   onChange={(e) => setForm({...form, prixUnitaire: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
                 />
               </div>
             </div>
@@ -308,7 +334,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
                   type="date" 
                   value={form.dateExpiration}
                   onChange={(e) => setForm({...form, dateExpiration: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
                 />
               </div>
               <div className="space-y-2">
@@ -318,7 +344,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
                   placeholder="Emplacement..."
                   value={form.notes}
                   onChange={(e) => setForm({...form, notes: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all"
+                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
                 />
               </div>
             </div>
@@ -334,17 +360,17 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess }: 
               <button 
                 type="button" 
                 onClick={onClose}
-                className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 transition-all"
+                className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all"
               >
                 Annuler
               </button>
               <button 
                 type="submit" 
                 disabled={saving || (!selectedMed && !isCreatingNew)}
-                className="flex-[2] py-4 bg-primary-500 text-white rounded-2xl font-bold shadow-xl shadow-primary-500/20 hover:bg-primary-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+                className={`flex-[2] py-4 text-white rounded-2xl font-bold shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${editItem ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-primary-500 hover:bg-primary-600 shadow-primary-500/20'}`}
               >
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Save className="w-5 h-5" />}
-                {saving ? "Enregistrement..." : (isCreatingNew ? "Créer et ajouter" : "Ajouter au stock")}
+                {saving ? "Enregistrement..." : (editItem ? "Mettre à jour" : (isCreatingNew ? "Créer et ajouter" : "Ajouter au stock"))}
               </button>
             </div>
           </form>

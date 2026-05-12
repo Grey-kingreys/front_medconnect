@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import {
   getUsers, getUserStats, createUser, toggleUserActive, deleteUser,
-  AdminUser, UserStats, ApiError,
+  AdminUser, UserStats,
 } from "@/lib/api_admin";
 import { UserModal } from "@/components/modals/UserModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
@@ -392,9 +392,17 @@ export default function UtilisateursPage() {
       {showSuperAdminModal && (
         <UserModal mode="create_super_admin" onClose={() => setShowSuperAdminModal(false)} onSuccess={fetchData} />
       )}
-      {deleteTarget && (
-        <DeleteConfirmModal user={deleteTarget} onClose={() => setDeleteTarget(null)} onDeleted={fetchData} />
-      )}
+      <DeleteConfirmModal
+        isOpen={!!deleteTarget}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          await deleteUser(deleteTarget.id);
+          fetchData();
+        }}
+        title="Supprimer l'utilisateur ?"
+        description={`Êtes-vous sûr de vouloir supprimer <strong>${deleteTarget?.prenom} ${deleteTarget?.nom}</strong> ? Cette action est irréversible.`}
+      />
     </div>
   );
 }
