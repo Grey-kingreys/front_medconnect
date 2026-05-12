@@ -85,6 +85,17 @@ export const createMedicament = (data: Partial<Medicament>) =>
     body: JSON.stringify(data),
   });
 
+export const updateMedicament = (id: string, data: Partial<Medicament>) =>
+  authFetch<Medicament>(`/pharmacie/catalogue/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
+
+export const deleteMedicament = (id: string) =>
+  authFetch<null>(`/pharmacie/catalogue/${id}`, {
+    method: "DELETE",
+  });
+
 export async function getMyStock(structureId: string) {
   return authFetch<StockInfo>(`/pharmacie/stock/${structureId}`);
 }

@@ -9,21 +9,23 @@ import {
   AlertTriangle, 
   ArrowUpRight, 
   ArrowDownRight, 
-  History, 
-  MoreVertical,
   Trash2,
   Edit,
   Loader2,
-  Filter,
-  CheckCircle2,
-  XCircle,
   Pill,
   ShoppingBag,
   TrendingUp,
-  PackageCheck
+  XCircle
 } from "lucide-react";
-import { getMyStock, StockMedicament, StockInfo, removeStockItem, updateStockQuantite } from "@/lib/api_pharmacie";
+import { 
+  getMyStock, 
+  StockMedicament, 
+  StockInfo, 
+  removeStockItem, 
+  updateStockQuantite 
+} from "@/lib/api_pharmacie";
 import StockModal from "@/components/modals/StockModal";
+import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 
 export default function StockPage() {
   const { user } = useAuth();
@@ -31,7 +33,11 @@ export default function StockPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "low" | "rupture">("all");
+  
+  // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [selectedStock, setSelectedStock] = useState<StockMedicament | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user?.structureId) return;
@@ -53,7 +59,6 @@ export default function StockPage() {
   const filteredStocks = stockInfo?.stocks.filter(s => {
     const matchesSearch = s.medicament.nom.toLowerCase().includes(search.toLowerCase()) || 
                           s.medicament.nomGenerique?.toLowerCase().includes(search.toLowerCase());
-    
     if (filter === "low") return matchesSearch && s.quantite > 0 && s.quantite < 10;
     if (filter === "rupture") return matchesSearch && s.quantite === 0;
     return matchesSearch;
@@ -69,21 +74,32 @@ export default function StockPage() {
     }
   };
 
-  const handleRemove = async (stockId: string) => {
-    if (!user?.structureId || !confirm("Voulez-vous vraiment retirer ce médicament de votre stock ?")) return;
-    try {
-      await removeStockItem(user.structureId, stockId);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-    }
+  const openAddModal = () => {
+    setSelectedStock(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (item: StockMedicament) => {
+    setSelectedStock(item);
+    setIsModalOpen(true);
+  };
+
+  const openDeleteModal = (item: StockMedicament) => {
+    setSelectedStock(item);
+    setIsDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!user?.structureId || !selectedStock) return;
+    await removeStockItem(user.structureId, selectedStock.id);
+    fetchData();
   };
 
   if (loading && !stockInfo) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
-        <p className="text-slate-500 animate-pulse">Chargement de l'inventaire...</p>
+        <p className="text-slate-500 animate-pulse">Chargement de l&apos;inventaire...</p>
       </div>
     );
   }
@@ -133,18 +149,18 @@ export default function StockPage() {
               placeholder="Rechercher un médicament..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all shadow-sm"
+              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all shadow-sm dark:text-white"
             />
           </div>
           <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 shadow-sm shrink-0">
-             <button onClick={() => setFilter("all")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "all" ? "bg-slate-100 dark:bg-slate-800 text-primary-500" : "text-slate-500 hover:text-primary-500"}`}>Tous</button>
-             <button onClick={() => setFilter("low")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "low" ? "bg-amber-500/10 text-amber-500" : "text-slate-500 hover:text-amber-500"}`}>Alertes</button>
-             <button onClick={() => setFilter("rupture")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "rupture" ? "bg-rose-500/10 text-rose-500" : "text-slate-500 hover:text-rose-500"}`}>Rupture</button>
+            <button onClick={() => setFilter("all")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "all" ? "bg-slate-100 dark:bg-slate-800 text-primary-500" : "text-slate-500 hover:text-primary-500"}`}>Tous</button>
+            <button onClick={() => setFilter("low")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "low" ? "bg-amber-500/10 text-amber-500" : "text-slate-500 hover:text-amber-500"}`}>Alertes</button>
+            <button onClick={() => setFilter("rupture")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "rupture" ? "bg-rose-500/10 text-rose-500" : "text-slate-500 hover:text-rose-500"}`}>Rupture</button>
           </div>
         </div>
         
         <button 
-          onClick={() => setIsModalOpen(true)}
+          onClick={openAddModal}
           className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
         >
           <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
@@ -229,9 +245,16 @@ export default function StockPage() {
                     </td>
                     <td className="px-8 py-5 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button className="p-2 rounded-xl text-slate-400 hover:text-primary-500 hover:bg-primary-500/10 transition-all"><Edit className="w-4 h-4" /></button>
                         <button 
-                          onClick={() => handleRemove(s.id)}
+                          onClick={() => openEditModal(s)}
+                          title="Modifier"
+                          className="p-2 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-all"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button 
+                          onClick={() => openDeleteModal(s)}
+                          title="Retirer du stock"
                           className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -246,14 +269,25 @@ export default function StockPage() {
         </div>
       </div>
 
+      {/* Stock Add/Edit Modal */}
       {user?.structureId && (
         <StockModal 
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           structureId={user.structureId}
           onSuccess={fetchData}
+          editItem={selectedStock}
         />
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Retirer du stock ?"
+        description={`Êtes-vous sûr de vouloir retirer <strong>${selectedStock?.medicament.nom}</strong> de votre inventaire ? Cette action est irréversible.`}
+      />
     </div>
   );
 }

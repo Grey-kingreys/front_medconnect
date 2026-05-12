@@ -14,6 +14,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 const navLinks = [
+  { label: "Catalogue", href: "/catalogue" },
   { label: "Fonctionnalités", href: "#features" },
   { label: "Comment ça marche", href: "#how-it-works" },
   { label: "Témoignages", href: "#testimonials" },
