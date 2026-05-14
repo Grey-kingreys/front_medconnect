@@ -82,37 +82,50 @@ export async function apiFetch<T>(
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const url = `${API_URL}${endpoint}`;
+  
+  // Log de la requête (utile en production)
+  console.log(`[API Request] ${options.method || "GET"} ${url}`);
 
-  const res = await fetch(url, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...options.headers,
-    },
-  });
-
-  const text = await res.text();
-  let body: any = {};
   try {
-    body = text ? JSON.parse(text) : {};
-  } catch (e) {
-    console.error("Erreur de parsing JSON (auth):", e, "Texte reçu:", text);
-    body = { message: "Erreur de réponse du serveur" };
-  }
+    const res = await fetch(url, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...options.headers,
+      },
+    });
 
-  if (!res.ok) {
-    // Le backend NestJS renvoie { message, statusCode } pour les erreurs
-    const errorMessage =
-      typeof body.message === "string"
-        ? body.message
-        : Array.isArray(body.message)
-          ? body.message[0]
-          : "Une erreur est survenue";
-    throw new ApiError(errorMessage, res.status);
-  }
+    const text = await res.text();
+    let body: any = {};
+    try {
+      body = text ? JSON.parse(text) : {};
+    } catch (e) {
+      console.error(`[API Error] JSON Parsing failed for ${url}:`, e, "Raw response:", text);
+      body = { message: "Erreur de réponse du serveur" };
+    }
 
-  return body as ApiResponse<T>;
+    if (!res.ok) {
+      console.error(`[API Error] Status ${res.status} for ${url}:`, body);
+      // Le backend NestJS renvoie { message, statusCode } pour les erreurs
+      const errorMessage =
+        typeof body.message === "string"
+          ? body.message
+          : Array.isArray(body.message)
+            ? body.message[0]
+            : "Une erreur est survenue";
+      throw new ApiError(errorMessage, res.status);
+    }
+
+    console.log(`[API Success] ${url}`, body.message || "");
+    return body as ApiResponse<T>;
+  } catch (err) {
+    // Si ce n'est pas une ApiError (ex: erreur réseau, DNS, CORS)
+    if (!(err instanceof ApiError)) {
+      console.error(`[Network Error] Failed to fetch ${url}:`, err);
+    }
+    throw err;
+  }
 }
 
 let refreshPromise: Promise<ApiResponse<{ access_token: string }>> | null = null;
