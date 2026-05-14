@@ -52,11 +52,13 @@ export interface UserProfile {
 
 export interface LoginResponse {
   access_token: string;
+  refresh_token: string; // Ajouté
   user: AuthUser;
 }
 
 export interface RegisterResponse {
   access_token: string;
+  refresh_token: string; // Ajouté
   user: AuthUser;
 }
 
@@ -67,6 +69,7 @@ export interface VerifyResetTokenResponse {
 
 export interface RefreshTokenResponse {
   access_token: string;
+  refresh_token: string; // Ajouté
 }
 
 export interface VerifyTokenResponse {
@@ -128,7 +131,7 @@ export async function apiFetch<T>(
   }
 }
 
-let refreshPromise: Promise<ApiResponse<{ access_token: string }>> | null = null;
+let refreshPromise: Promise<ApiResponse<{ access_token: string; refresh_token: string }>> | null = null;
 
 /**
  * Fetch authentifié — ajoute automatiquement le Bearer token
@@ -158,9 +161,14 @@ export async function authFetch<T>(
       try {
         // Utiliser une promesse partagée pour éviter les appels concurrents
         if (!refreshPromise) {
-          refreshPromise = apiFetch<{ access_token: string }>(
+          const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null;
+          
+          refreshPromise = apiFetch<{ access_token: string; refresh_token: string }>(
             "/auth/refresh",
-            { method: "POST" }
+            { 
+              method: "POST",
+              body: JSON.stringify({ refresh_token: refreshToken }) // Envoyé dans le body en fallback du cookie
+            }
           );
         }
 
@@ -169,9 +177,12 @@ export async function authFetch<T>(
         // Nettoyer la promesse une fois terminée
         refreshPromise = null;
 
-        // Sauvegarder uniquement le nouvel access token
+        // Sauvegarder les tokens
         if (typeof window !== "undefined") {
           localStorage.setItem("access_token", refreshRes.data.access_token);
+          if (refreshRes.data.refresh_token) {
+            localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
+          }
         }
 
         // Réessayer la requête originale avec le nouveau token
@@ -183,6 +194,7 @@ export async function authFetch<T>(
         // Refresh échoué → session expirée, nettoyer le localStorage
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
+          localStorage.removeItem("refresh_token");
           localStorage.removeItem("user");
         }
         throw new ApiError("Session expirée. Veuillez vous reconnecter.", 401);
@@ -310,14 +322,22 @@ export async function verifyToken() {
  */
 export async function refreshAccessToken() {
   if (!refreshPromise) {
+    const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null;
+
     refreshPromise = apiFetch<RefreshTokenResponse>("/auth/refresh", {
       method: "POST",
+      body: JSON.stringify({ refresh_token: refreshToken }), // Envoyé dans le body en fallback
     });
   }
 
   try {
     const res = await refreshPromise;
     refreshPromise = null;
+    
+    if (typeof window !== "undefined" && res.data.refresh_token) {
+      localStorage.setItem("refresh_token", res.data.refresh_token);
+    }
+    
     return res;
   } catch (err) {
     refreshPromise = null;

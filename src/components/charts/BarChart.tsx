@@ -17,7 +17,7 @@ export function BarChart({ data }: BarChartProps) {
 
   return (
     <div className="h-[200px] w-full mt-4">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={1}>
         <RechartsBarChart data={data} layout="vertical" margin={{ left: -20 }}>
           <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#334155" opacity={0.1} />
           <XAxis type="number" hide />
