@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { Loader2 } from "lucide-react";
 
 interface LoadingSpinnerProps {
   message?: string;
@@ -19,9 +18,6 @@ export function LoadingSpinner({ message = "Chargement...", fullPage = false }: 
           height={fullPage ? 64 : 48}
           className="rounded-2xl animate-pulse-glow"
         />
-        <div className="absolute -bottom-2 -right-2 bg-white dark:bg-slate-900 rounded-full p-1 shadow-lg">
-          <Loader2 className="w-5 h-5 text-primary-500 animate-spin" />
-        </div>
       </div>
       <div className="flex flex-col items-center">
         <p className="text-sm font-semibold bg-gradient-to-r from-primary-400 to-cyan-400 bg-clip-text text-transparent animate-pulse">

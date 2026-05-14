@@ -205,13 +205,15 @@ export default function NotificationBell({
 
       {/* ─── Dropdown Panel ─── */}
       {open && (
-        <div className={`absolute ${
-          direction === "up" ? "bottom-full mb-2" : "top-full mt-2"
-        } ${
-          align === "left" ? "left-0" : "right-0"
-        } w-[380px] max-h-[520px] bg-white dark:bg-[#0f172a] rounded-3xl shadow-2xl shadow-black/20 border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95 ${
-          direction === "up" ? "slide-in-from-bottom-2" : "slide-in-from-top-2"
-        } duration-200 z-[200] flex flex-col`}>
+        <div className={`
+          fixed sm:absolute inset-x-4 sm:inset-auto
+          ${direction === "up" ? "bottom-full mb-2" : "top-16 sm:top-full sm:mt-2"}
+          ${align === "left" ? "sm:left-0" : "sm:right-0"}
+          sm:w-[380px] max-h-[calc(100vh-100px)] sm:max-h-[520px]
+          bg-white dark:bg-[#0f172a] rounded-3xl shadow-2xl shadow-black/20 border border-slate-200 dark:border-slate-800 overflow-hidden animate-in zoom-in-95
+          ${direction === "up" ? "slide-in-from-bottom-2" : "slide-in-from-top-2"}
+          duration-200 z-[200] flex flex-col
+        `}>
           
           {/* Header */}
           <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between shrink-0">

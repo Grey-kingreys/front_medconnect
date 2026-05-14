@@ -71,9 +71,13 @@ export default function ConsultationsPage() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
           <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight" style={{ fontFamily: "var(--font-outfit)" }}>
-            Mes Consultations
+            {isDoctor ? "Mes Consultations Rédigées" : "Mes Consultations"}
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Historique complet de vos visites médicales et diagnostics.</p>
+          <p className="text-slate-500 text-sm mt-1">
+            {isDoctor
+              ? "Historique des consultations que vous avez enregistrées pour vos patients."
+              : "Historique complet de vos visites médicales et diagnostics."}
+          </p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -137,7 +141,11 @@ export default function ConsultationsPage() {
                     </div>
                     <h3 className="text-base font-bold text-slate-900 dark:text-white truncate mb-1">{c.motif}</h3>
                     <div className="flex items-center gap-3 text-xs text-slate-500">
-                      <span className="flex items-center gap-1.5"><Stethoscope className="w-3 h-3" /> {c.medecinNom || "Médecin non renseigné"}</span>
+                      {isDoctor && c.patientNom ? (
+                        <span className="flex items-center gap-1.5"><FileText className="w-3 h-3" /> Patient : {c.patientNom}</span>
+                      ) : (
+                        <span className="flex items-center gap-1.5"><Stethoscope className="w-3 h-3" /> {c.medecinNom || "Médecin non renseigné"}</span>
+                      )}
                       {c.structure && <span className="flex items-center gap-1.5"><Building2 className="w-3 h-3" /> {c.structure.nom}</span>}
                     </div>
                   </div>

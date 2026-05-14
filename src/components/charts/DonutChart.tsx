@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 
 interface DonutChartProps {
@@ -11,6 +12,13 @@ interface DonutChartProps {
 }
 
 export function DonutChart({ data, centerLabel, centerSub }: DonutChartProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return <div className="h-[200px] w-full flex items-center justify-center bg-slate-100 dark:bg-slate-800/50 rounded-full animate-pulse mx-auto max-w-[160px]" />;
+
   return (
     <div className="h-[200px] w-full flex items-center justify-center relative">
       <ResponsiveContainer width="100%" height="100%">

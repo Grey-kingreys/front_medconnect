@@ -286,7 +286,11 @@ export default function StockPage() {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
         title="Retirer du stock ?"
-        description={`Êtes-vous sûr de vouloir retirer <strong>${selectedStock?.medicament.nom}</strong> de votre inventaire ? Cette action est irréversible.`}
+        description={
+          <>
+            Êtes-vous sûr de vouloir retirer <strong>{selectedStock?.medicament.nom}</strong> de votre inventaire ? Cette action est irréversible.
+          </>
+        }
       />
     </div>
   );

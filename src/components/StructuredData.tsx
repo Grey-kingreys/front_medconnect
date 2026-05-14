@@ -1,9 +1,5 @@
-"use client";
-
-/**
- * Composant StructuredData — Données structurées JSON-LD
- * À importer dans le layout.tsx ou dans la page d'accueil
- */
+// Composant StructuredData — Données structurées JSON-LD
+// À importer dans le layout.tsx ou dans la page d'accueil
 
 export default function StructuredData() {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
@@ -90,7 +86,7 @@ export default function StructuredData() {
         name: "Guinée",
       },
     },
-    lastReviewed: new Date().toISOString().split("T")[0],
+    lastReviewed: "2026-05-13",
     specialty: [
       "Emergency Medicine",
       "General Practice",
@@ -190,7 +186,7 @@ export default function StructuredData() {
   };
 
   return (
-    <>
+    <section>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -221,6 +217,6 @@ export default function StructuredData() {
           __html: JSON.stringify(faqSchema),
         }}
       />
-    </>
+    </section>
   );
 }

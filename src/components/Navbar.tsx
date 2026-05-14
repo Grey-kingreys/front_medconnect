@@ -25,7 +25,17 @@ export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const { user, isAuthenticated, loading, logout } = useAuth();
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+    try {
+      await logout();
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -54,6 +64,7 @@ export default function Navbar() {
             alt="MedConnect Logo"
             width={40}
             height={40}
+            priority
             className="rounded-xl shadow-lg shadow-primary-500/25 group-hover:shadow-primary-500/40 transition-all duration-300 group-hover:scale-105"
           />
           <span
@@ -175,14 +186,27 @@ export default function Navbar() {
                 </Link>
                 {/* Mobile: Déconnexion */}
                 <button
-                  onClick={() => {
+                  onClick={async () => {
                     setIsMobileOpen(false);
-                    logout();
+                    await handleLogout();
                   }}
-                  className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 hover:text-emergency-500 hover:border-emergency-500/30 transition-all"
+                  disabled={isLoggingOut}
+                  className="flex items-center justify-center gap-2 w-full px-4 py-3 text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-xl hover:bg-slate-50 dark:hover:bg-white/5 hover:text-emergency-500 hover:border-emergency-500/30 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  <LogOut className="w-4 h-4" />
-                  Se déconnecter
+                  {isLoggingOut ? (
+                    <svg
+                      className="w-4 h-4 animate-spin text-slate-400"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <LogOut className="w-4 h-4" />
+                  )}
+                  {isLoggingOut ? "Déconnexion..." : "Se déconnecter"}
                 </button>
               </>
             ) : mounted && !loading ? (

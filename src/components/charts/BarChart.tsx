@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from "recharts";
 
 interface BarChartProps {
@@ -7,6 +8,13 @@ interface BarChartProps {
 }
 
 export function BarChart({ data }: BarChartProps) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return <div className="h-[200px] w-full mt-4 bg-slate-100 dark:bg-slate-800/50 rounded-xl animate-pulse" />;
+
   return (
     <div className="h-[200px] w-full mt-4">
       <ResponsiveContainer width="100%" height="100%">

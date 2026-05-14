@@ -401,7 +401,11 @@ export default function UtilisateursPage() {
           fetchData();
         }}
         title="Supprimer l'utilisateur ?"
-        description={`Êtes-vous sûr de vouloir supprimer <strong>${deleteTarget?.prenom} ${deleteTarget?.nom}</strong> ? Cette action est irréversible.`}
+        description={
+          <>
+            Êtes-vous sûr de vouloir supprimer <strong>{deleteTarget?.prenom} {deleteTarget?.nom}</strong> ? Cette action est irréversible.
+          </>
+        }
       />
     </div>
   );

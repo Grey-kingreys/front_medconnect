@@ -85,10 +85,15 @@ export default function PatientCarnetViewPage() {
     );
   }
 
+  const safeParse = (val: any) => {
+    if (typeof val !== 'string') return val || [];
+    try { return JSON.parse(val); } catch { return [val]; }
+  };
+
   const { patient, profil, stats, isMedecinTraitant, consultations, ordonnances, analyses, vaccinations } = data;
-  const allergies = profil?.allergies || [];
-  const pathologies = profil?.pathologies || [];
-  const traitements = profil?.traitements || [];
+  const allergies = safeParse(profil?.allergies) as string[];
+  const pathologies = safeParse(profil?.pathologies) as string[];
+  const traitements = safeParse(profil?.traitements) as string[];
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">

@@ -317,7 +317,11 @@ export default function CataloguePage() {
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDelete}
         title="Supprimer le médicament ?"
-        description={`Êtes-vous sûr de vouloir supprimer <strong>${selectedMed?.nom}</strong> du catalogue ? Cette action est irréversible et affectera tous les stocks liés.`}
+        description={
+          <>
+            Êtes-vous sûr de vouloir supprimer <strong>{selectedMed?.nom}</strong> du catalogue ? Cette action est irréversible et affectera tous les stocks liés.
+          </>
+        }
       />
     </div>
   );

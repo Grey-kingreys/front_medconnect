@@ -442,14 +442,7 @@ export default function DashboardLayout({
 
   // Non connecté — le hook redirigera vers /auth/login
   if (!user) {
-    return (
-      <div className="min-h-screen bg-slate-50 dark:bg-[#030712] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
-          <p className="text-sm text-slate-500 dark:text-slate-400">Redirection...</p>
-        </div>
-      </div>
-    );
+    return <LoadingSpinner fullPage message="Redirection vers la connexion..." />;
   }
 
   return (
@@ -483,6 +476,7 @@ export default function DashboardLayout({
               width={32}
               height={32}
               className="rounded-lg"
+              priority
             />
             <span
               className="text-base font-bold"
