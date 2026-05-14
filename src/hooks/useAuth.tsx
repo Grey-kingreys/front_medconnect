@@ -84,7 +84,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setProfile(null);
         localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
         localStorage.removeItem("user");
         router.push("/auth/login");
         return;
@@ -94,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const refreshRes = await refreshAccessToken();
         localStorage.setItem("access_token", refreshRes.data.access_token);
-        localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
         // Réessayer
         const retryRes = await getMe();
         setProfile(retryRes.data);
@@ -117,7 +115,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
         setProfile(null);
         localStorage.removeItem("access_token");
-        localStorage.removeItem("refresh_token");
         localStorage.removeItem("user");
       }
     }
@@ -128,7 +125,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (data: LoginResponse | RegisterResponse) => {
       // 1. Stocker les tokens
       localStorage.setItem("access_token", data.access_token);
-      localStorage.setItem("refresh_token", data.refreshToken);
       localStorage.setItem("user", JSON.stringify(data.user));
 
       // 2. Mettre à jour le state React (le contexte se propage partout)
@@ -186,7 +182,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           try {
             const refreshRes = await refreshAccessToken();
             localStorage.setItem("access_token", refreshRes.data.access_token);
-            localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
             await refreshProfile();
             console.log("[Auth] Session refreshed");
           } catch {
@@ -194,7 +189,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setUser(null);
             setProfile(null);
             localStorage.removeItem("access_token");
-            localStorage.removeItem("refresh_token");
             localStorage.removeItem("user");
           }
         }
@@ -216,18 +210,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Le token expire en 15 min, on le rafraîchit toutes les 13 min
+    // Le token expire en 15 min, on le rafraîchit toutes les 12 min
     const interval = setInterval(async () => {
       console.log("[Auth] Silent refresh starting...");
       try {
         const refreshRes = await refreshAccessToken();
         localStorage.setItem("access_token", refreshRes.data.access_token);
-        localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
         console.log("[Auth] Silent refresh successful");
       } catch (err) {
         console.error("[Auth] Silent refresh failed", err);
       }
-    }, 13 * 60 * 1000); 
+    }, 12 * 60 * 1000); 
 
     return () => clearInterval(interval);
   }, [isAuthenticated]);

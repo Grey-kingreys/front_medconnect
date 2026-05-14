@@ -118,11 +118,16 @@ export default function CarnetPage() {
       setAnalyses(anaRes.data);
       
       if (profRes.data) {
+        const safeParse = (val: any) => {
+          if (typeof val !== 'string') return val || [];
+          try { return JSON.parse(val); } catch { return [val]; }
+        };
+
         setForm({
           groupeSanguin: profRes.data.groupeSanguin,
-          allergies: profRes.data.allergies,
-          pathologies: profRes.data.pathologies,
-          traitements: profRes.data.traitements,
+          allergies: safeParse(profRes.data.allergies),
+          pathologies: safeParse(profRes.data.pathologies),
+          traitements: safeParse(profRes.data.traitements),
           taille: profRes.data.taille || "",
           poids: profRes.data.poids || "",
           genre: profRes.data.genre || "",
@@ -152,6 +157,9 @@ export default function CarnetPage() {
     try {
       await upsertProfilMedical({
         ...form,
+        allergies: JSON.stringify(form.allergies),
+        pathologies: JSON.stringify(form.pathologies),
+        traitements: JSON.stringify(form.traitements),
         taille: form.taille ? Number(form.taille) : null,
         poids: form.poids ? Number(form.poids) : null,
         dateNaissance: form.dateNaissance || null,

@@ -82,7 +82,6 @@ export default function SetupStructurePage() {
       // Login with the returned token
       loginUser({
         access_token: res.data.access_token,
-        refreshToken: res.data.refresh_token,
         user: res.data.user,
       });
       router.push("/dashboard");

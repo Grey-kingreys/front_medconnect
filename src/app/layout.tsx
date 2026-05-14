@@ -4,6 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import StructuredData from "@/components/StructuredData";
+import Script from "next/script";
 
 
 const inter = Inter({
@@ -113,6 +114,15 @@ export const metadata: Metadata = {
     "msapplication-config": "/browserconfig.xml",
     "twitter:domain": "medconnect.kingreys.fr",
   },
+  icons: {
+    icon: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+    ],
+  },
 };
 
 export const viewport: Viewport = {
@@ -135,6 +145,7 @@ export default function RootLayout({
     <html
       lang="fr"
       className={`${inter.variable} ${outfit.variable} h-full antialiased`}
+      data-scroll-behavior="smooth"
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-white text-slate-900 dark:bg-[#0f172a] dark:text-white transition-colors duration-300">
@@ -142,7 +153,9 @@ export default function RootLayout({
           <AuthProvider>
             <StructuredData />
             {children}
-            <script
+            <Script
+              id="unregister-sw"
+              strategy="afterInteractive"
               dangerouslySetInnerHTML={{
                 __html: `
                   if ('serviceWorker' in navigator) {

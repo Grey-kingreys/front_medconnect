@@ -52,13 +52,11 @@ export interface UserProfile {
 
 export interface LoginResponse {
   access_token: string;
-  refreshToken: string;
   user: AuthUser;
 }
 
 export interface RegisterResponse {
   access_token: string;
-  refreshToken: string;
   user: AuthUser;
 }
 
@@ -69,7 +67,6 @@ export interface VerifyResetTokenResponse {
 
 export interface RefreshTokenResponse {
   access_token: string;
-  refresh_token: string;
 }
 
 export interface VerifyTokenResponse {
@@ -80,7 +77,7 @@ export interface VerifyTokenResponse {
 
 // ─── Helpers ────────────────────────────────────────────────────
 
-async function apiFetch<T>(
+export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
@@ -88,6 +85,7 @@ async function apiFetch<T>(
 
   const res = await fetch(url, {
     ...options,
+    credentials: "include",
     headers: {
       "Content-Type": "application/json",
       ...options.headers,
@@ -117,6 +115,8 @@ async function apiFetch<T>(
   return body as ApiResponse<T>;
 }
 
+let refreshPromise: Promise<ApiResponse<{ access_token: string }>> | null = null;
+
 /**
  * Fetch authentifié — ajoute automatiquement le Bearer token
  * En cas de 401 (token expiré), tente un refresh automatique et réessaie une fois.
@@ -143,33 +143,33 @@ export async function authFetch<T>(
     // Si 401 → tenter un refresh du token puis réessayer une seule fois
     if (err instanceof ApiError && err.status === 401) {
       try {
-        const refreshToken =
-          typeof window !== "undefined"
-            ? localStorage.getItem("refresh_token")
-            : null;
-        if (!refreshToken) throw new ApiError("Pas de refresh token", 401);
+        // Utiliser une promesse partagée pour éviter les appels concurrents
+        if (!refreshPromise) {
+          refreshPromise = apiFetch<{ access_token: string }>(
+            "/auth/refresh",
+            { method: "POST" }
+          );
+        }
 
-        const refreshRes = await apiFetch<{ access_token: string; refresh_token: string }>(
-          "/auth/refresh",
-          {
-            method: "POST",
-            body: JSON.stringify({ refresh_token: refreshToken }),
-          }
-        );
+        const refreshRes = await refreshPromise;
+        
+        // Nettoyer la promesse une fois terminée
+        refreshPromise = null;
 
-        // Sauvegarder les nouveaux tokens
+        // Sauvegarder uniquement le nouvel access token
         if (typeof window !== "undefined") {
           localStorage.setItem("access_token", refreshRes.data.access_token);
-          localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
         }
 
         // Réessayer la requête originale avec le nouveau token
         return await doFetch(refreshRes.data.access_token);
-      } catch {
+      } catch (refreshErr) {
+        // Nettoyer la promesse en cas d'échec
+        refreshPromise = null;
+        
         // Refresh échoué → session expirée, nettoyer le localStorage
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
           localStorage.removeItem("user");
         }
         throw new ApiError("Session expirée. Veuillez vous reconnecter.", 401);
@@ -296,13 +296,20 @@ export async function verifyToken() {
  * Rafraîchir le access token via le refresh token
  */
 export async function refreshAccessToken() {
-  const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null;
-  if (!refreshToken) throw new ApiError("Pas de refresh token", 401);
+  if (!refreshPromise) {
+    refreshPromise = apiFetch<RefreshTokenResponse>("/auth/refresh", {
+      method: "POST",
+    });
+  }
 
-  return apiFetch<RefreshTokenResponse>("/auth/refresh", {
-    method: "POST",
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
+  try {
+    const res = await refreshPromise;
+    refreshPromise = null;
+    return res;
+  } catch (err) {
+    refreshPromise = null;
+    throw err;
+  }
 }
 
 /**

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { 
   LineChart, Line, AreaChart, Area, XAxis, YAxis, 
   CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar,
@@ -52,6 +53,21 @@ const STRUCTURE_DATA = [
 ];
 
 export default function DashboardCharts({ role }: ChartProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-pulse">
+        <div className="h-[300px] bg-slate-100 dark:bg-slate-800/50 rounded-3xl" />
+        <div className="h-[300px] bg-slate-100 dark:bg-slate-800/50 rounded-3xl" />
+      </div>
+    );
+  }
+
   if (role === 'PATIENT') {
     return (
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

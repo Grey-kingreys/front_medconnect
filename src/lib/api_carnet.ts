@@ -6,9 +6,9 @@ export interface ProfilMedical {
   id: string;
   userId: string;
   groupeSanguin: GroupeSanguin;
-  allergies: string[];
-  pathologies: string[];
-  traitements: string[];
+  allergies: string;
+  pathologies: string;
+  traitements: string;
   taille: number | null;
   poids: number | null;
   dateNaissance: string | null;
@@ -33,6 +33,7 @@ export interface Urgence {
 export interface Consultation {
   id: string;
   patientId: string;
+  patientNom?: string;       // Rempli quand c'est le médecin qui consulte sa liste
   structureId: string | null;
   structure?: { id: string; nom: string; type: string };
   medecinNom: string | null;
