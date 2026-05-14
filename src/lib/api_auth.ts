@@ -77,7 +77,7 @@ export interface VerifyTokenResponse {
 
 // ─── Helpers ────────────────────────────────────────────────────
 
-async function apiFetch<T>(
+export async function apiFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {

@@ -3,59 +3,7 @@
  * Pour les STRUCTURE_ADMIN : gestion de leur structure et de leurs membres
  */
 
-import { ApiError, ApiResponse } from "./api_auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
-
-// ─── Helpers ────────────────────────────────────────────────────
-
-async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-  const res = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers: { "Content-Type": "application/json", ...options.headers },
-  });
-  const body = await res.json();
-  if (!res.ok) {
-    const msg = typeof body.message === "string" ? body.message : Array.isArray(body.message) ? body.message[0] : "Erreur";
-    throw new ApiError(msg, res.status);
-  }
-  return body as ApiResponse<T>;
-}
-
-async function authFetch<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
-  const getToken = () => typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-  const doFetch = (token: string | null) => apiFetch<T>(endpoint, {
-    ...options,
-    headers: { ...options.headers, ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-  });
-
-  try {
-    return await doFetch(getToken());
-  } catch (err) {
-    if (err instanceof ApiError && err.status === 401) {
-      try {
-        const rt = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null;
-        if (!rt) throw new ApiError("Pas de refresh token", 401);
-        const r = await apiFetch<{ access_token: string; refresh_token: string }>("/auth/refresh", {
-          method: "POST", body: JSON.stringify({ refresh_token: rt }),
-        });
-        if (typeof window !== "undefined") {
-          localStorage.setItem("access_token", r.data.access_token);
-          localStorage.setItem("refresh_token", r.data.refresh_token);
-        }
-        return await doFetch(r.data.access_token);
-      } catch {
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          localStorage.removeItem("user");
-        }
-        throw new ApiError("Session expirée. Veuillez vous reconnecter.", 401);
-      }
-    }
-    throw err;
-  }
-}
+import { ApiError, ApiResponse, authFetch, apiFetch } from "./api_auth";
 
 // ─── Structures Publiques ───────────────────────────────────────
 
@@ -159,7 +107,7 @@ export async function verifyInviteToken(token: string) {
 }
 
 export async function setupStructure(token: string, data: SetupStructurePayload) {
-  return apiFetch<{ access_token: string; refresh_token: string; user: any }>(`/structures/setup/${token}`, {
+  return apiFetch<{ access_token: string; user: any }>(`/structures/setup/${token}`, {
     method: "POST",
     body: JSON.stringify(data),
   });
