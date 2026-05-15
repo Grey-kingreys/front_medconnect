@@ -107,7 +107,7 @@ export async function verifyInviteToken(token: string) {
 }
 
 export async function setupStructure(token: string, data: SetupStructurePayload) {
-  return apiFetch<{ access_token: string; user: any }>(`/structures/setup/${token}`, {
+  return apiFetch<{ access_token: string; refresh_token: string; user: any; structure: any }>(`/structures/setup/${token}`, {
     method: "POST",
     body: JSON.stringify(data),
   });
