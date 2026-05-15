@@ -28,6 +28,7 @@ import {
   Bot,
   Loader2,
   MessageSquare,
+  Syringe,
 } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
@@ -68,8 +69,9 @@ function getNavSections(role: string): NavSection[] {
           items: [
             { label: "Carnet de Santé", href: "/dashboard/carnet", icon: <FileText className="w-5 h-5" /> },
             { label: "Consultations", href: "/dashboard/consultations", icon: <Stethoscope className="w-5 h-5" /> },
-            { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <ClipboardList className="w-5 h-5" /> },
-            { label: "Vaccinations", href: "/dashboard/vaccinations", icon: <Activity className="w-5 h-5" /> },
+            { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <Pill className="w-5 h-5" /> },
+            { label: "Analyses", href: "/dashboard/analyses", icon: <Activity className="w-5 h-5" /> },
+            { label: "Vaccinations", href: "/dashboard/vaccinations", icon: <Syringe className="w-5 h-5" /> },
           ],
         },
         {
@@ -95,7 +97,8 @@ function getNavSections(role: string): NavSection[] {
             { label: "Messagerie", href: "/dashboard/chat", icon: <MessageSquare className="w-5 h-5" /> },
             { label: "Mes Patients", href: "/dashboard/patients", icon: <Users className="w-5 h-5" /> },
             { label: "Consultations", href: "/dashboard/consultations", icon: <Stethoscope className="w-5 h-5" /> },
-            { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <ClipboardList className="w-5 h-5" /> },
+            { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <Pill className="w-5 h-5" /> },
+            { label: "Analyses", href: "/dashboard/analyses", icon: <Activity className="w-5 h-5" /> },
             { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
             { label: "Rendez-vous", href: "/dashboard/rendez-vous", icon: <Calendar className="w-5 h-5" /> },
           ],
