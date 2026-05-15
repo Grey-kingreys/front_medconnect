@@ -125,6 +125,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     (data: LoginResponse | RegisterResponse) => {
       // 1. Stocker les tokens
       localStorage.setItem("access_token", data.access_token);
+      if (data.refresh_token) {
+        localStorage.setItem("refresh_token", data.refresh_token);
+      }
       localStorage.setItem("user", JSON.stringify(data.user));
 
       // 2. Mettre à jour le state React (le contexte se propage partout)

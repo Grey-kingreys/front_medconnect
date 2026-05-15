@@ -65,6 +65,7 @@ export default function Navbar() {
             width={40}
             height={40}
             priority
+            loading="eager"
             className="rounded-xl shadow-lg shadow-primary-500/25 group-hover:shadow-primary-500/40 transition-all duration-300 group-hover:scale-105"
           />
           <span

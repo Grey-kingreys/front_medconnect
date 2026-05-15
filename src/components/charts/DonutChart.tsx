@@ -21,7 +21,7 @@ export function DonutChart({ data, centerLabel, centerSub }: DonutChartProps) {
 
   return (
     <div className="h-[200px] w-full flex items-center justify-center relative">
-      <ResponsiveContainer width="100%" height="100%">
+      <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0} debounce={1}>
         <PieChart>
           <Pie
             data={data}
