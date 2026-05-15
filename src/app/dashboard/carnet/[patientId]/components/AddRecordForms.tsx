@@ -3,12 +3,11 @@
 import { useState } from "react";
 import { 
   X, Plus, ClipboardList, Pill, Syringe, Calendar, 
-  Loader2, CheckCircle2, AlertCircle, Save
+  Loader2, CheckCircle2, AlertCircle, Save, Activity
 } from "lucide-react";
 import { 
-  createConsultation, createOrdonnance, createVaccination, createRendezVous 
+  createConsultation, createOrdonnance, createVaccination, createRendezVous, createAnalyse 
 } from "@/lib/api_carnet";
-
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -52,7 +51,7 @@ interface AddRecordFormsProps {
 }
 
 export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsProps) {
-  const [activeModal, setActiveModal] = useState<"consultation" | "ordonnance" | "vaccin" | "rendezvous" | null>(null);
+  const [activeModal, setActiveModal] = useState<"consultation" | "ordonnance" | "vaccin" | "rendezvous" | "analyse" | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -323,6 +322,82 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
     );
   };
 
+  // ─── Analyse Form ──────────────────────────────────────────────
+  const AnalyseForm = () => {
+    const [form, setForm] = useState({
+      typeAnalyse: "",
+      laboratoire: "",
+      resultats: "",
+      dateAnalyse: new Date().toISOString().split('T')[0],
+      notes: ""
+    });
+
+    const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setLoading(true);
+      try {
+        await createAnalyse({ ...form, patientId });
+        handleSuccess();
+      } catch (err) {
+        console.error(err);
+        alert("Erreur lors de l'enregistrement de l'analyse");
+        setLoading(false);
+      }
+    };
+
+    return (
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2">
+          <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Type d'analyse</label>
+          <input 
+            required
+            className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none"
+            placeholder="Ex: Bilan sanguin, Glycémie, Radio..."
+            value={form.typeAnalyse}
+            onChange={e => setForm({...form, typeAnalyse: e.target.value})}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Laboratoire</label>
+            <input 
+              className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none"
+              placeholder="Ex: Labo Central"
+              value={form.laboratoire}
+              onChange={e => setForm({...form, laboratoire: e.target.value})}
+            />
+          </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Date d'analyse</label>
+            <input 
+              type="date"
+              required
+              className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none"
+              value={form.dateAnalyse}
+              onChange={e => setForm({...form, dateAnalyse: e.target.value})}
+            />
+          </div>
+        </div>
+        <div className="space-y-2">
+          <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Résultats détaillés</label>
+          <textarea 
+            required
+            className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none resize-none h-32"
+            placeholder="Saisissez les résultats ici..."
+            value={form.resultats}
+            onChange={e => setForm({...form, resultats: e.target.value})}
+          />
+        </div>
+        <button 
+          disabled={loading}
+          className="w-full py-4 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-400 text-white rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-rose-600/20 transition-all active:scale-95"
+        >
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Enregistrer les résultats</>}
+        </button>
+      </form>
+    );
+  };
+
   // ─── Rendez-vous Form ────────────────────────────────────────────
   const RendezVousForm = () => {
     const [form, setForm] = useState({
@@ -428,6 +503,19 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         </button>
 
         <button 
+          onClick={() => setActiveModal("analyse")}
+          className="flex-1 min-w-[200px] p-6 bg-rose-500 text-white rounded-[2rem] shadow-lg shadow-rose-500/20 hover:scale-105 transition-all flex flex-col gap-4 items-start group"
+        >
+          <div className="w-12 h-12 rounded-2xl bg-white/20 flex items-center justify-center group-hover:rotate-12 transition-transform">
+            <Activity className="w-6 h-6" />
+          </div>
+          <div className="text-left">
+            <p className="font-black text-lg">Analyse</p>
+            <p className="text-xs text-white/70">Résultats de laboratoire</p>
+          </div>
+        </button>
+
+        <button 
           onClick={() => setActiveModal("rendezvous")}
           className="flex-1 min-w-[200px] p-6 bg-slate-800 text-white rounded-[2rem] shadow-lg shadow-slate-800/20 hover:scale-105 transition-all flex flex-col gap-4 items-start group"
         >
@@ -474,6 +562,23 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
             <p className="text-slate-500">L'ordonnance est maintenant disponible pour le patient.</p>
           </div>
         ) : <OrdonnanceForm />}
+      </Modal>
+
+      <Modal 
+        isOpen={activeModal === "analyse"} 
+        onClose={resetState} 
+        title="Résultats d'Analyses" 
+        icon={<Activity className="w-6 h-6" />}
+      >
+        {success ? (
+          <div className="py-12 flex flex-col items-center justify-center text-center gap-4 animate-in zoom-in">
+            <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500">
+              <CheckCircle2 className="w-12 h-12" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-900 dark:text-white">Résultats Enregistrés</h3>
+            <p className="text-slate-500">Les analyses ont été ajoutées au dossier.</p>
+          </div>
+        ) : <AnalyseForm />}
       </Modal>
 
       <Modal 
