@@ -18,10 +18,12 @@ import {
   User
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { usePathname } from "next/navigation";
 import { getProfilMedical, ProfilMedical, createUrgence, getAiFirstAid } from "@/lib/api_carnet";
 
 export default function EmergencyButton() {
   const { user } = useAuth();
+  const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<"sos_confirm" | "sos_sent" | "first_aid">("sos_confirm");
   const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
@@ -142,10 +144,12 @@ export default function EmergencyButton() {
 
   const emergencyPhone = profile?.contactTelephone || "";
 
+  const isInputPage = pathname?.startsWith("/dashboard/chat") || pathname?.startsWith("/dashboard/diagnostic");
+
   return (
     <>
       {/* Floating Trigger Button */}
-      <div className="fixed bottom-6 right-6 z-[60]">
+      <div className={`fixed ${isInputPage ? 'bottom-28 md:bottom-6' : 'bottom-6'} right-6 z-[60] transition-all duration-300`}>
         <button
           onClick={() => { setIsOpen(true); getLoc(); setTimerActive(true); setView("sos_confirm"); }}
           className="group relative w-16 h-16 flex items-center justify-center rounded-full shadow-2xl shadow-emergency-500/40 transition-all duration-500 hover:scale-110 active:scale-95 overflow-hidden"
