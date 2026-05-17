@@ -10,7 +10,7 @@ const testimonials = [
     location: "Dakar, Sénégal",
     avatar: "AD",
     rating: 5,
-    text: "MedConnect m'a sauvé la vie quand mon fils a fait une crise nocturne. Le bouton SOS et les guides de premiers secours m'ont permis de réagir vite en attendant l'ambulance.",
+    text: "MedConnecte m'a sauvé la vie quand mon fils a fait une crise nocturne. Le bouton SOS et les guides de premiers secours m'ont permis de réagir vite en attendant l'ambulance.",
     gradient: "from-primary-500 to-cyan-500",
   },
   {
@@ -165,7 +165,7 @@ export default function TestimonialsSection() {
           </h2>
           <p className="text-lg text-[var(--muted)] leading-relaxed">
             Des milliers d&apos;utilisateurs à travers l&apos;Afrique de l&apos;Ouest comptent
-            sur MedConnect pour leur santé au quotidien.
+            sur MedConnecte pour leur santé au quotidien.
           </p>
         </div>
 

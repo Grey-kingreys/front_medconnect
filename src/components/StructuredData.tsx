@@ -2,14 +2,14 @@
 // À importer dans le layout.tsx ou dans la page d'accueil
 
 export default function StructuredData() {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com";
 
   // Schema Organization
   const organizationSchema = {
     "@context": "https://schema.org",
     "@type": "MedicalOrganization",
     "@id": `${baseUrl}/#organization`,
-    name: "MedConnect Guinée",
+    name: "MedConnecte Guinée",
     url: baseUrl,
     logo: {
       "@type": "ImageObject",
@@ -20,7 +20,7 @@ export default function StructuredData() {
     description:
       "Plateforme de santé numérique 360° en Guinée. Carnet de santé intelligent, diagnostic IA, pharmacie en ligne, urgences 24/7 et géolocalisation médicale.",
     telephone: "+224-622-000-000",
-    email: "contact@kingreys.fr",
+    email: "contact@medconnecte.com",
     address: {
       "@type": "PostalAddress",
       streetAddress: "Quartier Kaloum",
@@ -35,10 +35,10 @@ export default function StructuredData() {
       longitude: -13.5784,
     },
     sameAs: [
-      "https://facebook.com/MedConnectGN",
-      "https://twitter.com/MedConnectGN",
-      "https://instagram.com/MedConnectGN",
-      "https://linkedin.com/company/medconnect-gn",
+      "https://facebook.com/MedConnecteGN",
+      "https://twitter.com/MedConnecteGN",
+      "https://instagram.com/MedConnecteGN",
+      "https://linkedin.com/company/medconnecte-gn",
     ],
     aggregateRating: {
       "@type": "AggregateRating",
@@ -61,7 +61,7 @@ export default function StructuredData() {
     "@type": "MedicalWebPage",
     "@id": `${baseUrl}/#webpage`,
     url: baseUrl,
-    name: "MedConnect — Plateforme de Santé Numérique en Guinée",
+    name: "MedConnecte — Plateforme de Santé Numérique en Guinée",
     description:
       "Carnet de santé numérique, diagnostic IA, pharmacie en ligne, urgences 24/7. Géolocalisez hôpitaux et cliniques à Conakry, Labé, Kindia.",
     inLanguage: "fr-GN",
@@ -69,7 +69,7 @@ export default function StructuredData() {
       "@type": "WebSite",
       "@id": `${baseUrl}/#website`,
       url: baseUrl,
-      name: "MedConnect Guinée",
+      name: "MedConnecte Guinée",
       publisher: {
         "@id": `${baseUrl}/#organization`,
       },
@@ -99,7 +99,7 @@ export default function StructuredData() {
   const webApplicationSchema = {
     "@context": "https://schema.org",
     "@type": "WebApplication",
-    name: "MedConnect",
+    name: "MedConnecte",
     url: baseUrl,
     applicationCategory: "HealthApplication",
     operatingSystem: "All",
@@ -168,10 +168,10 @@ export default function StructuredData() {
     mainEntity: [
       {
         "@type": "Question",
-        name: "MedConnect est-il gratuit ?",
+        name: "MedConnecte est-il gratuit ?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Oui, MedConnect propose un plan gratuit comprenant le carnet de santé numérique, les guides de premiers secours, le bouton SOS d'urgence et la géolocalisation limitée.",
+          text: "Oui, MedConnecte propose un plan gratuit comprenant le carnet de santé numérique, les guides de premiers secours, le bouton SOS d'urgence et la géolocalisation limitée.",
         },
       },
       {
@@ -179,7 +179,7 @@ export default function StructuredData() {
         name: "Le diagnostic IA remplace-t-il une consultation médicale ?",
         acceptedAnswer: {
           "@type": "Answer",
-          text: "Non. Le diagnostic IA de MedConnect est un outil d'orientation préliminaire. Il ne remplace en aucun cas une consultation avec un professionnel de santé qualifié.",
+          text: "Non. Le diagnostic IA de MedConnecte est un outil d'orientation préliminaire. Il ne remplace en aucun cas une consultation avec un professionnel de santé qualifié.",
         },
       },
     ],

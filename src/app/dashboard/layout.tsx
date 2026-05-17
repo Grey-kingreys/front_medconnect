@@ -262,7 +262,7 @@ function Sidebar({
             <Link href="/" className="inline-flex items-center gap-2.5 group">
               <Image
                 src="/images/logo.png"
-                alt="MedConnect Logo"
+                alt="MedConnecte Logo"
                 width={36}
                 height={36}
                 className="rounded-lg group-hover:scale-105 transition-transform duration-300"
@@ -272,14 +272,14 @@ function Sidebar({
                 style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
               >
                 <span className="text-slate-900 dark:text-white">Med</span>
-                <span className="gradient-text">Connect</span>
+                <span className="gradient-text">Connecte</span>
               </span>
             </Link>
           )}
           {collapsed && (
             <Image
               src="/images/logo.png"
-              alt="MedConnect"
+              alt="MedConnecte"
               width={36}
               height={36}
               className="rounded-lg"
@@ -475,7 +475,7 @@ export default function DashboardLayout({
           <Link href="/" className="inline-flex items-center gap-2">
             <Image
               src="/images/logo.png"
-              alt="MedConnect Logo"
+              alt="MedConnecte Logo"
               width={32}
               height={32}
               className="rounded-lg"
@@ -486,7 +486,7 @@ export default function DashboardLayout({
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
               <span className="text-slate-900 dark:text-white">Med</span>
-              <span className="gradient-text">Connect</span>
+              <span className="gradient-text">Connecte</span>
             </span>
           </Link>
           <div className="flex items-center gap-1">

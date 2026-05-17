@@ -1,5 +1,5 @@
 /**
- * MedConnect Structure API
+ * MedConnecte Structure API
  * Pour les STRUCTURE_ADMIN : gestion de leur structure et de leurs membres
  */
 

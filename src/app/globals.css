@@ -1,7 +1,7 @@
 @import "tailwindcss";
 @custom-variant dark (&:is(.dark *));
 
-/* ===== MedConnect Design System ===== */
+/* ===== MedConnecte Design System ===== */
 
 @theme inline {
   --color-background: var(--background);

@@ -20,16 +20,16 @@ const outfit = Outfit({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr"),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com"),
   title: {
-    default: "MedConnect — Plateforme de Santé Numérique en Guinée",
-    template: "%s | MedConnect Guinée",
+    default: "MedConnecte — Plateforme de Santé Numérique en Guinée",
+    template: "%s | MedConnecte Guinée",
   },
   manifest: "/manifest.json",
   description:
     "Carnet de santé numérique, diagnostic IA, pharmacie en ligne et urgences 24/7 en Guinée. Géolocalisez hôpitaux et cliniques à Conakry, Labé, Kindia. Gratuit, sécurisé, hors-ligne.",
   keywords: [
-    "MedConnect Guinée",
+    "MedConnecte Guinée",
     "santé numérique Conakry",
     "carnet de santé électronique",
     "pharmacie en ligne Guinée",
@@ -48,9 +48,9 @@ export const metadata: Metadata = {
     "consultation médicale distance",
     "suivi médical digital",
   ],
-  authors: [{ name: "MedConnect Team", url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr"}/about` }],
-  creator: "MedConnect",
-  publisher: "MedConnect Guinée",
+  authors: [{ name: "MedConnecte Team", url: `${process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com"}/about` }],
+  creator: "MedConnecte",
+  publisher: "MedConnecte Guinée",
   formatDetection: {
     email: false,
     address: false,
@@ -59,9 +59,9 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "fr_GN",
-    url: process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr",
-    siteName: "MedConnect Guinée",
-    title: "MedConnect — Votre santé connectée en Guinée",
+    url: process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com",
+    siteName: "MedConnecte Guinée",
+    title: "MedConnecte — Votre santé connectée en Guinée",
     description:
       "Carnet de santé intelligent, diagnostic IA, pharmacie digitale et urgences 24/7. La plateforme santé 360° pour la Guinée. Gratuit et sécurisé.",
     images: [
@@ -69,25 +69,25 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "MedConnect — Plateforme de Santé Numérique Guinée",
+        alt: "MedConnecte — Plateforme de Santé Numérique Guinée",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MedConnect — Santé Numérique en Guinée",
+    title: "MedConnecte — Santé Numérique en Guinée",
     description:
       "Carnet de santé intelligent, diagnostic IA, pharmacie en ligne et urgences 24/7. Gratuit, sécurisé, hors-ligne.",
     images: ["/og-image.png"],
-    creator: "@MedConnectGN",
-    site: "@MedConnectGN",
+    creator: "@MedConnecteGN",
+    site: "@MedConnecteGN",
   },
   alternates: {
-    canonical: process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr",
+    canonical: process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com",
     languages: {
-      "fr-GN": process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr",
-      "fr": `${process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr"}/fr`,
+      "fr-GN": process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com",
+      "fr": `${process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com"}/fr`,
     },
   },
   robots: {
@@ -109,10 +109,10 @@ export const metadata: Metadata = {
   other: {
     "mobile-web-app-capable": "yes",
     "apple-mobile-web-app-capable": "yes",
-    "application-name": "MedConnect",
+    "application-name": "MedConnecte",
     "msapplication-TileColor": "#3b82f6",
     "msapplication-config": "/browserconfig.xml",
-    "twitter:domain": "medconnect.kingreys.fr",
+    "twitter:domain": "medconnecte.com",
   },
   icons: {
     icon: [

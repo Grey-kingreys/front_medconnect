@@ -82,7 +82,7 @@ const allPlans = {
       name: "Free",
       price: "0",
       period: "pour toujours",
-      description: "Découvrez la puissance de MedConnect.",
+      description: "Découvrez la puissance de MedConnecte.",
       gradient: "from-slate-600 to-slate-700",
       features: [
         "Jusqu'à 2 comptes médecins",

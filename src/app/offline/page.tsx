@@ -17,7 +17,7 @@ export default function OfflinePage() {
         <div className="space-y-2">
           <h1 className="text-2xl font-bold font-outfit">Vous êtes hors ligne</h1>
           <p className="text-slate-600 dark:text-slate-400">
-            Il semble que vous n'ayez pas de connexion internet. Certaines fonctionnalités de MedConnect restent disponibles hors ligne, comme votre carnet de santé et vos patients déjà consultés.
+            Il semble que vous n'ayez pas de connexion internet. Certaines fonctionnalités de MedConnecte restent disponibles hors ligne, comme votre carnet de santé et vos patients déjà consultés.
           </p>
         </div>
 
@@ -40,7 +40,7 @@ export default function OfflinePage() {
         </div>
         
         <p className="text-xs text-slate-500 dark:text-slate-500 pt-4 border-t border-slate-100 dark:border-slate-700">
-          MedConnect utilise la technologie PWA pour vous accompagner même sans réseau.
+          MedConnecte utilise la technologie PWA pour vous accompagner même sans réseau.
         </p>
       </div>
     </div>

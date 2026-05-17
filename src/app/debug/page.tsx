@@ -63,7 +63,7 @@ export default function DebugPage() {
         <header className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Activity className="w-8 h-8 text-primary-500" />
-            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Diagnostic Réseau MedConnect</h1>
+            <h1 className="text-2xl font-bold text-slate-900 dark:text-white">Diagnostic Réseau MedConnecte</h1>
           </div>
           <button 
             onClick={checkConnectivity}
@@ -148,7 +148,7 @@ export default function DebugPage() {
         </div>
 
         <footer className="text-center text-slate-500 text-xs py-4">
-          &copy; MedConnect Diagnostic Tool v1.0
+          &copy; MedConnecte Diagnostic Tool v1.0
         </footer>
       </div>
     </div>

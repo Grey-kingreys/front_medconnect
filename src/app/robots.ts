@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
 
 /**
- * Configuration robots.txt pour MedConnect Guinée
+ * Configuration robots.txt pour MedConnecte Guinée
  * Optimisé pour le SEO et la sécurité
  */
 export default function robots(): MetadataRoute.Robots {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com";
 
   return {
     rules: [

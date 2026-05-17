@@ -60,9 +60,9 @@ function getWelcomeMessage(role: string): string {
       return "Bienvenue dans votre espace de gestion. Administrez votre structure de santé.";
     case "ADMIN":
     case "SUPER_ADMIN":
-      return "Bienvenue dans le panneau d'administration. Gérez la plateforme MedConnect.";
+      return "Bienvenue dans le panneau d'administration. Gérez la plateforme MedConnecte.";
     default:
-      return "Bienvenue sur MedConnect.";
+      return "Bienvenue sur MedConnecte.";
   }
 }
 

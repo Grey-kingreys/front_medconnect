@@ -14,7 +14,7 @@ const serwist = new Serwist({
       // 1. Cache API requests (Medical data, stats, structures)
       matcher: /\/api\/.*|\/super-admin\/.*|\/users\/.*/i,
       handler: new NetworkFirst({
-        cacheName: "medconnect-api-cache",
+        cacheName: "medconnecte-api-cache",
         networkTimeoutSeconds: 5,
         plugins: [
           new ExpirationPlugin({
@@ -28,7 +28,7 @@ const serwist = new Serwist({
       // 2. Cache images, fonts, and static assets
       matcher: /\.(?:png|jpg|jpeg|svg|webp|woff2?|css|js)$/i,
       handler: new StaleWhileRevalidate({
-        cacheName: "medconnect-static-assets",
+        cacheName: "medconnecte-static-assets",
         plugins: [
           new ExpirationPlugin({
             maxEntries: 200,

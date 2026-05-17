@@ -87,7 +87,7 @@ export default function Footer() {
             <a href="#" className="flex items-center gap-2.5 mb-4 group">
               <Image
                 src="/images/logo.png"
-                alt="MedConnect Logo"
+                alt="MedConnecte Logo"
                 width={40}
                 height={40}
                 className="rounded-xl shadow-lg shadow-primary-500/25 transition-transform duration-300 group-hover:scale-105"
@@ -97,7 +97,7 @@ export default function Footer() {
                 style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
               >
                 <span className="text-[var(--foreground)]">Med</span>
-                <span className="gradient-text">Connect</span>
+                <span className="gradient-text">Connecte</span>
               </span>
             </a>
             <p className="text-sm text-[var(--muted)] leading-relaxed max-w-sm mb-6">
@@ -109,11 +109,11 @@ export default function Footer() {
             {/* Contact info */}
             <div className="space-y-2">
               <a
-                href="mailto:contact@medconnect.kingreys.fr"
+                href="mailto:contact@medconnecte.com"
                 className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-primary-500 transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                contact@medconnect.kingreys.fr
+                contact@medconnecte.com
               </a>
               <a
                 href="tel:+224624815998"
@@ -154,7 +154,7 @@ export default function Footer() {
         {/* Bottom bar */}
         <div className="py-6 border-t border-[var(--border)] flex flex-col sm:flex-row items-center justify-between gap-4">
           <p className="text-sm text-[var(--muted)]">
-            © {new Date().getFullYear()} MedConnect. Tous droits réservés.
+            © {new Date().getFullYear()} MedConnecte. Tous droits réservés.
           </p>
 
           <div className="flex items-center gap-3">

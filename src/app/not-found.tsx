@@ -52,7 +52,7 @@ function ECGMonitor() {
             </span>
           </div>
           <span className="text-xs font-mono text-slate-600">
-            MedConnect Monitor v4.0.4
+            MedConnecte Monitor v4.0.4
           </span>
         </div>
 
@@ -364,7 +364,7 @@ export default function NotFound() {
           </div>
         </div>
 
-        {/* Bottom decoration: MedConnect brand */}
+        {/* Bottom decoration: MedConnecte brand */}
         <div
           className={`text-center mt-16 transition-all duration-700 delay-500 ${showContent ? "opacity-100" : "opacity-0"
             }`}
@@ -375,7 +375,7 @@ export default function NotFound() {
           >
             <Image
               src="/images/logo.png"
-              alt="MedConnect Logo"
+              alt="MedConnecte Logo"
               width={24}
               height={24}
               className="rounded-md opacity-60 hover:opacity-100 transition-opacity duration-300"
@@ -384,7 +384,7 @@ export default function NotFound() {
               className="text-sm font-semibold"
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
-              MedConnect
+              MedConnecte
             </span>
           </Link>
         </div>

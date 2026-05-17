@@ -41,7 +41,7 @@ export default function CTASection() {
             <div className="w-20 h-20 rounded-3xl bg-white flex items-center justify-center shadow-2xl shadow-primary-500/30 overflow-hidden">
               <Image
                 src="/images/logo.png"
-                alt="MedConnect Logo"
+                alt="MedConnecte Logo"
                 width={64}
                 height={64}
                 className="animate-pulse-glow"
@@ -62,7 +62,7 @@ export default function CTASection() {
         </h2>
 
         <p className="text-lg sm:text-xl text-slate-400 max-w-2xl mx-auto leading-relaxed mb-10">
-          Rejoignez des milliers d&apos;utilisateurs qui font confiance à MedConnect
+          Rejoignez des milliers d&apos;utilisateurs qui font confiance à MedConnecte
           pour leur santé. Gratuit, sécurisé et disponible hors-ligne.
         </p>
 
@@ -76,7 +76,7 @@ export default function CTASection() {
             <span className="absolute inset-0 bg-gradient-to-r from-primary-600 via-primary-500 to-cyan-500 animate-gradient" />
             <span className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-primary-500 to-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <Download className="relative w-5 h-5" />
-            <span className="relative">Installer MedConnect</span>
+            <span className="relative">Installer MedConnecte</span>
             <ArrowRight className="relative w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
           </a>
 

@@ -1,5 +1,5 @@
 /**
- * MedConnect Admin API
+ * MedConnecte Admin API
  *
  * Fonctions pour les routes ADMIN / SUPER_ADMIN
  * - Statistiques globales (super-admin)
