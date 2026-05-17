@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -37,7 +38,7 @@ export default function MyStructurePage() {
 
   useEffect(() => { fetch(); }, [fetch]);
 
-  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><Loader2 className="w-7 h-7 text-primary-400 animate-spin" /></div>;
+  if (loading) return <div className="flex items-center justify-center min-h-[400px]"><LoadingSpinner /></div>;
   if (error || !structure) return <div className="max-w-2xl mx-auto mt-12"><div className="flex gap-3 p-4 rounded-2xl bg-emergency-500/10 border border-emergency-500/20 text-emergency-400 text-sm"><AlertCircle className="w-5 h-5" />{error || "Structure introuvable"}</div></div>;
 
   const medecins = structure.membres.filter(m => m.role === "MEDECIN");

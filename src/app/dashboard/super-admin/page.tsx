@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -31,7 +32,6 @@ import {
 } from "@/lib/api_admin";
 import GlobePicker from "@/components/GlobePicker";
 import { StructureModal } from "@/components/modals/StructureModal";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 // ─── Color palette ──────────────────────────────────────────────
 const STRUCTURE_COLORS: Record<string, string> = {

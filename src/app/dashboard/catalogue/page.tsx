@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -160,7 +161,7 @@ export default function CataloguePage() {
               {loading && medicaments.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-8 py-20 text-center">
-                    <Loader2 className="w-10 h-10 text-primary-500 animate-spin mx-auto mb-4" />
+                    <LoadingSpinner />
                     <p className="text-slate-500">Chargement du catalogue...</p>
                   </td>
                 </tr>

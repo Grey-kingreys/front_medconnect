@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { 
@@ -96,7 +97,7 @@ export default function MapPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+        <LoadingSpinner />
         <p className="text-slate-500 animate-pulse">Recherche des établissements de santé...</p>
       </div>
     );
@@ -267,7 +268,7 @@ export default function MapPage() {
           </h4>
           
           {loadingDetails ? (
-            <div className="flex justify-center py-8"><Loader2 className="w-6 h-6 animate-spin text-primary-500" /></div>
+            <div className="flex justify-center py-8"><LoadingSpinner /></div>
           ) : doctors.length === 0 ? (
             <p className="text-sm text-slate-500 italic text-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">Aucun médecin enregistré pour le moment.</p>
           ) : (

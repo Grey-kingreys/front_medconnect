@@ -109,18 +109,18 @@ export default function Footer() {
             {/* Contact info */}
             <div className="space-y-2">
               <a
-                href="mailto:contact@medconnecte.com"
+                href="mailto:soulmamoudou0@gmail.com"
                 className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-primary-500 transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                contact@medconnecte.com
+                soulmamoudou0@gmail.com
               </a>
               <a
                 href="tel:+224624815998"
                 className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-primary-500 transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                +224 624 81 59 98
+                +224 624-81-59-98
               </a>
               <span className="flex items-center gap-2 text-sm text-[var(--muted)]">
                 <MapPin className="w-4 h-4" />

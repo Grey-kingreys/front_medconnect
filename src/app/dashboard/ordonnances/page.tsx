@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -74,7 +75,7 @@ export default function OrdonnancesPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="w-10 h-10 text-secondary-500 animate-spin" />
+        <LoadingSpinner />
         <p className="text-slate-500 animate-pulse">Chargement de vos ordonnances...</p>
       </div>
     );

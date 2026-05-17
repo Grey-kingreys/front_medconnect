@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect } from "react";
 import { 
@@ -116,7 +117,7 @@ export default function PatientsPage() {
       {/* Main Content */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="w-12 h-12 animate-spin text-primary-500 mb-4" />
+          <LoadingSpinner />
           <p className="text-slate-500 animate-pulse">Chargement de votre patientèle...</p>
         </div>
       ) : error ? (

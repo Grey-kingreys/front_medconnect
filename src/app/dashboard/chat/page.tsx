@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
@@ -168,7 +169,7 @@ export default function ChatPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-[80vh]"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+    return <div className="flex justify-center items-center h-[80vh]"><LoadingSpinner /></div>;
   }
 
   return (
