@@ -21,6 +21,7 @@ import {
 import { getMyPatients, PatientSummary } from "@/lib/api_patients";
 import Link from "next/link";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const calculateAge = (dateNaissance: string): number => {
   const birthDate = new Date(dateNaissance);
@@ -116,7 +117,7 @@ export default function PatientsPage() {
       {/* Main Content */}
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20">
-          <Loader2 className="w-12 h-12 animate-spin text-primary-500 mb-4" />
+          <LoadingSpinner />
           <p className="text-slate-500 animate-pulse">Chargement de votre patientèle...</p>
         </div>
       ) : error ? (

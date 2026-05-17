@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { StockMedicament, rechercherMedicaments } from "@/lib/api_pharmacie";
 import GlobePicker from "@/components/GlobePicker";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 function MedicamentsContent() {
   const { user } = useAuth();
@@ -333,7 +334,7 @@ export default function MedicamentsPage() {
   return (
     <Suspense fallback={
       <div className="flex items-center justify-center py-20">
-        <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+        <LoadingSpinner />
       </div>
     }>
       <MedicamentsContent />

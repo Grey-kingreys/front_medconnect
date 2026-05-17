@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Building2, Plus, ShieldAlert, XCircle, Search, MapPin, CheckCircle2, Loader2 } from "lucide-react";
 import { 
+import { LoadingSpinner } from "@/components/LoadingSpinner";
   getAllStructures, 
   getMesAutorisations, 
   autoriserStructure, 
@@ -80,7 +81,7 @@ export default function MesStructuresPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-[60vh]">
-        <Loader2 className="w-8 h-8 animate-spin text-primary-500" />
+        <LoadingSpinner />
       </div>
     );
   }

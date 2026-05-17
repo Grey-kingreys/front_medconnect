@@ -19,8 +19,8 @@ export default function StructuredData() {
     },
     description:
       "Plateforme de santé numérique 360° en Guinée. Carnet de santé intelligent, diagnostic IA, pharmacie en ligne, urgences 24/7 et géolocalisation médicale.",
-    telephone: "+224-622-000-000",
-    email: "contact@medconnecte.com",
+    telephone: "+224 624-81-59-98",
+    email: "soulmamoudou0@gmail.com",
     address: {
       "@type": "PostalAddress",
       streetAddress: "Quartier Kaloum",

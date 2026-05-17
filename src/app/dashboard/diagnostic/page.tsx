@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createAutoDiagnostic, getAutoDiagnostics, AutoDiagnostic } from "@/lib/api_carnet";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function DiagnosticPage() {
   const [symptomes, setSymptomes] = useState("");
@@ -163,7 +164,7 @@ export default function DiagnosticPage() {
                 >
                   {analyzing ? (
                     <>
-                      <Loader2 className="w-6 h-6 animate-spin" />
+                      <LoadingSpinner />
                       <span>Analyse en cours...</span>
                     </>
                   ) : (
@@ -263,7 +264,7 @@ export default function DiagnosticPage() {
 
         {loadingHistory ? (
           <div className="flex justify-center py-10">
-            <Loader2 className="w-6 h-6 animate-spin text-slate-300" />
+            <LoadingSpinner />
           </div>
         ) : history.length === 0 ? (
           <div className="p-10 text-center bg-white dark:bg-slate-900/50 rounded-[2.5rem] border border-slate-100 dark:border-slate-800">

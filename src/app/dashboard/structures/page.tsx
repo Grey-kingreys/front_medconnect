@@ -35,6 +35,7 @@ import {
 import { StructureModal } from "@/components/modals/StructureModal";
 import { StructureDeleteModal } from "@/components/modals/StructureDeleteModal";
 import GlobePicker from "@/components/GlobePicker";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 // ─── Constants ──────────────────────────────────────────────────
 
@@ -285,7 +286,7 @@ export default function StructuresPage() {
         <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-16">
-              <Loader2 className="w-6 h-6 text-primary-400 animate-spin" />
+              <LoadingSpinner />
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-slate-600">

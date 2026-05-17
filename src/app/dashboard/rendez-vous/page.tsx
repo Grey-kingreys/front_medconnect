@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { getRendezVous, RendezVous, updateRendezVousStatus } from "@/lib/api_carnet";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function RendezVousPage() {
   const { user } = useAuth();
@@ -65,7 +66,7 @@ export default function RendezVousPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+        <LoadingSpinner />
         <p className="text-slate-500 animate-pulse">Chargement de vos rendez-vous...</p>
       </div>
     );

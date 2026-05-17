@@ -9,6 +9,7 @@ import {
 import { getMembres, createMembre, toggleMembreActive, Membre, MembreRole, ApiError } from "@/lib/api_structure";
 import { UserModal } from "@/components/modals/UserModal";
 import { MemberDeleteModal } from "@/components/modals/MemberDeleteModal";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const ROLE_CONFIG: Record<MembreRole, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   MEDECIN: { label: "Médecin", color: "text-blue-400", bg: "bg-blue-500/10", icon: <Stethoscope className="w-4 h-4" /> },
@@ -144,7 +145,7 @@ export default function MembresPage() {
       {/* Table */}
       <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl overflow-hidden">
         {loading ? (
-          <div className="flex items-center justify-center py-16"><Loader2 className="w-6 h-6 text-primary-400 animate-spin" /></div>
+          <div className="flex items-center justify-center py-16"><LoadingSpinner /></div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-slate-600">
             <Users className="w-10 h-10 mb-3 opacity-30" />

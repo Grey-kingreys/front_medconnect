@@ -20,6 +20,7 @@ import {
 import { getConsultations, Consultation } from "@/lib/api_carnet";
 import Link from "next/link";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function ConsultationsPage() {
   const { user } = useAuth();
@@ -59,7 +60,7 @@ export default function ConsultationsPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+        <LoadingSpinner />
         <p className="text-slate-500 animate-pulse">Chargement de vos consultations...</p>
       </div>
     );

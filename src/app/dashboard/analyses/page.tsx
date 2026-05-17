@@ -18,6 +18,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { getAnalyses, ResultatAnalyse } from "@/lib/api_carnet";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function AnalysesPage() {
   const { user } = useAuth();
@@ -53,7 +54,7 @@ export default function AnalysesPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="w-10 h-10 text-indigo-500 animate-spin" />
+        <LoadingSpinner />
         <p className="text-slate-500 animate-pulse">Chargement de vos analyses...</p>
       </div>
     );

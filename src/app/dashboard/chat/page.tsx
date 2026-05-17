@@ -5,6 +5,7 @@ import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
 import { getConversations, getMessages, startConversation, Conversation, Message } from "@/lib/api_chat";
 import { 
+import { LoadingSpinner } from "@/components/LoadingSpinner";
   Send, MapPin, Loader2, User as UserIcon, Building2, Phone, Search, AlertCircle, Menu, ArrowLeft
 } from "lucide-react";
 
@@ -168,7 +169,7 @@ export default function ChatPage() {
   };
 
   if (loading) {
-    return <div className="flex justify-center items-center h-[80vh]"><Loader2 className="w-8 h-8 animate-spin text-primary-500" /></div>;
+    return <div className="flex justify-center items-center h-[80vh]"><LoadingSpinner /></div>;
   }
 
   return (

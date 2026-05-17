@@ -24,6 +24,7 @@ import {
   Bot
 } from "lucide-react";
 import { 
+import { LoadingSpinner } from "@/components/LoadingSpinner";
   getProfilMedical, 
   upsertProfilMedical, 
   ProfilMedical, 
@@ -192,7 +193,7 @@ export default function CarnetPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
-        <Loader2 className="w-10 h-10 text-primary-500 animate-spin" />
+        <LoadingSpinner />
         <p className="text-slate-500 animate-pulse">Chargement de votre carnet de santé...</p>
       </div>
     );
