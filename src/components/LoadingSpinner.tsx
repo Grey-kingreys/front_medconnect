@@ -13,7 +13,7 @@ export function LoadingSpinner({ message = "Chargement...", fullPage = false }: 
       <div className="relative">
         <Image
           src="/images/logo.png"
-          alt="MedConnect"
+          alt="MedConnecte"
           width={fullPage ? 64 : 48}
           height={fullPage ? 64 : 48}
           className="rounded-2xl animate-pulse-glow"

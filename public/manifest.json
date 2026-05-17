@@ -1,6 +1,6 @@
 {
-  "name": "MedConnect — Santé Numérique en Guinée",
-  "short_name": "MedConnect",
+  "name": "MedConnecte — Santé Numérique en Guinée",
+  "short_name": "MedConnecte",
   "description": "Carnet de santé numérique, diagnostic IA, pharmacie en ligne et urgences 24/7 en Guinée",
   "start_url": "/",
   "display": "standalone",
@@ -31,7 +31,7 @@
       "sizes": "1920x1080",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Page d'accueil MedConnect"
+      "label": "Page d'accueil MedConnecte"
     },
     {
       "src": "/screenshots/mobile-dashboard.png",

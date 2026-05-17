@@ -61,7 +61,7 @@ export default function Navbar() {
         <a href="#" className="flex items-center gap-2.5 group">
           <Image
             src="/images/logo.png"
-            alt="MedConnect Logo"
+            alt="MedConnecte Logo"
             width={40}
             height={40}
             priority
@@ -73,7 +73,7 @@ export default function Navbar() {
             style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
           >
             <span className="text-slate-900 dark:text-white">Med</span>
-            <span className="gradient-text">Connect</span>
+            <span className="gradient-text">Connecte</span>
           </span>
         </a>
 

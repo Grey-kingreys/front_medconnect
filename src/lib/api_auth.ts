@@ -1,5 +1,5 @@
 /**
- * MedConnect Auth API
+ * MedConnecte Auth API
  * 
  * Contient uniquement les fonctions pour l'authentification.
  * L'URL du backend est lue depuis NEXT_PUBLIC_API_URL dans .env

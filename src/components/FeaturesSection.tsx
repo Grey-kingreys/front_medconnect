@@ -187,7 +187,7 @@ export default function FeaturesSection() {
             <span className="text-[var(--foreground)]">, en un seul endroit</span>
           </h2>
           <p className="text-lg text-[var(--muted)] leading-relaxed">
-            MedConnect réunit les outils essentiels pour gérer votre santé au
+            MedConnecte réunit les outils essentiels pour gérer votre santé au
             quotidien, des situations d&apos;urgence aux consultations de routine.
           </p>
         </div>

@@ -53,7 +53,7 @@ export default function LoginPage() {
           Bon retour !
         </h2>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Connectez-vous à votre compte MedConnect
+          Connectez-vous à votre compte MedConnecte
         </p>
       </div>
 

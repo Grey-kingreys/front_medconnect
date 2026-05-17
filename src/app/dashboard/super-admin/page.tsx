@@ -161,7 +161,7 @@ export default function SuperAdminDashboard() {
               </span>
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl">
-              Vue d&apos;ensemble de la plateforme MedConnect — statistiques globales et gestion des structures.
+              Vue d&apos;ensemble de la plateforme MedConnecte — statistiques globales et gestion des structures.
             </p>
           </div>
 

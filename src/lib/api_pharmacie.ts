@@ -1,5 +1,5 @@
 /**
- * MedConnect Pharmacy & Medication API
+ * MedConnecte Pharmacy & Medication API
  */
 
 import { ApiError, ApiResponse, authFetch } from "./api_auth";

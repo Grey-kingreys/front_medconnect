@@ -30,7 +30,7 @@ export default function AuthLayout({
           <Link href="/" className="inline-flex items-center gap-2.5 group">
             <Image
               src="/images/logo.png"
-              alt="MedConnect Logo"
+              alt="MedConnecte Logo"
               width={40}
               height={40}
               priority
@@ -41,7 +41,7 @@ export default function AuthLayout({
               style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
             >
               <span className="text-slate-900 dark:text-white">Med</span>
-              <span className="gradient-text">Connect</span>
+              <span className="gradient-text">Connecte</span>
             </span>
           </Link>
         </div>
@@ -76,7 +76,7 @@ export default function AuthLayout({
 
         {/* Footer */}
         <p className="relative z-10 text-sm text-slate-600">
-          © {new Date().getFullYear()} MedConnect. Tous droits réservés.
+          © {new Date().getFullYear()} MedConnecte. Tous droits réservés.
         </p>
       </div>
 
@@ -88,7 +88,7 @@ export default function AuthLayout({
             <Link href="/" className="inline-flex items-center gap-2.5">
               <Image
                 src="/images/logo.png"
-                alt="MedConnect Logo"
+                alt="MedConnecte Logo"
                 width={40}
                 height={40}
                 priority
@@ -99,7 +99,7 @@ export default function AuthLayout({
                 style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
               >
                 <span className="text-slate-900 dark:text-white">Med</span>
-                <span className="gradient-text">Connect</span>
+                <span className="gradient-text">Connecte</span>
               </span>
             </Link>
           </div>

@@ -107,7 +107,7 @@ export default function RegisterPage() {
           Créer un compte
         </h2>
         <p className="text-slate-500 dark:text-slate-400 text-sm">
-          Rejoignez MedConnect gratuitement
+          Rejoignez MedConnecte gratuitement
         </p>
       </div>
 

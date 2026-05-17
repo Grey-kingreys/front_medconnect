@@ -151,7 +151,7 @@ export default function EmergencyListener() {
             </div>
             <div className="flex-1">
               <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-1">{activeAlert.patientName}</h3>
-              <p className="text-slate-500 text-sm mb-3">Patient MedConnect en détresse</p>
+              <p className="text-slate-500 text-sm mb-3">Patient MedConnecte en détresse</p>
               <div className="flex gap-2">
                 <span className="px-3 py-1 bg-emergency-500/10 text-emergency-500 text-[10px] font-black rounded-lg uppercase tracking-widest">
                   Groupe {activeAlert.profilMedical?.groupeSanguin?.replace('_POSITIF', '+').replace('_NEGATIF', '-') || '?'}

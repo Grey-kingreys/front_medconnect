@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com";
 
   return {
     title: "Diagnostic Médical par Intelligence Artificielle",
@@ -18,24 +18,24 @@ export async function generateMetadata(): Promise<Metadata> {
       "télémédecine Guinée",
     ],
     openGraph: {
-      title: "Diagnostic Médical IA — MedConnect Guinée",
+      title: "Diagnostic Médical IA — MedConnecte Guinée",
       description:
         "Analysez vos symptômes avec notre IA médicale avancée. Diagnostic préliminaire instantané et orientation vers les spécialistes.",
       url: `${baseUrl}/dashboard/diagnostic`,
-      siteName: "MedConnect Guinée",
+      siteName: "MedConnecte Guinée",
       images: [
         {
           url: "/og-diagnostic-ia.png",
           width: 1200,
           height: 630,
-          alt: "Diagnostic Médical par IA — MedConnect",
+          alt: "Diagnostic Médical par IA — MedConnecte",
         },
       ],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: "Diagnostic Médical IA — MedConnect Guinée",
+      title: "Diagnostic Médical IA — MedConnecte Guinée",
       description:
         "Analysez vos symptômes avec notre IA médicale. Diagnostic instantané et orientation.",
       images: ["/og-diagnostic-ia.png"],

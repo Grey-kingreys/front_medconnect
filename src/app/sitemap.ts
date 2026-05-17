@@ -1,11 +1,11 @@
 import type { MetadataRoute } from "next";
 
 /**
- * Sitemap dynamique pour MedConnect Guinée
+ * Sitemap dynamique pour MedConnecte Guinée
  * Génère automatiquement les URLs principales pour le SEO
  */
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnect.kingreys.fr";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com";
   const currentDate = new Date();
 
   // URLs statiques principales
