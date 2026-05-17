@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -32,7 +33,6 @@ import {
 } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 import EmergencyButton from "@/components/EmergencyButton";
 import EmergencyListener from "@/components/EmergencyListener";
 import NotificationBell from "@/components/NotificationBell";

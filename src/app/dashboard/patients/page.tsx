@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect } from "react";
 import { 
@@ -21,7 +22,6 @@ import {
 import { getMyPatients, PatientSummary } from "@/lib/api_patients";
 import Link from "next/link";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const calculateAge = (dateNaissance: string): number => {
   const birthDate = new Date(dateNaissance);

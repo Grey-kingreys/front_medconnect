@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,7 +19,6 @@ import {
   ChevronRight
 } from "lucide-react";
 import { getAnalyses, ResultatAnalyse } from "@/lib/api_carnet";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function AnalysesPage() {
   const { user } = useAuth();

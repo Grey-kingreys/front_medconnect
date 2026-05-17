@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -25,7 +26,6 @@ import {
 } from "lucide-react";
 import { StockMedicament, rechercherMedicaments } from "@/lib/api_pharmacie";
 import GlobePicker from "@/components/GlobePicker";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 function MedicamentsContent() {
   const { user } = useAuth();

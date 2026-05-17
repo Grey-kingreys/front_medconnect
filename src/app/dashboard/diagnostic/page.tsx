@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect } from "react";
 import { 
@@ -19,7 +20,6 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createAutoDiagnostic, getAutoDiagnostics, AutoDiagnostic } from "@/lib/api_carnet";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function DiagnosticPage() {
   const [symptomes, setSymptomes] = useState("");

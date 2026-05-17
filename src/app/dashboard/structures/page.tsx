@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -35,7 +36,6 @@ import {
 import { StructureModal } from "@/components/modals/StructureModal";
 import { StructureDeleteModal } from "@/components/modals/StructureDeleteModal";
 import GlobePicker from "@/components/GlobePicker";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 // ─── Constants ──────────────────────────────────────────────────
 

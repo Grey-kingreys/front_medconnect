@@ -1,11 +1,11 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
 import { getConversations, getMessages, startConversation, Conversation, Message } from "@/lib/api_chat";
 import { 
-import { LoadingSpinner } from "@/components/LoadingSpinner";
   Send, MapPin, Loader2, User as UserIcon, Building2, Phone, Search, AlertCircle, Menu, ArrowLeft
 } from "lucide-react";
 

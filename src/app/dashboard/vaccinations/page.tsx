@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -19,7 +20,6 @@ import {
 } from "lucide-react";
 import { getVaccinations, Vaccination } from "@/lib/api_carnet";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function VaccinationsPage() {
   const { user } = useAuth();

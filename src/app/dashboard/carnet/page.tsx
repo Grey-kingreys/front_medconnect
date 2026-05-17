@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -24,7 +25,6 @@ import {
   Bot
 } from "lucide-react";
 import { 
-import { LoadingSpinner } from "@/components/LoadingSpinner";
   getProfilMedical, 
   upsertProfilMedical, 
   ProfilMedical, 

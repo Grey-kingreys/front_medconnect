@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { 
@@ -21,7 +22,6 @@ import {
 import { useRouter } from "next/navigation";
 import { getAllStructures, MyStructure } from "@/lib/api_structure";
 import GlobePicker from "@/components/GlobePicker";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function PharmaciesPage() {
   const router = useRouter();

@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
@@ -26,7 +27,6 @@ import {
 import Link from "next/link";
 import { getMyStructure, MyStructure } from "@/lib/api_structure";
 import DashboardCharts from "@/components/DashboardCharts";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 // ─── Types ──────────────────────────────────────────────────────
 

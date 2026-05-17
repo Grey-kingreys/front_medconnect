@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -9,7 +10,6 @@ import {
 import { getMembres, createMembre, toggleMembreActive, Membre, MembreRole, ApiError } from "@/lib/api_structure";
 import { UserModal } from "@/components/modals/UserModal";
 import { MemberDeleteModal } from "@/components/modals/MemberDeleteModal";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const ROLE_CONFIG: Record<MembreRole, { label: string; color: string; bg: string; icon: React.ReactNode }> = {
   MEDECIN: { label: "Médecin", color: "text-blue-400", bg: "bg-blue-500/10", icon: <Stethoscope className="w-4 h-4" /> },

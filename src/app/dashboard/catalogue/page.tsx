@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
@@ -22,7 +23,6 @@ import {
   deleteMedicament 
 } from "@/lib/api_pharmacie";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function CataloguePage() {
   const { user } = useAuth();

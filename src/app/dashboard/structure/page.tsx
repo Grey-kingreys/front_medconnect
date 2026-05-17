@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import {
@@ -11,7 +12,6 @@ import { getMyStructure, updateMyStructure, MyStructure, UpdateStructurePayload,
 import { StructureModal } from "@/components/modals/StructureModal";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const TYPE_LABEL: Record<string, string> = { HOPITAL: "Hôpital", CLINIQUE: "Clinique", PHARMACIE: "Pharmacie" };
 const TYPE_GRADIENT: Record<string, string> = {

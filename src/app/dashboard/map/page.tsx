@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { 
@@ -25,7 +26,6 @@ import { autoriserStructure, designerMedecin, getAutorisations } from "@/lib/api
 import { startConversation } from "@/lib/api_chat";
 import { ShieldCheck, ShieldAlert, Star, Check, MessageSquare } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 export default function MapPage() {
   const [structures, setStructures] = useState<MyStructure[]>([]);

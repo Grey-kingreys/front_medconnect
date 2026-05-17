@@ -1,4 +1,5 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -9,7 +10,6 @@ import {
 } from "lucide-react";
 import { getPatientCarnet, PatientCarnet } from "@/lib/api_carnet";
 import AddRecordForms from "./components/AddRecordForms";
-import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 const calculateAge = (dateNaissance: string): number => {
   const birthDate = new Date(dateNaissance);

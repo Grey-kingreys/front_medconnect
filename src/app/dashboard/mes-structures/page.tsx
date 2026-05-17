@@ -1,10 +1,10 @@
 "use client";
+import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { Building2, Plus, ShieldAlert, XCircle, Search, MapPin, CheckCircle2, Loader2 } from "lucide-react";
 import { 
-import { LoadingSpinner } from "@/components/LoadingSpinner";
   getAllStructures, 
   getMesAutorisations, 
   autoriserStructure, 
