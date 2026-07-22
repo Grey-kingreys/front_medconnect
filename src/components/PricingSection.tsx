@@ -24,8 +24,8 @@ const allPlans = {
     },
     {
       name: "Premium",
-      price: "50 000",
-      period: "GNF / mois",
+      price: "50 000",
+      period: "/ mois",
       description: "Pour une gestion complète et des fonctionnalités avancées.",
       gradient: "from-primary-500 to-cyan-500",
       features: [
@@ -60,8 +60,8 @@ const allPlans = {
     },
     {
       name: "Premium",
-      price: "100 000",
-      period: "GNF / mois",
+      price: "100 000",
+      period: "/ mois",
       description: "Maximisez vos ventes et votre visibilité locale.",
       gradient: "from-emerald-500 to-teal-500",
       features: [
@@ -97,8 +97,8 @@ const allPlans = {
     },
     {
       name: "Pro",
-      price: "100 000",
-      period: "GNF / mois",
+      price: "100 000",
+      period: "/ mois",
       description: "Idéal pour les cliniques et cabinets privés.",
       gradient: "from-blue-500 to-indigo-500",
       features: [
@@ -114,8 +114,8 @@ const allPlans = {
     },
     {
       name: "Platinium",
-      price: "800 000",
-      period: "GNF / mois",
+      price: "800 000",
+      period: "/ mois",
       description: "Pour les structures hospitalières moyennes.",
       gradient: "from-purple-500 to-pink-500",
       features: [
@@ -131,8 +131,8 @@ const allPlans = {
     },
     {
       name: "Diamant",
-      price: "1 500 000",
-      period: "GNF / mois",
+      price: "1 500 000",
+      period: "/ mois",
       description: "Pour les grands centres hospitaliers (CHU).",
       gradient: "from-amber-500 to-orange-500",
       features: [
@@ -236,10 +236,41 @@ function PricingCard({
   );
 }
 
+const tabs = [
+  { id: "patients", label: "Patients", icon: User },
+  { id: "pharmacies", label: "Pharmacies", icon: Store },
+  { id: "hopitaux", label: "Hôpitaux", icon: Building2 },
+] as const;
+
+type TabId = (typeof tabs)[number]["id"];
+
 export default function PricingSection() {
   const sectionRef = useRef<HTMLElement>(null);
+  const tablistRef = useRef<HTMLDivElement>(null);
   const [isVisible, setIsVisible] = useState(false);
-  const [activeTab, setActiveTab] = useState<keyof typeof allPlans>("patients");
+  const [activeTab, setActiveTab] = useState<TabId>("patients");
+
+  /**
+   * Navigation clavier du motif « tabs » (flèches, Début, Fin) attendue par
+   * les lecteurs d'écran : les onglets ne sont pas atteignables au Tab
+   * individuellement, seul l'onglet actif l'est.
+   */
+  function onTablistKeyDown(event: React.KeyboardEvent<HTMLDivElement>) {
+    const index = tabs.findIndex((t) => t.id === activeTab);
+    let cible: number | null = null;
+
+    if (event.key === "ArrowRight") cible = (index + 1) % tabs.length;
+    else if (event.key === "ArrowLeft") cible = (index - 1 + tabs.length) % tabs.length;
+    else if (event.key === "Home") cible = 0;
+    else if (event.key === "End") cible = tabs.length - 1;
+    if (cible === null) return;
+
+    event.preventDefault();
+    setActiveTab(tabs[cible].id);
+    tablistRef.current
+      ?.querySelectorAll<HTMLButtonElement>('[role="tab"]')
+      [cible]?.focus();
+  }
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -254,12 +285,6 @@ export default function PricingSection() {
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
-
-  const tabs = [
-    { id: "patients", label: "Patients", icon: User },
-    { id: "pharmacies", label: "Pharmacies", icon: Store },
-    { id: "hopitaux", label: "Hôpitaux", icon: Building2 },
-  ] as const;
 
   return (
     <section
@@ -298,39 +323,66 @@ export default function PricingSection() {
           className={`flex justify-center mb-16 transition-all duration-700 delay-200 ${isVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-8"
             }`}
         >
-          <div className="inline-flex p-1.5 bg-[var(--surface-elevated)] rounded-2xl border border-[var(--border)] shadow-xl">
+          <div
+            ref={tablistRef}
+            role="tablist"
+            aria-label="Type d'utilisateur"
+            onKeyDown={onTablistKeyDown}
+            className="inline-flex p-1.5 bg-[var(--surface-elevated)] rounded-2xl border border-[var(--border)] shadow-xl"
+          >
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
+                role="tab"
+                id={`pricing-tab-${tab.id}`}
+                aria-controls={`pricing-panel-${tab.id}`}
+                aria-selected={activeTab === tab.id}
+                tabIndex={activeTab === tab.id ? 0 : -1}
                 onClick={() => setActiveTab(tab.id)}
                 className={`flex items-center gap-2 px-6 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === tab.id
                     ? "bg-gradient-to-r from-primary-600 to-cyan-500 text-white shadow-lg shadow-primary-500/20"
                     : "text-[var(--muted)] hover:text-[var(--foreground)] hover:bg-white/5"
                   }`}
               >
-                <tab.icon className="w-4 h-4" />
+                <tab.icon className="w-4 h-4" aria-hidden="true" />
                 {tab.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Plans Grid */}
-        <div
-          className={`grid gap-8 items-stretch ${activeTab === "hopitaux"
-              ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
-              : "grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto"
-            }`}
-        >
-          {allPlans[activeTab].map((plan, index) => (
-            <PricingCard
-              key={`${activeTab}-${index}`}
-              plan={plan}
-              index={index}
-              isVisible={isVisible}
-            />
-          ))}
-        </div>
+        {/* Plans Grid — les trois grilles sont rendues dans le HTML initial et
+            basculées par l'attribut `hidden` : en rendu conditionnel React, seul
+            l'onglet Patients existait dans la page, les tarifs Pharmacies et
+            Hôpitaux n'étaient donc ni indexés ni accessibles sans JavaScript.
+            ⚠️ `hidden` doit rester sur un conteneur SANS classe d'affichage
+            (`grid`, `flex`…), qui l'emporterait sur `display: none`. */}
+        {tabs.map((tab) => (
+          <div
+            key={tab.id}
+            role="tabpanel"
+            id={`pricing-panel-${tab.id}`}
+            aria-labelledby={`pricing-tab-${tab.id}`}
+            hidden={activeTab !== tab.id}
+          >
+            <div
+              className={`grid gap-8 items-stretch ${tab.id === "hopitaux"
+                  ? "grid-cols-1 sm:grid-cols-2 lg:grid-cols-4"
+                  : "grid-cols-1 sm:grid-cols-2 max-w-4xl mx-auto"
+                }`}
+            >
+              {allPlans[tab.id].map((plan, index) => (
+                <PricingCard
+                  key={`${tab.id}-${index}`}
+                  plan={plan}
+                  index={index}
+                  isVisible={isVisible}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
 
         {/* Footer info */}
         <p className={`text-center mt-12 text-sm text-[var(--muted)] transition-all duration-700 delay-500 ${isVisible ? "opacity-100" : "opacity-0"
