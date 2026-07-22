@@ -79,10 +79,9 @@ export default function SetupStructurePage() {
         structureTelephone: form.structureTelephone || undefined,
         description: form.description || undefined,
       });
-      // Login with the returned token
+      // Login with the returned token (refresh token via cookie httpOnly)
       loginUser({
         access_token: res.data.access_token,
-        refresh_token: res.data.refresh_token,
         user: res.data.user,
       });
       router.push("/dashboard");
