@@ -13,13 +13,17 @@ import Image from "next/image";
 import { useAuth } from "@/hooks/useAuth";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
-const navLinks = [
+const SHOW_TESTIMONIALS = false; // Masquer jusqu'à remplacement avec vrais utilisateurs
+
+const baseNavLinks = [
   { label: "Catalogue", href: "/catalogue" },
   { label: "Fonctionnalités", href: "#features" },
   { label: "Comment ça marche", href: "#how-it-works" },
-  { label: "Témoignages", href: "#testimonials" },
+  ...(SHOW_TESTIMONIALS ? [{ label: "Témoignages", href: "#testimonials" }] : []),
   { label: "Tarifs", href: "#pricing" },
 ];
+
+const navLinks = baseNavLinks;
 
 export default function Navbar() {
   const [isScrolled, setIsScrolled] = useState(false);
