@@ -49,4 +49,9 @@ COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/next.config.ts ./next.config.ts
 EXPOSE 3000
+# Sonde de santé : l'orchestrateur (Docker Swarm, derrière Dokploy) n'ajoute le
+# conteneur au routage Traefik qu'une fois « healthy ». node:*-slim n'embarque ni
+# curl ni wget → `fetch` global de Node 22.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||3000)+'/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 CMD ["npm", "run", "start"]
