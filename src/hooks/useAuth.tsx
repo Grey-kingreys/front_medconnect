@@ -123,11 +123,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Connexion : met à jour le state + localStorage immédiatement ──
   const loginUser = useCallback(
     (data: LoginResponse | RegisterResponse) => {
-      // 1. Stocker les tokens
+      // 1. Stocker l'access token (le refresh token vit dans un cookie httpOnly).
       localStorage.setItem("access_token", data.access_token);
-      if (data.refresh_token) {
-        localStorage.setItem("refresh_token", data.refresh_token);
-      }
       localStorage.setItem("user", JSON.stringify(data.user));
 
       // 2. Mettre à jour le state React (le contexte se propage partout)

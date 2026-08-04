@@ -18,6 +18,7 @@ const ROLE_LABELS: Record<string, string> = {
   MEDECIN: "Médecin",
   PHARMACIEN: "Pharmacien",
   STRUCTURE_ADMIN: "Admin Structure",
+  ACCUEIL: "Accueil",
   ADMIN: "Administrateur",
   SUPER_ADMIN: "Super Admin",
 };
@@ -48,9 +49,9 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
   const isSuperAdminMode = mode === "create_super_admin";
   const isAdminUserMode = mode === "create_admin_user";
 
-  const allowedMembreRoles: MembreRole[] = structureType === "PHARMACIE" 
-    ? ["PHARMACIEN", "STRUCTURE_ADMIN"] 
-    : ["MEDECIN", "PHARMACIEN", "STRUCTURE_ADMIN"];
+  const allowedMembreRoles: MembreRole[] = structureType === "PHARMACIE"
+    ? ["PHARMACIEN", "STRUCTURE_ADMIN"]
+    : ["MEDECIN", "ACCUEIL", "PHARMACIEN", "STRUCTURE_ADMIN"];
   const adminUserRoles = ["PATIENT", "MEDECIN", "PHARMACIEN", "ADMIN"];
 
   const [form, setForm] = useState({

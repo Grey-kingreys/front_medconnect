@@ -21,6 +21,7 @@ import {
   Plus
 } from "lucide-react";
 import { getOrdonnances, Ordonnance } from "@/lib/api_carnet";
+import { openStoredFile } from "@/lib/api_storage";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
 
 interface MedicamentItem {
@@ -38,6 +39,15 @@ export default function OrdonnancesPage() {
   const [search, setSearch] = useState("");
   const [selectedOrdonnance, setSelectedOrdonnance] = useState<Ordonnance | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [scanBusy, setScanBusy] = useState(false);
+  const [scanError, setScanError] = useState("");
+
+  const openScan = async (id: string) => {
+    setScanError(""); setScanBusy(true);
+    try { await openStoredFile(id); }
+    catch { setScanError("Impossible d'ouvrir l'ordonnance scannée."); }
+    finally { setScanBusy(false); }
+  };
 
   const isDoctor = user?.role === "MEDECIN" || user?.role === "STRUCTURE_ADMIN";
 
@@ -247,13 +257,27 @@ export default function OrdonnancesPage() {
               </div>
 
               {/* Footer Actions */}
-              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-                <button className="flex-1 py-4 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:shadow-lg transition-all">
-                  <Printer className="w-4 h-4" /> Imprimer
-                </button>
-                <button className="flex-1 py-4 flex items-center justify-center gap-2 bg-secondary-500 text-white rounded-2xl text-sm font-bold shadow-xl shadow-secondary-500/20 hover:bg-secondary-600 transition-all">
-                  <Download className="w-4 h-4" /> Télécharger PDF
-                </button>
+              <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex gap-3">
+                  <button className="flex-1 py-4 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:shadow-lg transition-all">
+                    <Printer className="w-4 h-4" /> Imprimer
+                  </button>
+                  {selectedOrdonnance.scanFileId ? (
+                    <button
+                      onClick={() => openScan(selectedOrdonnance.scanFileId!)}
+                      disabled={scanBusy}
+                      className="flex-1 py-4 flex items-center justify-center gap-2 bg-secondary-500 text-white rounded-2xl text-sm font-bold shadow-xl shadow-secondary-500/20 hover:bg-secondary-600 transition-all disabled:opacity-60"
+                    >
+                      {scanBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                      Ouvrir le scan
+                    </button>
+                  ) : (
+                    <div className="flex-1 py-4 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-400">
+                      Aucun scan joint
+                    </div>
+                  )}
+                </div>
+                {scanError && <p role="alert" className="mt-2 text-xs text-red-500 text-center">{scanError}</p>}
               </div>
             </div>
           </div>

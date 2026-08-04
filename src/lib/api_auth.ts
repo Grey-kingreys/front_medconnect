@@ -41,6 +41,8 @@ export interface UserProfile {
   isActive: boolean;
   specialite?: string;
   structureId?: string;
+  /** URL publique de la photo de profil (bucket R2 public), null si aucune. */
+  avatarUrl?: string | null;
   structure?: {
     id: string;
     nom: string;
@@ -52,13 +54,11 @@ export interface UserProfile {
 
 export interface LoginResponse {
   access_token: string;
-  refresh_token: string; // Ajouté
   user: AuthUser;
 }
 
 export interface RegisterResponse {
   access_token: string;
-  refresh_token: string; // Ajouté
   user: AuthUser;
 }
 
@@ -69,7 +69,6 @@ export interface VerifyResetTokenResponse {
 
 export interface RefreshTokenResponse {
   access_token: string;
-  refresh_token: string; // Ajouté
 }
 
 export interface VerifyTokenResponse {
@@ -131,7 +130,7 @@ export async function apiFetch<T>(
   }
 }
 
-let refreshPromise: Promise<ApiResponse<{ access_token: string; refresh_token: string }>> | null = null;
+let refreshPromise: Promise<ApiResponse<{ access_token: string }>> | null = null;
 
 /**
  * Fetch authentifié — ajoute automatiquement le Bearer token
@@ -159,30 +158,23 @@ export async function authFetch<T>(
     // Si 401 → tenter un refresh du token puis réessayer une seule fois
     if (err instanceof ApiError && err.status === 401) {
       try {
-        // Utiliser une promesse partagée pour éviter les appels concurrents
+        // Utiliser une promesse partagée pour éviter les appels concurrents.
+        // Le refresh token vit dans un cookie httpOnly (envoyé via credentials:include),
+        // il n'est donc plus lu/transmis depuis le JS.
         if (!refreshPromise) {
-          const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null;
-          
-          refreshPromise = apiFetch<{ access_token: string; refresh_token: string }>(
-            "/auth/refresh",
-            { 
-              method: "POST",
-              body: JSON.stringify({ refresh_token: refreshToken }) // Envoyé dans le body en fallback du cookie
-            }
-          );
+          refreshPromise = apiFetch<{ access_token: string }>("/auth/refresh", {
+            method: "POST",
+          });
         }
 
         const refreshRes = await refreshPromise;
-        
+
         // Nettoyer la promesse une fois terminée
         refreshPromise = null;
 
-        // Sauvegarder les tokens
+        // Sauvegarder le nouvel access token
         if (typeof window !== "undefined") {
           localStorage.setItem("access_token", refreshRes.data.access_token);
-          if (refreshRes.data.refresh_token) {
-            localStorage.setItem("refresh_token", refreshRes.data.refresh_token);
-          }
         }
 
         // Réessayer la requête originale avec le nouveau token
@@ -301,6 +293,24 @@ export async function updateProfile(data: {
 }
 
 /**
+ * Définir ma photo de profil depuis un fichier R2 déjà téléversé et confirmé.
+ * Renvoie l'URL publique du nouvel avatar.
+ */
+export async function setMyAvatar(fileId: string) {
+  return authFetch<{ avatarUrl: string | null }>("/users/me/avatar", {
+    method: "PATCH",
+    body: JSON.stringify({ fileId }),
+  });
+}
+
+/** Supprimer ma photo de profil. */
+export async function removeMyAvatar() {
+  return authFetch<{ avatarUrl: null }>("/users/me/avatar", {
+    method: "DELETE",
+  });
+}
+
+/**
  * Changer le mot de passe de l'utilisateur connecté
  */
 export async function changePassword(currentPassword: string, newPassword: string) {
@@ -322,22 +332,15 @@ export async function verifyToken() {
  */
 export async function refreshAccessToken() {
   if (!refreshPromise) {
-    const refreshToken = typeof window !== "undefined" ? localStorage.getItem("refresh_token") : null;
-
+    // Refresh token transmis automatiquement via le cookie httpOnly (credentials:include).
     refreshPromise = apiFetch<RefreshTokenResponse>("/auth/refresh", {
       method: "POST",
-      body: JSON.stringify({ refresh_token: refreshToken }), // Envoyé dans le body en fallback
     });
   }
 
   try {
     const res = await refreshPromise;
     refreshPromise = null;
-    
-    if (typeof window !== "undefined" && res.data.refresh_token) {
-      localStorage.setItem("refresh_token", res.data.refresh_token);
-    }
-    
     return res;
   } catch (err) {
     refreshPromise = null;

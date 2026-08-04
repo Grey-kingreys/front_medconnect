@@ -8,6 +8,10 @@ import PricingSection from "@/components/PricingSection";
 import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
 
+// Feature flags pour la landing page
+const SHOW_STATS = false; // Stats actuellement fictives — à basculer vers vrai compteur backend
+const SHOW_TESTIMONIALS = false; // Témoignages fictifs hors-Guinée — à remplacer par vrais utilisateurs
+
 export default function Home() {
   return (
     <>
@@ -16,8 +20,8 @@ export default function Home() {
         <HeroSection />
         <FeaturesSection />
         <HowItWorksSection />
-        <StatsSection />
-        <TestimonialsSection />
+        {SHOW_STATS && <StatsSection />}
+        {SHOW_TESTIMONIALS && <TestimonialsSection />}
         <PricingSection />
         <CTASection />
       </main>

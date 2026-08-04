@@ -5,9 +5,11 @@ import {
   X, Plus, ClipboardList, Pill, Syringe, Calendar, 
   Loader2, CheckCircle2, AlertCircle, Save, Activity
 } from "lucide-react";
-import { 
-  createConsultation, createOrdonnance, createVaccination, createRendezVous, createAnalyse 
+import {
+  createConsultation, createOrdonnance, createVaccination, createRendezVous, createAnalyse
 } from "@/lib/api_carnet";
+import FileUpload from "@/components/FileUpload";
+import type { StoredFileView } from "@/lib/api_storage";
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -146,6 +148,8 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
   const OrdonnanceForm = () => {
     const [medicaments, setMedicaments] = useState([{ nom: "", dosage: "", duree: "", instructions: "" }]);
     const [notes, setNotes] = useState("");
+    const [scanFileId, setScanFileId] = useState<string | null>(null);
+    const [scanName, setScanName] = useState("");
 
     const addMedicament = () => setMedicaments([...medicaments, { nom: "", dosage: "", duree: "", instructions: "" }]);
     const removeMedicament = (index: number) => setMedicaments(medicaments.filter((_, i) => i !== index));
@@ -154,7 +158,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
       e.preventDefault();
       setLoading(true);
       try {
-        await createOrdonnance({ patientId, medicaments, notes });
+        await createOrdonnance({ patientId, medicaments, notes, scanFileId: scanFileId ?? undefined });
         handleSuccess();
       } catch (err) {
         console.error(err);
@@ -231,14 +235,33 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         </div>
         <div className="space-y-2">
           <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Notes (Optionnel)</label>
-          <textarea 
+          <textarea
             className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none resize-none h-20"
             placeholder="Conseils supplémentaires..."
             value={notes}
             onChange={e => setNotes(e.target.value)}
           />
         </div>
-        <button 
+        <div className="space-y-2">
+          <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Ordonnance scannée (Optionnel)</label>
+          {scanFileId ? (
+            <div className="flex items-center justify-between p-3 bg-secondary-500/10 border border-secondary-500/20 rounded-2xl text-sm">
+              <span className="flex items-center gap-2 text-secondary-600 font-bold"><CheckCircle2 className="w-4 h-4" /> {scanName || "Document joint"}</span>
+              <button type="button" onClick={() => { setScanFileId(null); setScanName(""); }} className="text-xs text-slate-500 hover:text-rose-500">Retirer</button>
+            </div>
+          ) : (
+            <FileUpload
+              visibility="private"
+              prefix="ordonnances"
+              accept="application/pdf,image/jpeg,image/png"
+              maxSizeMb={20}
+              label="Joindre un PDF / une image"
+              onUploaded={(f: StoredFileView) => { setScanFileId(f.id); setScanName(f.originalName); }}
+              disabled={loading}
+            />
+          )}
+        </div>
+        <button
           disabled={loading}
           className="w-full py-4 bg-secondary-600 hover:bg-secondary-700 disabled:bg-slate-400 text-white rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-secondary-600/20 transition-all active:scale-95"
         >
@@ -331,12 +354,14 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
       dateAnalyse: new Date().toISOString().split('T')[0],
       notes: ""
     });
+    const [documentFileId, setDocumentFileId] = useState<string | null>(null);
+    const [documentName, setDocumentName] = useState("");
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
       setLoading(true);
       try {
-        await createAnalyse({ ...form, patientId });
+        await createAnalyse({ ...form, patientId, documentFileId: documentFileId ?? undefined });
         handleSuccess();
       } catch (err) {
         console.error(err);
@@ -388,7 +413,26 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
             onChange={e => setForm({...form, resultats: e.target.value})}
           />
         </div>
-        <button 
+        <div className="space-y-2">
+          <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Document joint (Optionnel — PDF, image, DICOM)</label>
+          {documentFileId ? (
+            <div className="flex items-center justify-between p-3 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-sm">
+              <span className="flex items-center gap-2 text-rose-600 font-bold"><CheckCircle2 className="w-4 h-4" /> {documentName || "Document joint"}</span>
+              <button type="button" onClick={() => { setDocumentFileId(null); setDocumentName(""); }} className="text-xs text-slate-500 hover:text-rose-500">Retirer</button>
+            </div>
+          ) : (
+            <FileUpload
+              visibility="private"
+              prefix="analyses"
+              accept="application/pdf,image/jpeg,image/png,application/dicom"
+              maxSizeMb={20}
+              label="Joindre le compte-rendu"
+              onUploaded={(f: StoredFileView) => { setDocumentFileId(f.id); setDocumentName(f.originalName); }}
+              disabled={loading}
+            />
+          )}
+        </div>
+        <button
           disabled={loading}
           className="w-full py-4 bg-rose-600 hover:bg-rose-700 disabled:bg-slate-400 text-white rounded-2xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 shadow-xl shadow-rose-600/20 transition-all active:scale-95"
         >
