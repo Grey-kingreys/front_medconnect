@@ -19,6 +19,7 @@ import {
   User as UserIcon
 } from "lucide-react";
 import { getAllStructures, getPublicStructureDetails, MyStructure } from "@/lib/api_structure";
+import ImageWithFallback from "@/components/ImageWithFallback";
 import GlobePicker from "@/components/GlobePicker";
 import { MEDICAL_SPECIALTIES } from "@/components/modals/UserModal";
 import { useAuth } from "@/hooks/useAuth";
@@ -184,9 +185,16 @@ export default function MapPage() {
       <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 shadow-2xl border border-slate-200 dark:border-slate-800 flex flex-col h-full max-h-[80vh] overflow-y-auto custom-scrollbar">
         <div className="flex items-start justify-between mb-4">
           <div className="flex items-center gap-4">
-            <div className={`p-4 rounded-2xl ${structureDetails.type === "HOPITAL" ? "bg-primary-500/10 text-primary-500" : "bg-purple-500/10 text-purple-500"}`}>
-              <Building2 className="w-8 h-8" />
-            </div>
+            <ImageWithFallback
+              src={structureDetails.logoUrl}
+              alt={`Logo de ${structureDetails.nom}`}
+              className="w-16 h-16 rounded-2xl object-cover flex-shrink-0"
+              fallback={
+                <div className={`p-4 rounded-2xl ${structureDetails.type === "HOPITAL" ? "bg-primary-500/10 text-primary-500" : "bg-purple-500/10 text-purple-500"}`}>
+                  <Building2 className="w-8 h-8" />
+                </div>
+              }
+            />
             <div>
               <h3 className="text-xl font-bold text-slate-900 dark:text-white">{structureDetails.nom}</h3>
               <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{structureDetails.type}</p>
@@ -432,9 +440,16 @@ export default function MapPage() {
                 >
                   <div className="space-y-6">
                     <div className="flex items-center justify-between">
-                      <div className={`w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${s.type === 'HOPITAL' ? 'bg-primary-500/10 text-primary-500' : 'bg-purple-500/10 text-purple-500'}`}>
-                        <Building2 className="w-8 h-8" />
-                      </div>
+                      <ImageWithFallback
+                        src={s.logoUrl}
+                        alt={`Logo de ${s.nom}`}
+                        className="w-16 h-16 rounded-2xl object-cover group-hover:scale-110 transition-transform"
+                        fallback={
+                          <div className={`w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform ${s.type === 'HOPITAL' ? 'bg-primary-500/10 text-primary-500' : 'bg-purple-500/10 text-purple-500'}`}>
+                            <Building2 className="w-8 h-8" />
+                          </div>
+                        }
+                      />
                       {isOpenNow(s) && (
                         <div className="px-3 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black uppercase tracking-widest rounded-full">
                           Ouvert

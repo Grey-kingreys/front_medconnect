@@ -41,12 +41,31 @@ liste complète des problématiques).
   son équivalent `ws://`). Si tu ajoutes un domaine externe (API, CDN), mettre à jour la CSP.
 - **Langue** : UI et messages en français (locale `fr-GN`).
 
-## Brancher le stockage S3 (backend Phase 2)
+## Stockage objets (Cloudflare R2)
 
-Flux d'upload recommandé : `POST /storage/upload-url` (avec Bearer) → récupérer
-`{ key, uploadUrl }` → **PUT direct du fichier** sur `uploadUrl` (S3/MinIO, pas via
-l'API) → enregistrer la `key` (ex. `fichierUrl` d'un résultat d'analyse). Téléchargement :
-`GET /storage/download-url?key=…` → URL présignée temporaire.
+Utiliser la couche `src/lib/api_storage.ts` + `src/hooks/useR2Upload.ts` +
+`src/components/FileUpload.tsx`. **Ne pas** rappeler l'ancien module legacy
+(`/storage/upload-url`, `/storage/download-url`, `fichierUrl`) — dormant, à retirer.
+
+**Flux d'upload** (`uploadToR2`) : `POST /storage/presign` (via `authFetch`) →
+**PUT direct du fichier sur R2** (seul appel hors `authFetch`, avec progression XHR) →
+`POST /storage/confirm`. On récupère un `StoredFile` **confirmé** dont l'`id` est
+ensuite rattaché à une entité métier.
+
+**Rattacher** l'`id` à une entité via son endpoint dédié :
+
+- Avatar : `PATCH/DELETE /users/me/avatar` (`setMyAvatar`/`removeMyAvatar`, `api_auth`).
+- Logo structure : `PATCH/DELETE /structures/my/logo` (`setMyLogo`/`removeMyLogo`, `api_structure`).
+- Document d'analyse / ordonnance scannée : champ `documentFileId` / `scanFileId` passé à
+  `createAnalyse` / `createOrdonnance` (`api_carnet`).
+
+**Lecture** : les fichiers **publics** (avatar/logo) exposent une `*Url` directe
+(`avatarUrl`, `logoUrl`) — affichage via `<img>`. Les documents **privés** passent par
+`GET /storage/:id/read-url` (`openStoredFile`, URL présignée courte, contrôle d'accès + audit).
+
+⚠️ Ces hôtes R2 sont whitelistés dans la **CSP** (`next.config.ts`) : `*.r2.cloudflarestorage.com`
+(upload/lecture présignée) et `*.r2.dev` / `cdn.medconnecte.com` (`img-src`). Ajouter tout
+nouveau domaine de stockage à la CSP.
 
 ## ⚠️ Dette/risques spécifiques frontend
 

@@ -8,9 +8,8 @@ import {
   Calendar, 
   Search, 
   Activity, 
-  Download, 
-  ExternalLink, 
-  Loader2, 
+  Download,
+  Loader2,
   AlertCircle,
   X,
   Plus,
@@ -19,6 +18,7 @@ import {
   ChevronRight
 } from "lucide-react";
 import { getAnalyses, ResultatAnalyse } from "@/lib/api_carnet";
+import { openStoredFile } from "@/lib/api_storage";
 
 export default function AnalysesPage() {
   const { user } = useAuth();
@@ -27,6 +27,15 @@ export default function AnalysesPage() {
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
   const [selectedAnalyse, setSelectedAnalyse] = useState<ResultatAnalyse | null>(null);
+  const [docBusy, setDocBusy] = useState(false);
+  const [docError, setDocError] = useState("");
+
+  const openDocument = async (id: string) => {
+    setDocError(""); setDocBusy(true);
+    try { await openStoredFile(id); }
+    catch { setDocError("Impossible d'ouvrir le document."); }
+    finally { setDocBusy(false); }
+  };
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -172,13 +181,24 @@ export default function AnalysesPage() {
               )}
             </div>
 
-            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800 flex gap-3">
-              <button className="flex-1 py-4 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-600 dark:text-slate-400 hover:shadow-lg transition-all">
-                <Download className="w-4 h-4" /> Rapport PDF
-              </button>
-              <button className="flex-1 py-4 flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-2xl text-sm font-bold shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all">
-                <ExternalLink className="w-4 h-4" /> Partager au médecin
-              </button>
+            <div className="p-6 bg-slate-50 dark:bg-slate-800/50 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex gap-3">
+                {selectedAnalyse.documentFileId ? (
+                  <button
+                    onClick={() => openDocument(selectedAnalyse.documentFileId!)}
+                    disabled={docBusy}
+                    className="flex-1 py-4 flex items-center justify-center gap-2 bg-indigo-600 text-white rounded-2xl text-sm font-bold shadow-xl shadow-indigo-600/20 hover:bg-indigo-700 transition-all disabled:opacity-60"
+                  >
+                    {docBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                    Ouvrir le document
+                  </button>
+                ) : (
+                  <div className="flex-1 py-4 flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-2xl text-sm font-bold text-slate-400">
+                    <FileText className="w-4 h-4" /> Aucun document joint
+                  </div>
+                )}
+              </div>
+              {docError && <p role="alert" className="mt-2 text-xs text-red-500 text-center">{docError}</p>}
             </div>
           </div>
         </div>

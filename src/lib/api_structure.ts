@@ -17,7 +17,7 @@ export async function getPublicStructureDetails(id: string) {
 
 // ─── Types ──────────────────────────────────────────────────────
 
-export type MembreRole = "MEDECIN" | "PHARMACIEN" | "STRUCTURE_ADMIN";
+export type MembreRole = "MEDECIN" | "PHARMACIEN" | "STRUCTURE_ADMIN" | "ACCUEIL";
 
 export interface Membre {
   id: string;
@@ -47,6 +47,8 @@ export interface MyStructure {
   estOuvertManuel?: boolean | null;
   isActive: boolean;
   isConfigured: boolean;
+  /** URL publique du logo (bucket R2 public), null si aucun. Fourni par /structures/my. */
+  logoUrl?: string | null;
   admin?: { id: string; nom: string; prenom: string; email: string; telephone?: string };
   membres: Membre[];
   createdAt: string;
@@ -85,6 +87,21 @@ export async function updateMyStructure(data: UpdateStructurePayload) {
   return authFetch<MyStructure>("/structures/my", {
     method: "PATCH",
     body: JSON.stringify(data),
+  });
+}
+
+/** Définir le logo de ma structure depuis un fichier R2 public confirmé. */
+export async function setMyLogo(fileId: string) {
+  return authFetch<{ logoUrl: string | null }>("/structures/my/logo", {
+    method: "PATCH",
+    body: JSON.stringify({ fileId }),
+  });
+}
+
+/** Supprimer le logo de ma structure. */
+export async function removeMyLogo() {
+  return authFetch<{ logoUrl: null }>("/structures/my/logo", {
+    method: "DELETE",
   });
 }
 

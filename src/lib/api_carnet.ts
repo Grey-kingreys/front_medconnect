@@ -56,6 +56,8 @@ export interface Ordonnance {
   notes: string | null;
   dateEmission: string;
   dateExpiration: string | null;
+  /** Ordonnance scannée (StoredFile privé) — lecture via /storage/:id/read-url. */
+  scanFileId: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -79,7 +81,10 @@ export interface ResultatAnalyse {
   typeAnalyse: string;
   laboratoire: string | null;
   resultats: string;
+  /** @deprecated ancienne URL brute — remplacée par documentFileId. */
   fichierUrl: string | null;
+  /** Document d'analyse (StoredFile privé) — lecture via /storage/:id/read-url. */
+  documentFileId: string | null;
   dateAnalyse: string;
   notes: string | null;
   createdAt: string;
@@ -95,14 +100,14 @@ export interface AutoDiagnostic {
   createdAt: string;
 }
 
-export type AppointmentStatus = "PROGRAMME" | "CONFIRME" | "ANNULE" | "TERMINE";
+export type AppointmentStatus = "PROGRAMME" | "CONFIRME" | "ANNULE" | "TERMINE" | "EN_ATTENTE" | "REFUSE";
 
 export interface RendezVous {
   id: string;
   patientId: string;
   patient?: { id: string; nom: string; prenom: string };
-  medecinId: string;
-  medecin?: { id: string; nom: string; prenom: string; specialite: string };
+  medecinId?: string | null;
+  medecin?: { id: string; nom: string; prenom: string; specialite: string } | null;
   structureId: string | null;
   structure?: { id: string; nom: string };
   date: string;
@@ -193,6 +198,14 @@ export const updateRendezVousStatus = (id: string, status: string) =>
     method: "POST",
     body: JSON.stringify({ status }),
   });
+
+/** Médecin : valider une proposition de RDV en attente (l'affecte à lui si « structure »). */
+export const validerRendezVous = (id: string) =>
+  authFetch<RendezVous>(`/carnet-sante/rendez-vous/${id}/valider`, { method: "POST" });
+
+/** Médecin : refuser une proposition de RDV en attente. */
+export const refuserRendezVous = (id: string) =>
+  authFetch<RendezVous>(`/carnet-sante/rendez-vous/${id}/refuser`, { method: "POST" });
 
 export const getAutoDiagnostics = () => authFetch<AutoDiagnostic[]>("/carnet-sante/auto-diagnostics");
 

@@ -30,6 +30,8 @@ import {
   Loader2,
   MessageSquare,
   Syringe,
+  Headset,
+  QrCode,
 } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
@@ -145,6 +147,20 @@ function getNavSections(role: string): NavSection[] {
         },
       ];
 
+    case "ACCUEIL":
+      return [
+        common,
+        {
+          title: "Accueil",
+          items: [
+            { label: "Accueil patient", href: "/dashboard/accueil", icon: <Headset className="w-5 h-5" /> },
+            { label: "Messagerie", href: "/dashboard/chat", icon: <MessageSquare className="w-5 h-5" /> },
+            { label: "Rendez-vous", href: "/dashboard/rendez-vous", icon: <Calendar className="w-5 h-5" /> },
+            { label: "Patients", href: "/dashboard/patients", icon: <Users className="w-5 h-5" /> },
+          ],
+        },
+      ];
+
     case "ADMIN":
       return [
         common,
@@ -195,6 +211,7 @@ function getRoleLabel(role: string): string {
     MEDECIN: "Médecin",
     PHARMACIEN: "Pharmacien",
     STRUCTURE_ADMIN: "Admin Structure",
+    ACCUEIL: "Accueil",
     ADMIN: "Administrateur",
     SUPER_ADMIN: "Super Admin",
   };
@@ -207,6 +224,7 @@ function getRoleColor(role: string): string {
     MEDECIN: "from-secondary-500 to-cyan-500",
     PHARMACIEN: "from-accent-500 to-primary-500",
     STRUCTURE_ADMIN: "from-amber-500 to-orange-500",
+    ACCUEIL: "from-violet-500 to-purple-500",
     ADMIN: "from-primary-600 to-accent-500",
     SUPER_ADMIN: "from-emergency-500 to-accent-500",
   };

@@ -41,6 +41,8 @@ export interface UserProfile {
   isActive: boolean;
   specialite?: string;
   structureId?: string;
+  /** URL publique de la photo de profil (bucket R2 public), null si aucune. */
+  avatarUrl?: string | null;
   structure?: {
     id: string;
     nom: string;
@@ -287,6 +289,24 @@ export async function updateProfile(data: {
   return authFetch<UserProfile>("/auth/profile", {
     method: "PATCH",
     body: JSON.stringify(data),
+  });
+}
+
+/**
+ * Définir ma photo de profil depuis un fichier R2 déjà téléversé et confirmé.
+ * Renvoie l'URL publique du nouvel avatar.
+ */
+export async function setMyAvatar(fileId: string) {
+  return authFetch<{ avatarUrl: string | null }>("/users/me/avatar", {
+    method: "PATCH",
+    body: JSON.stringify({ fileId }),
+  });
+}
+
+/** Supprimer ma photo de profil. */
+export async function removeMyAvatar() {
+  return authFetch<{ avatarUrl: null }>("/users/me/avatar", {
+    method: "DELETE",
   });
 }
 

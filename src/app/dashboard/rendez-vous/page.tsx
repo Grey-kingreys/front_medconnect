@@ -18,8 +18,18 @@ import {
   Filter,
   Search
 } from "lucide-react";
-import { getRendezVous, RendezVous, updateRendezVousStatus } from "@/lib/api_carnet";
+import { getRendezVous, RendezVous, updateRendezVousStatus, validerRendezVous, refuserRendezVous } from "@/lib/api_carnet";
 import DoctorAddRecordModal from "@/components/DoctorAddRecordModal";
+
+// Libellés + couleurs des statuts de RDV.
+const STATUS_META: Record<string, { label: string; cls: string }> = {
+  PROGRAMME: { label: "Programmé", cls: "bg-blue-500/10 text-blue-500" },
+  CONFIRME: { label: "Confirmé", cls: "bg-emerald-500/10 text-emerald-500" },
+  EN_ATTENTE: { label: "En attente", cls: "bg-amber-500/10 text-amber-500" },
+  REFUSE: { label: "Refusé", cls: "bg-rose-500/10 text-rose-500" },
+  ANNULE: { label: "Annulé", cls: "bg-rose-500/10 text-rose-500" },
+  TERMINE: { label: "Terminé", cls: "bg-slate-500/10 text-slate-500" },
+};
 
 export default function RendezVousPage() {
   const { user } = useAuth();
@@ -29,7 +39,12 @@ export default function RendezVousPage() {
   const [search, setSearch] = useState("");
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
 
-  const isDoctor = user?.role === "MEDECIN" || user?.role === "STRUCTURE_ADMIN";
+  // Vue « personnel de structure » (voit les patients + peut créer un RDV) : inclut l'accueil.
+  const isStaff = ["MEDECIN", "STRUCTURE_ADMIN", "ACCUEIL"].includes(user?.role ?? "");
+  // Actions cliniques sur un RDV (confirmer / annuler / terminer).
+  const canAct = ["MEDECIN", "STRUCTURE_ADMIN"].includes(user?.role ?? "");
+  // Valider / refuser une proposition en attente : réservé au médecin (permission rendezvous:write).
+  const canRespond = user?.role === "MEDECIN";
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -54,6 +69,15 @@ export default function RendezVousPage() {
       fetchData();
     } catch (err) {
       alert("Erreur lors de la mise à jour du statut");
+    }
+  };
+
+  const handleRespond = async (id: string, decision: "valider" | "refuser") => {
+    try {
+      await (decision === "valider" ? validerRendezVous(id) : refuserRendezVous(id));
+      fetchData();
+    } catch (err: any) {
+      alert(err?.message || "Erreur lors de la validation du rendez-vous");
     }
   };
 
@@ -84,8 +108,8 @@ export default function RendezVousPage() {
         </div>
         
         <div className="flex items-center gap-3">
-          {isDoctor && (
-            <button 
+          {isStaff && (
+            <button
               onClick={() => setIsAddModalOpen(true)}
               className="flex items-center gap-2 px-5 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl font-bold text-sm shadow-lg shadow-primary-500/25 transition-all active:scale-95 whitespace-nowrap"
             >
@@ -154,34 +178,47 @@ export default function RendezVousPage() {
                 {/* Info Block */}
                 <div className="flex-1 space-y-2">
                    <div className="flex items-center gap-2">
-                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${
-                        a.status === 'PROGRAMME' ? 'bg-blue-500/10 text-blue-500' :
-                        a.status === 'CONFIRME' ? 'bg-emerald-500/10 text-emerald-500' :
-                        a.status === 'ANNULE' ? 'bg-rose-500/10 text-rose-500' :
-                        'bg-slate-500/10 text-slate-500'
-                      }`}>
-                        {a.status}
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-widest ${STATUS_META[a.status]?.cls ?? 'bg-slate-500/10 text-slate-500'}`}>
+                        {STATUS_META[a.status]?.label ?? a.status}
                       </span>
                       <h3 className="font-bold text-slate-900 dark:text-white">{a.motif}</h3>
                    </div>
                    <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                      <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {isDoctor ? `${a.patient?.prenom} ${a.patient?.nom}` : `Dr. ${a.medecin?.prenom} ${a.medecin?.nom}`}</span>
+                      <span className="flex items-center gap-1.5"><User className="w-3.5 h-3.5" /> {isStaff ? `${a.patient?.prenom} ${a.patient?.nom}` : (a.medecin ? `Dr. ${a.medecin.prenom} ${a.medecin.nom}` : "Médecin à définir")}</span>
                       {a.structure && <span className="flex items-center gap-1.5"><Building2 className="w-3.5 h-3.5" /> {a.structure.nom}</span>}
                    </div>
                 </div>
 
                 {/* Actions Block */}
                 <div className="flex items-center gap-2">
-                   {isDoctor && a.status === 'PROGRAMME' && (
+                   {canRespond && a.status === 'EN_ATTENTE' && (
                      <>
-                       <button 
+                       <button
+                         onClick={() => handleRespond(a.id, 'valider')}
+                         className="px-4 py-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                         title="Prendre en charge / valider"
+                       >
+                         Valider
+                       </button>
+                       <button
+                         onClick={() => handleRespond(a.id, 'refuser')}
+                         className="px-4 py-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl text-xs font-bold transition-all shadow-sm"
+                         title="Refuser"
+                       >
+                         Refuser
+                       </button>
+                     </>
+                   )}
+                   {canAct && a.status === 'PROGRAMME' && (
+                     <>
+                       <button
                          onClick={() => handleStatusUpdate(a.id, 'CONFIRME')}
                          className="p-2 bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500 hover:text-white rounded-xl transition-all shadow-sm"
                          title="Confirmer"
                        >
                          <CheckCircle2 className="w-5 h-5" />
                        </button>
-                       <button 
+                       <button
                          onClick={() => handleStatusUpdate(a.id, 'ANNULE')}
                          className="p-2 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white rounded-xl transition-all shadow-sm"
                          title="Annuler"
@@ -190,7 +227,7 @@ export default function RendezVousPage() {
                        </button>
                      </>
                    )}
-                   {isDoctor && a.status === 'CONFIRME' && (
+                   {canAct && a.status === 'CONFIRME' && (
                      <button 
                        onClick={() => handleStatusUpdate(a.id, 'TERMINE')}
                        className="px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 rounded-xl text-xs font-bold transition-all shadow-lg"
