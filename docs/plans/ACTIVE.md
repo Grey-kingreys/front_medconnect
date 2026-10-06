@@ -10,12 +10,12 @@ Détails: docs/plans/runs/2026-10-06-p3-fond/ (niveau P3 du BACKLOG-PRIORISE rac
 
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
-| T05 | Socle de tests Vitest, tests de src/lib, pre-push | spécifié | à faire | 0 |
-| T06 | Schémas Zod des 5 envois médicaux, typage api_carnet | dur | à faire | 0 |
-| T07 | Accessibilité des modales (hook unique) | spécifié | dispatché | 1 |
+| T06 | Schémas Zod des 5 envois médicaux, typage api_carnet | dur | dispatché | 1 |
 
 ## Faites (preuve = commit)
 
+- T05 socle Vitest, 12 tests, pre-push (commit « test(socle) »)
+- T07 accessibilité des modales (de4b337, merge c330a6e)
 - T08 page hors connexion honnête (commit « fix(hors-connexion) »)
 
 ## Questions parquées

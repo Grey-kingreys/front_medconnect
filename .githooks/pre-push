@@ -3,10 +3,11 @@
 # Full test suite, once per push instead of once per task commit.
 set -e
 
-# Aucun test automatise dans ce projet : le build de production tient lieu de gate.
+# Tests Vitest d'abord, puis build de production.
 # Toujours en local : dans le conteneur de dev, 'next build' ecraserait le .next
 # utilise par 'next dev' (volume frontend_next) et casserait le serveur de dev.
 GATE_SERVICE=frontend
 . "$(dirname "$0")/gate-lib.sh"
-echo "Aucun test automatise: verification par le build de production (local)." >&2
+echo "Verification: tests Vitest puis build de production (local)." >&2
+run_local npm test
 run_local npm run build

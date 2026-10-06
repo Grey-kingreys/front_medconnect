@@ -37,4 +37,11 @@ Chemins + preuves (commande lancée, résultat en une ligne) + liste des erreurs
 
 ## Historique
 
+2026-10-06 | spécifié | partiel | 4 erreurs de lint préexistantes bloquaient le pre-commit (set-state-in-effect x2, immutability, no-explicit-any) : neutralisées par l'orchestrateur avec eslint-disable-next-line justifié (D06)
+
 ## Validation
+
+eslint hook + 10 modales | 0 erreur, 17 avertissements préexistants | de4b337
+tsc --noEmit | OK | de4b337
+grep -L useDialogA11y modals/*.tsx | vide ; un {...dialogProps} par modale | de4b337
+Parcours navigateur et captures : non faits (pas de serveur de dev lancé dans ce run), à faire à la recette

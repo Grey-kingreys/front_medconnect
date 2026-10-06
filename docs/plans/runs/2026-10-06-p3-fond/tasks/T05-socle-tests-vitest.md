@@ -40,4 +40,10 @@ Chemin des artefacts + preuves (commande lancée, résultat en une ligne). Ou un
 
 ## Historique
 
+2026-10-06 | spécifié | réussi | vitest ^4.1.11 et non 5 (vitest 5 exige @types/node 22 ou plus, le projet est en ^20)
+
 ## Validation
+
+npm test | 3 fichiers, 12 tests OK | voir commit
+tsc --noEmit | OK | voir commit
+eslint vitest.config.mts vitest.setup.ts src/lib/*.test.ts | OK | voir commit
