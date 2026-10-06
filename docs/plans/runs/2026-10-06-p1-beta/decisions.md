@@ -1,0 +1,11 @@
+# Décisions - run 2026-10-06-p1-beta
+
+Append-only. Une ligne par décision. Consulter par grep avant toute question.
+
+Format : `D<NN> | AAAA-MM-JJ | <décision> | <pourquoi> | tranché par : plan, convention, défaut (révisable) ou user | tâches : T..`
+
+D01 | 2026-10-06 | La garde serveur (`src/proxy.ts`) s'appuie sur un cookie témoin posé par le front (`mc_connecte=1`, sans secret), pas sur le cookie `refresh_token` | `refresh_token` est posé par l'API sans attribut `domain` : en production il appartient à l'hôte de l'API et n'est jamais envoyé au front ; l'access token est en localStorage, invisible au serveur | défaut (révisable) | T09
+D02 | 2026-10-06 | Cette garde est une vérification optimiste (redirection), l'autorisation réelle reste celle de l'API | recommandation de la doc Next.js 16 (proxy = « optimistic checks ») ; un cookie témoin forgé ne donne accès à aucune donnée | convention | T09
+D03 | 2026-10-06 | `/debug` rendu introuvable (404) en production par un layout serveur, fichier de page conservé | consigne : ne pas supprimer le fichier | plan | T09
+D04 | 2026-10-06 | Sirène générée par un script Node (WAV synthétique) plutôt que téléchargée | aucun téléchargement possible, aucun son libre disponible localement ; CSP inchangée car `default-src 'self'` couvre déjà les médias du même domaine | défaut (révisable) | T10
+D05 | 2026-10-06 | Lint des fichiers touchés (le pre-commit lint tout fichier indexé) : 1) `npx --no-install eslint --fix <fichier>` ; 2) corriger les erreurs restantes sur les lignes touchées par la tâche ; 3) pour la dette préexistante non corrigeable automatiquement ou dont la correction sortirait de la tâche, un seul commentaire `/* eslint-disable <règles exactes> */` en tête de fichier, précédé de « Dette préexistante, backlog points 21 et 22 » | sans cela aucun commit ne passe sur ces fichiers ; désactivation ciblée et documentée plutôt qu'un refactor hors tâche | défaut (révisable) | toutes
