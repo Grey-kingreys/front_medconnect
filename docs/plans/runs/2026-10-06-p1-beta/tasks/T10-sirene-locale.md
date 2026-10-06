@@ -33,4 +33,9 @@ Liste des fichiers créés ou modifiés + preuves (commandes lancées, résultat
 
 ## Historique
 
+2026-10-06 | spécifié | succès | -
+
 ## Validation
+
+lecture de l'en-tête WAV | RIFF/WAVE, PCM 1, mono, 22050 Hz, 16 bits, 2 s, 88 244 octets | voir commit de la tâche
+tsc --noEmit ; eslint EmergencyListener.tsx + script | 0 erreur (2 avertissements préexistants) ; dette désactivée en tête selon D05

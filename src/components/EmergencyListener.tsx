@@ -1,3 +1,5 @@
+/* Dette préexistante, backlog points 21 et 22 */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, react-hooks/immutability, react/no-unescaped-entities */
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
@@ -89,7 +91,7 @@ export default function EmergencyListener() {
 
   const playAlarm = async () => {
     try {
-      const alarm = new Audio("https://cdn.pixabay.com/audio/2022/03/10/audio_5e9f899c71.mp3"); // Siren sound
+      const alarm = new Audio("/sounds/sirene.wav"); // Sirène hébergée localement (générée par scripts/generer-sirene.mjs)
       alarm.loop = true;
       setAudio(alarm);
       await alarm.play();
