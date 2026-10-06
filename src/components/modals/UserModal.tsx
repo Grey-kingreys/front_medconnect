@@ -2,6 +2,7 @@ import { useState } from "react";
 import { X, AlertCircle, Loader2, Plus, Mail, ChevronDown, ShieldAlert, Stethoscope, Pill } from "lucide-react";
 import { createUser, ApiError as ApiAdminError } from "@/lib/api_admin";
 import { createMembre, createSuperAdmin, MembreRole, ApiError as ApiStructureError } from "@/lib/api_structure";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 type UserModalMode = "create_super_admin" | "create_admin_user" | "create_membre";
 
@@ -66,6 +67,7 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { dialogProps, titleId } = useDialogA11y({ isOpen: true, onClose, closeOnEscape: !saving });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,8 +100,8 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
       }
       onSuccess();
       onClose();
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue.");
+    } catch (err: unknown) {
+      setError((err instanceof Error && err.message) || "Une erreur est survenue.");
     } finally {
       setSaving(false);
     }
@@ -121,14 +123,14 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div {...dialogProps} className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
         <div className="flex items-center justify-between p-6 border-b border-slate-100 dark:border-slate-800/50">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{getTitle()}</h2>
+            <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-white">{getTitle()}</h2>
             <p className="text-xs text-slate-500 mt-0.5">{getSubtitle()}</p>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} aria-label="Fermer" className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50"><X className="w-5 h-5" /></button>
         </div>
 
         <form onSubmit={submit} className="p-6 space-y-4">

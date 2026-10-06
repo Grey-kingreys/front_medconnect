@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Search, Pill, Loader2, Save, Plus, Package, Info, AlertCircle, ChevronDown, CheckCircle2 } from "lucide-react";
 import { getCatalogue, Medicament, upsertStock, createMedicament, StockMedicament } from "@/lib/api_pharmacie";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface StockModalProps {
   isOpen: boolean;
@@ -35,10 +36,13 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { dialogProps, titleId } = useDialogA11y({ isOpen, onClose, closeOnEscape: !saving });
 
   // Initialize for edit if editItem is provided
   useEffect(() => {
     if (editItem) {
+      // Dette de lint préexistante, hors périmètre de l'accessibilité (point 22) : initialisation conservée telle quelle.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setSelectedMed(editItem.medicament);
       setSearch(editItem.medicament.nom);
       setForm({
@@ -52,6 +56,8 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
       });
       setIsCreatingNew(false);
     } else {
+      // Dette de lint préexistante (point 22) : reset est déclarée plus bas, appel conservé tel quel.
+      // eslint-disable-next-line react-hooks/immutability
       reset();
     }
   }, [editItem]);
@@ -143,8 +149,8 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
       onClose();
       // Reset
       reset();
-    } catch (err: any) {
-      setError(err.message || "Une erreur est survenue");
+    } catch (err: unknown) {
+      setError((err instanceof Error && err.message) || "Une erreur est survenue");
     } finally {
       setSaving(false);
     }
@@ -169,7 +175,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div className="bg-white dark:bg-[#0f172a] w-full max-w-xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-in">
+      <div {...dialogProps} className="bg-white dark:bg-[#0f172a] w-full max-w-xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-in">
         
         {/* Header */}
         <div className="p-8 border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
@@ -178,7 +184,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
               {editItem ? <Save className="w-6 h-6" /> : <Plus className="w-6 h-6" />}
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-900 dark:text-white">
+              <h2 id={titleId} className="text-xl font-black text-slate-900 dark:text-white">
                 {editItem ? "Modifier le stock" : "Ajouter au stock"}
               </h2>
               <p className="text-xs text-slate-500 font-bold uppercase tracking-widest">
@@ -186,7 +192,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
               </p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
+          <button onClick={onClose} aria-label="Fermer" className="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full transition-colors">
             <X className="w-6 h-6 text-slate-400" />
           </button>
         </div>
@@ -252,7 +258,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                         <Plus className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className="font-black">"{search}" n&apos;existe pas ?</p>
+                        <p className="font-black">&quot;{search}&quot; n&apos;existe pas ?</p>
                         <p className="text-[10px] uppercase font-bold opacity-80">Cliquer ici pour le créer dans le catalogue</p>
                       </div>
                     </button>
@@ -329,7 +335,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Date d'expiration</label>
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Date d&apos;expiration</label>
                 <input 
                   type="date" 
                   value={form.dateExpiration}
