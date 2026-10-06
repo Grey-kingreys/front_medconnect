@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import { X, Save, Search, Filter, MapPin, Navigation, Info, Hospital, Pill, Building2, Target } from "lucide-react";
 import GlobePicker from "../GlobePicker";
 import { Structure } from "@/lib/api_admin";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface MapModalProps {
   isOpen: boolean;
@@ -31,6 +32,7 @@ export function MapModal({
   );
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("ALL");
+  const { dialogProps, titleId } = useDialogA11y({ isOpen, onClose });
 
   if (!isOpen) return null;
 
@@ -51,9 +53,10 @@ export function MapModal({
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center animate-in fade-in duration-300">
       {/* Background with heavy blur */}
-      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-xl" onClick={onClose} />
+      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-xl" onClick={onClose} aria-hidden="true" />
 
-      <div 
+      <div
+        {...dialogProps}
         className="relative w-full h-full md:h-screen md:w-screen bg-white dark:bg-slate-900 shadow-2xl overflow-hidden flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
@@ -65,7 +68,7 @@ export function MapModal({
               <Navigation className="w-5 h-5 text-primary-600 dark:text-primary-400" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
+              <h2 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">
                 {mode === "picker" ? "Définir la localisation" : "Explorer les structures"}
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -106,6 +109,7 @@ export function MapModal({
             <button
               type="button"
               onClick={onClose}
+              aria-label="Fermer"
               className="absolute top-4 right-4 p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800/50 hover:bg-slate-200 dark:hover:bg-slate-700/50 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-all border border-slate-200 dark:border-slate-700/50"
             >
               <X className="w-5 h-5" />

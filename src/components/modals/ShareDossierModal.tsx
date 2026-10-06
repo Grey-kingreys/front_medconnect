@@ -5,6 +5,7 @@ import Image from "next/image";
 import { X, Loader2, RefreshCw, ShieldCheck, AlertCircle } from "lucide-react";
 import { generateShareCode, ShareCode } from "@/lib/api_consent";
 import { ApiError } from "@/lib/api_auth";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 /**
  * Modal patient « Partager mon dossier ».
@@ -16,6 +17,7 @@ export function ShareDossierModal({ onClose }: { onClose: () => void }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [remaining, setRemaining] = useState(0);
+  const { dialogProps, titleId } = useDialogA11y({ isOpen: true, onClose });
 
   const load = useCallback(async () => {
     setLoading(true); setError("");
@@ -30,6 +32,8 @@ export function ShareDossierModal({ onClose }: { onClose: () => void }) {
     }
   }, []);
 
+  // Dette de lint préexistante, hors périmètre de l'accessibilité (point 22) : chargement au montage conservé tel quel.
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { load(); }, [load]);
 
   // Compte à rebours
@@ -44,14 +48,14 @@ export function ShareDossierModal({ onClose }: { onClose: () => void }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+      <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div {...dialogProps} className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
         <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-800/50">
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-5 h-5 text-primary-500" />
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Partager mon dossier</h2>
+            <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-white">Partager mon dossier</h2>
           </div>
-          <button onClick={onClose} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} aria-label="Fermer" className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50"><X className="w-5 h-5" /></button>
         </div>
 
         <div className="p-6 flex flex-col items-center text-center gap-4">

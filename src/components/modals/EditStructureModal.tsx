@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, AlertCircle, Loader2, Save } from "lucide-react";
 import { updateMyStructure, MyStructure, UpdateStructurePayload, ApiError } from "@/lib/api_structure";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 export function EditStructureModal({ structure, onClose, onSaved }: { structure: MyStructure; onClose: () => void; onSaved: () => void }) {
   const [form, setForm] = useState<UpdateStructurePayload>({
@@ -11,6 +12,7 @@ export function EditStructureModal({ structure, onClose, onSaved }: { structure:
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { dialogProps, titleId } = useDialogA11y({ isOpen: true, onClose, closeOnEscape: !saving });
   const cls = "w-full px-4 py-3 bg-slate-900/60 border border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-600 focus:outline-none focus:border-primary-500/50 text-sm transition-all";
 
   const submit = async (e: React.FormEvent) => {
@@ -22,11 +24,11 @@ export function EditStructureModal({ structure, onClose, onSaved }: { structure:
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg bg-[#0f172a]/95 border border-slate-200 dark:border-slate-800/60 rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div {...dialogProps} className="relative w-full max-w-lg bg-[#0f172a]/95 border border-slate-200 dark:border-slate-800/60 rounded-3xl shadow-2xl overflow-hidden animate-slide-up">
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800/50">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Modifier la structure</h2>
-          <button onClick={onClose} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50"><X className="w-5 h-5" /></button>
+          <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-white">Modifier la structure</h2>
+          <button onClick={onClose} aria-label="Fermer" className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50"><X className="w-5 h-5" /></button>
         </div>
         <form onSubmit={submit} className="p-6 space-y-4">
           {error && <div className="flex gap-2 p-3 rounded-xl bg-emergency-500/10 border border-emergency-500/20 text-emergency-400 text-sm"><AlertCircle className="w-4 h-4" />{error}</div>}
