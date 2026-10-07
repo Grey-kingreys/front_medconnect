@@ -1,9 +1,12 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/immutability, react-hooks/set-state-in-effect, react/no-unescaped-entities */
 
 import { useState, useEffect, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
 import { takeChargeSOS } from "@/lib/api_carnet";
+import { ApiError } from "@/lib/api_auth";
 import { 
   AlertTriangle, 
   MapPin, 
@@ -19,6 +22,11 @@ import {
 import Link from "next/link";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+
+// Délai d'arrivée annoncé : bornes du serveur et choix rapides
+const DELAI_MIN = 1;
+const DELAI_MAX = 240;
+const DELAIS_RAPIDES = [10, 15, 20, 30, 45, 60];
 
 interface EmergencyAlert {
   urgenceId: string;
@@ -38,6 +46,32 @@ export default function EmergencyListener() {
   const [handledBy, setHandledBy] = useState<string | null>(null);
   const [audio, setAudio] = useState<HTMLAudioElement | null>(null);
   const [loading, setLoading] = useState(false);
+  // Délai d'arrivée annoncé au patient avant de confirmer la prise en charge (F5)
+  const [choixDelai, setChoixDelai] = useState(false);
+  const [delaiSaisi, setDelaiSaisi] = useState("");
+  const [erreurPriseEnCharge, setErreurPriseEnCharge] = useState<string | null>(null);
+  const delaiMinutes = Number(delaiSaisi);
+  const delaiValide = /^\d+$/.test(delaiSaisi) && delaiMinutes >= DELAI_MIN && delaiMinutes <= DELAI_MAX;
+
+  const confirmerPriseEnCharge = async () => {
+    if (!activeAlert || !delaiValide) return;
+    setLoading(true);
+    setErreurPriseEnCharge(null);
+    try {
+      await takeChargeSOS(activeAlert.urgenceId, delaiMinutes);
+      setChoixDelai(false);
+      setDelaiSaisi("");
+      stopAlarm();
+    } catch (err) {
+      setErreurPriseEnCharge(
+        err instanceof ApiError && err.status !== 0 && err.status < 500
+          ? err.message
+          : "La prise en charge n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Initialize Socket
   useEffect(() => {
@@ -67,10 +101,13 @@ export default function EmergencyListener() {
     socket.on("emergencyAlert", (data: EmergencyAlert) => {
       setActiveAlert(data);
       setHandledBy(null);
+      setChoixDelai(false);
+      setErreurPriseEnCharge(null);
       playAlarm();
     });
 
-    socket.on("emergencyHandled", (data: { urgenceId: string, structureName: string }) => {
+    // Payload enrichi (délai d'arrivée), champs supplémentaires facultatifs
+    socket.on("emergencyHandled", (data: { urgenceId: string, structureName: string, delaiArriveeMinutes?: number, finDelaiAt?: string }) => {
       if (activeAlert?.urgenceId === data.urgenceId) {
         setHandledBy(data.structureName);
         // On arrête l'alarme si c'est pris par quelqu'un d'autre
@@ -201,23 +238,79 @@ export default function EmergencyListener() {
               <div className="flex-1 py-5 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-3xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-3 border-2 border-slate-200 dark:border-slate-700">
                 <ShieldAlert className="w-5 h-5 text-emerald-500" /> Pris en charge par {handledBy}
               </div>
+            ) : choixDelai ? (
+              <div className="flex-1 space-y-4">
+                <label htmlFor="delai-arrivee" className="block text-sm font-black text-slate-900 dark:text-white">
+                  Dans combien de minutes vos équipes peuvent-elles arriver ?
+                </label>
+                <div className="grid grid-cols-3 gap-2" role="group" aria-label="Choix rapides du délai">
+                  {DELAIS_RAPIDES.map(m => (
+                    <button
+                      key={m}
+                      type="button"
+                      aria-pressed={delaiSaisi === String(m)}
+                      onClick={() => setDelaiSaisi(String(m))}
+                      className={`py-3 rounded-2xl text-sm font-black transition-colors border-2 ${
+                        delaiSaisi === String(m)
+                          ? "bg-emergency-600 border-emergency-600 text-white"
+                          : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:border-emergency-500"
+                      }`}
+                    >
+                      {m} min
+                    </button>
+                  ))}
+                </div>
+                <div className="flex items-center gap-3">
+                  <input
+                    id="delai-arrivee"
+                    type="number"
+                    inputMode="numeric"
+                    min={DELAI_MIN}
+                    max={DELAI_MAX}
+                    step={1}
+                    value={delaiSaisi}
+                    onChange={e => setDelaiSaisi(e.target.value)}
+                    aria-describedby="delai-arrivee-aide"
+                    aria-invalid={delaiSaisi !== "" && !delaiValide}
+                    placeholder="Autre délai"
+                    className="w-32 p-3 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-700 rounded-xl text-sm text-slate-900 dark:text-white outline-none focus:ring-2 focus:ring-emergency-500"
+                  />
+                  <span className="text-sm font-bold text-slate-600 dark:text-slate-300">minutes</span>
+                </div>
+                <p id="delai-arrivee-aide" className={`text-xs ${delaiSaisi !== "" && !delaiValide ? "text-emergency-600 dark:text-emergency-500 font-bold" : "text-slate-600 dark:text-slate-400"}`}>
+                  {delaiSaisi !== "" && !delaiValide
+                    ? `Indiquez un nombre entier de minutes, entre ${DELAI_MIN} et ${DELAI_MAX}.`
+                    : "Ce délai sera communiqué au patient."}
+                </p>
+                {erreurPriseEnCharge && (
+                  <p role="alert" className="text-sm font-bold text-emergency-600 dark:text-emergency-500">
+                    {erreurPriseEnCharge}
+                  </p>
+                )}
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => { setChoixDelai(false); setErreurPriseEnCharge(null); }}
+                    className="px-5 py-4 rounded-3xl text-xs font-black uppercase tracking-widest text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  >
+                    Retour
+                  </button>
+                  <button
+                    type="button"
+                    onClick={confirmerPriseEnCharge}
+                    disabled={loading || !delaiValide}
+                    className="flex-1 py-4 bg-emergency-600 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-emergency-500 transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+                  >
+                    {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : erreurPriseEnCharge ? "Réessayer" : "Confirmer la prise en charge"}
+                  </button>
+                </div>
+              </div>
             ) : (
-              <button 
-                onClick={async () => {
-                  setLoading(true);
-                  try {
-                    await takeChargeSOS(activeAlert.urgenceId);
-                    stopAlarm();
-                  } catch (err) {
-                    console.error(err);
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                disabled={loading}
+              <button
+                onClick={() => setChoixDelai(true)}
                 className="flex-1 py-5 bg-emergency-500 text-white rounded-3xl font-black text-sm uppercase tracking-widest hover:bg-emergency-600 transition-all shadow-xl shadow-emergency-500/30 flex items-center justify-center gap-3 disabled:opacity-50"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Prendre en Charge <ChevronRight className="w-5 h-5" /></>}
+                Prendre en Charge <ChevronRight className="w-5 h-5" />
               </button>
             )}
           </div>

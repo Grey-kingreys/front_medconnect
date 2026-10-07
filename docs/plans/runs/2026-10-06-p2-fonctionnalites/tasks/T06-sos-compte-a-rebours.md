@@ -42,4 +42,13 @@ Fichiers modifiés + preuves (commande lancée, résultat en une ligne). Ou un b
 
 ## Historique
 
+- 2026-10-07 : exécutée directement par l'orchestrateur de reprise (D16). Aucune connexion en direct côté patient (D14) : seule la relecture périodique est utilisée. À l'ouverture, si l'alerte en cours bloque encore la relance, le compte à rebours d'envoi de 5 s est arrêté et l'état de l'alerte est affiché ; sinon le flux d'envoi existant continue.
+
 ## Validation
+
+- `npx --no-install tsc --noEmit` : 0 erreur.
+- `npx --no-install eslint` (3 fichiers) : 0 erreur, 4 avertissements préexistants (dette préexistante en en-tête, D15).
+- `takeChargeSOS` : `body: JSON.stringify({ delaiArriveeMinutes })`.
+- Minuteurs ajoutés et nettoyage : relecture `setInterval(chargerAlerte, 20 000)` / `clearInterval(id)` ; horloge `setInterval(..., 1000)` / `clearInterval(id)`, tous deux dans un `useEffect` avec retour de nettoyage, actifs seulement modale ouverte.
+- Termes interdits et tirets : 0 occurrence dans les chaînes visibles ajoutées (grep des lignes ajoutées).
+- Parcours navigateur non joué : aucun serveur ne tourne pendant ce run.
