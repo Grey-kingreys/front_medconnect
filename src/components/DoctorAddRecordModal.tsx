@@ -13,6 +13,7 @@ import {
 import type { LigneMedicament } from "@/lib/api_carnet";
 import OrdonnanceMedicamentsInput from "@/components/OrdonnanceMedicamentsInput";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast, messageErreurPour } from "@/hooks/useToast";
 import { getMyPatients, PatientSummary } from "@/lib/api_patients";
 
 interface ModalProps {
@@ -202,6 +203,7 @@ export default function DoctorAddRecordModal({ isOpen, onClose, type, onSuccess 
 
 function ConsultationForm({ patientId, currentUser, onFinish, setSubmitting, submitting }: any) {
   const [form, setForm] = useState({ motif: "", diagnostic: "", notes: "", dateConsultation: new Date().toISOString().split('T')[0] });
+  const { notifier } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -211,8 +213,7 @@ function ConsultationForm({ patientId, currentUser, onFinish, setSubmitting, sub
       await createConsultation({ ...form, patientId, medecinNom });
       onFinish();
     } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la création");
+      notifier(messageErreurPour(err, "La consultation n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
       setSubmitting(false);
     }
   };
@@ -246,6 +247,7 @@ function ConsultationForm({ patientId, currentUser, onFinish, setSubmitting, sub
 
 function OrdonnanceForm({ patientId, currentUser, onFinish, setSubmitting, submitting }: any) {
   const [medicaments, setMedicaments] = useState<LigneMedicament[]>([{ nom: "", dosage: "", duree: "", instructions: "" }]);
+  const { notifier } = useToast();
   const [notes, setNotes] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -256,8 +258,7 @@ function OrdonnanceForm({ patientId, currentUser, onFinish, setSubmitting, submi
       await createOrdonnance({ patientId, medicaments, notes, medecinNom });
       onFinish();
     } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la création");
+      notifier(messageErreurPour(err, "L'ordonnance n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
       setSubmitting(false);
     }
   };
@@ -274,6 +275,7 @@ function OrdonnanceForm({ patientId, currentUser, onFinish, setSubmitting, submi
 
 function VaccinForm({ patientId, currentUser, onFinish, setSubmitting, submitting }: any) {
   const [form, setForm] = useState({ vaccin: "", dateVaccin: new Date().toISOString().split('T')[0], prochainRappel: "", lotNumero: "", notes: "" });
+  const { notifier } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -284,8 +286,7 @@ function VaccinForm({ patientId, currentUser, onFinish, setSubmitting, submittin
       await createVaccination({ ...form, prochainRappel: form.prochainRappel || undefined, patientId, administrePar });
       onFinish();
     } catch (err) {
-      console.error(err);
-      alert("Erreur lors de l'enregistrement");
+      notifier(messageErreurPour(err, "La vaccination n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
       setSubmitting(false);
     }
   };
@@ -315,6 +316,7 @@ function VaccinForm({ patientId, currentUser, onFinish, setSubmitting, submittin
 
 function RendezVousForm({ patientId, onFinish, setSubmitting, submitting }: any) {
   const [form, setForm] = useState({ date: "", motif: "", notes: "" });
+  const { notifier } = useToast();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -323,8 +325,7 @@ function RendezVousForm({ patientId, onFinish, setSubmitting, submitting }: any)
       await createRendezVous({ ...form, patientId });
       onFinish();
     } catch (err) {
-      console.error(err);
-      alert("Erreur lors de la programmation");
+      notifier(messageErreurPour(err, "Le rendez-vous n'a pas pu être programmé. Vérifiez votre connexion puis réessayez."), "erreur");
       setSubmitting(false);
     }
   };

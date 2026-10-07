@@ -1,8 +1,11 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect, @typescript-eslint/no-explicit-any, react/no-unescaped-entities */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast, messageErreurPour } from "@/hooks/useToast";
 import { 
   Calendar, 
   Clock, 
@@ -33,6 +36,7 @@ const STATUS_META: Record<string, { label: string; cls: string }> = {
 
 export default function RendezVousPage() {
   const { user } = useAuth();
+  const { notifier } = useToast();
   const [appointments, setAppointments] = useState<RendezVous[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -68,7 +72,7 @@ export default function RendezVousPage() {
       await updateRendezVousStatus(id, status);
       fetchData();
     } catch (err) {
-      alert("Erreur lors de la mise à jour du statut");
+      notifier(messageErreurPour(err, "Le rendez-vous n'a pas pu être mis à jour. Vérifiez votre connexion puis réessayez."), "erreur");
     }
   };
 
@@ -77,7 +81,7 @@ export default function RendezVousPage() {
       await (decision === "valider" ? validerRendezVous(id) : refuserRendezVous(id));
       fetchData();
     } catch (err: any) {
-      alert(err?.message || "Erreur lors de la validation du rendez-vous");
+      notifier(messageErreurPour(err, "Votre décision sur ce rendez-vous n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
     }
   };
 

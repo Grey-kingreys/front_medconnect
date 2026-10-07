@@ -13,6 +13,7 @@ import {
 import type { LigneMedicament } from "@/lib/api_carnet";
 import OrdonnanceMedicamentsInput from "@/components/OrdonnanceMedicamentsInput";
 import FileUpload from "@/components/FileUpload";
+import { useToast, messageErreurPour } from "@/hooks/useToast";
 import type { StoredFileView } from "@/lib/api_storage";
 interface ModalProps {
   isOpen: boolean;
@@ -60,6 +61,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
   const [activeModal, setActiveModal] = useState<"consultation" | "ordonnance" | "vaccin" | "rendezvous" | "analyse" | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const { notifier } = useToast();
 
   const resetState = () => {
     setActiveModal(null);
@@ -92,7 +94,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de la création de la consultation");
+        notifier(messageErreurPour(err, "La consultation n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };
@@ -163,7 +165,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de la création de l'ordonnance");
+        notifier(messageErreurPour(err, "L'ordonnance n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };
@@ -228,7 +230,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de l'enregistrement du vaccin");
+        notifier(messageErreurPour(err, "La vaccination n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };
@@ -304,7 +306,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de l'enregistrement de l'analyse");
+        notifier(messageErreurPour(err, "L'analyse n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };
@@ -397,7 +399,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de la programmation du rendez-vous");
+        notifier(messageErreurPour(err, "Le rendez-vous n'a pas pu être programmé. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };

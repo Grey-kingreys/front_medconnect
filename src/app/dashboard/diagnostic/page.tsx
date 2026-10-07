@@ -22,8 +22,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createAutoDiagnostic, getAutoDiagnostics, AutoDiagnostic } from "@/lib/api_carnet";
+import { useToast, messageErreurPour } from "@/hooks/useToast";
 
 export default function DiagnosticPage() {
+  const { notifier } = useToast();
   const [symptomes, setSymptomes] = useState("");
   const [lastSymptomes, setLastSymptomes] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
@@ -62,7 +64,7 @@ export default function DiagnosticPage() {
       fetchHistory();
     } catch (err: any) {
       setSymptomes(message);
-      alert(err.message || "Erreur lors de l'analyse");
+      notifier(messageErreurPour(err, "L'analyse de vos symptômes n'a pas pu aboutir. Vérifiez votre connexion puis réessayez."), "erreur");
     } finally {
       setAnalyzing(false);
     }

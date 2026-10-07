@@ -1,9 +1,12 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/useToast";
 import { getConversations, getMessages, startConversation, Conversation, Message } from "@/lib/api_chat";
 import { 
   Send, MapPin, Loader2, User as UserIcon, Building2, Phone, Search, AlertCircle, Menu, ArrowLeft
@@ -13,6 +16,7 @@ const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 export default function ChatPage() {
   const { user } = useAuth();
+  const { notifier } = useToast();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConv, setActiveConv] = useState<Conversation | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -138,12 +142,12 @@ export default function ChatPage() {
         (error) => {
           console.error("Error getting location", error);
           setLocationLoading(false);
-          alert("Impossible de récupérer votre position.");
+          notifier("Impossible de récupérer votre position. Autorisez l'accès à votre position dans votre navigateur puis réessayez.", "erreur");
         }
       );
     } else {
       setLocationLoading(false);
-      alert("La géolocalisation n'est pas supportée par votre navigateur.");
+      notifier("Votre navigateur ne permet pas de partager votre position. Décrivez plutôt votre emplacement dans un message.", "erreur");
     }
   };
 

@@ -42,4 +42,14 @@ Fichiers modifiés et créés + preuves (commande lancée, résultat en une lign
 
 ## Historique
 
+- 2026-10-07 : exécutée directement par l'orchestrateur de reprise (D16). Logique commune dans `envoyer()` (délai, nouvelles tentatives, hors connexion) et `avecRafraichissement()` (401), partagées par `apiFetch`/`authFetch`/`authDownload`. Petit utilitaire `messageErreurPour(err, texte)` dans `hooks/useToast.tsx` (11 usages, règle de trois atteinte). Message de déconnexion reformulé sans le mot « session ».
+
 ## Validation
+
+- `npx --no-install tsc --noEmit` : 0 erreur ; eslint des 10 fichiers touchés : 0 erreur, 23 avertissements préexistants.
+- `grep -rn "[^a-zA-Z_.]alert(" src` : 0 appel natif ; aucun autre `alert(` (pas de `setAlert`/`emergencyAlert` sous cette forme).
+- `grep -c "console.log" src/lib/api_auth.ts` : 0.
+- Nouvelles tentatives : `const lecture = methode === "GET" || methode === "HEAD"` puis `tentatives = lecture ? 3 : 1` ; `FormData` : `estFormData ? {} : { "Content-Type": "application/json" }` ; `authDownload` exporté.
+- `confirm(` natif restant (hors tâche) : `app/dashboard/mes-structures/page.tsx` (révocation d'accès).
+- Termes interdits et tirets : 0 dans les chaînes visibles ajoutées.
+- Limite : `Content-Disposition` n'est lisible en cross-origin que si le serveur l'expose (CORS `exposedHeaders`) ; sinon `filename` vaut null et l'appelant prend un nom par défaut.

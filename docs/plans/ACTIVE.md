@@ -10,7 +10,6 @@ Détails: docs/plans/runs/2026-10-06-p2-fonctionnalites/ (niveau P2 du BACKLOG-P
 
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
-| T09 | Résilience réseau et notifications (18) | dur | à faire | 0 |
 | T10 | Import Excel du stock (F1) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
@@ -19,7 +18,8 @@ Détails: docs/plans/runs/2026-10-06-p2-fonctionnalites/ (niveau P2 du BACKLOG-P
 - T11 Vaccination : rappel vide non envoyé (signalé par P3) : validé, 4bbb9e6
 - T06 SOS : délai et compte à rebours (F5) : validé, 4d86c52
 - T07 Carnet patient : recherche et filtre (F3) : validé, 5f3ba3e (merge e0b7a4b)
-- T08 Crédibilité et navigation (17) : validé, commit T08
+- T08 Crédibilité et navigation (17) : validé, 03578ef
+- T09 Résilience réseau et notifications (18) : validé, commit T09
 
 ## Questions parquées
 

@@ -1,8 +1,11 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect, @typescript-eslint/no-explicit-any, react/no-unescaped-entities */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast, messageErreurPour } from "@/hooks/useToast";
 import { Building2, Plus, ShieldAlert, XCircle, Search, MapPin, CheckCircle2, Loader2, QrCode } from "lucide-react";
 import { ShareDossierModal } from "@/components/modals/ShareDossierModal";
 import { 
@@ -17,6 +20,7 @@ import {
 
 export default function MesStructuresPage() {
   const { user } = useAuth();
+  const { notifier } = useToast();
   const [autorisations, setAutorisations] = useState<Autorisation[]>([]);
   const [toutesStructures, setToutesStructures] = useState<MyStructure[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,7 +55,7 @@ export default function MesStructuresPage() {
       await autoriserStructure(structureId);
       await fetchData();
     } catch (err: any) {
-      alert(err.message || "Erreur lors de l'autorisation");
+      notifier(messageErreurPour(err, "L'établissement n'a pas pu être autorisé à voir votre carnet. Vérifiez votre connexion puis réessayez."), "erreur");
     } finally {
       setActionLoading(null);
     }
@@ -64,7 +68,7 @@ export default function MesStructuresPage() {
       await revoquerStructure(structureId);
       await fetchData();
     } catch (err: any) {
-      alert(err.message || "Erreur lors de la révocation");
+      notifier(messageErreurPour(err, "L'accès de l'établissement n'a pas pu être retiré. Vérifiez votre connexion puis réessayez."), "erreur");
     } finally {
       setActionLoading(null);
     }
