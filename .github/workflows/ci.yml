@@ -1,0 +1,48 @@
+# CI minimale du front : typage du projet + build de production.
+# Il n'y a pas de tests automatisés : le build tient lieu de gate.
+# Pas de lint global ici : la dette existante (environ 190 erreurs eslint,
+# backlog point 22) le ferait échouer en permanence. Le lint reste appliqué
+# aux seuls fichiers indexés par le hook pre-commit.
+name: CI
+
+on:
+  push:
+    branches: [master, "orch/**"]
+  pull_request:
+    branches: [master]
+
+# Annule les exécutions obsolètes d'une même branche.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  verification:
+    runs-on: ubuntu-latest
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      # Valeurs factices et publiques, inlinées au build : aucun vrai jeton.
+      NEXT_PUBLIC_API_URL: http://localhost:3001
+      NEXT_PUBLIC_BASE_URL: http://localhost:3000
+      NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN: ""
+      NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION: ""
+    steps:
+      - uses: actions/checkout@v4
+
+      # Version alignée sur l'image node:22-slim du Dockerfile.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Installation des dépendances
+        run: npm ci --no-audit --no-fund
+
+      - name: Typage
+        run: npx --no-install tsc --noEmit
+
+      - name: Build de production
+        run: npm run build

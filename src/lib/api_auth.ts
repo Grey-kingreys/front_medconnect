@@ -1,3 +1,5 @@
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * MedConnecte Auth API
  * 
@@ -188,6 +190,8 @@ export async function authFetch<T>(
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           localStorage.removeItem("user");
+          // Retirer aussi le cookie témoin lu par src/proxy.ts (voir useAuth.tsx)
+          document.cookie = "mc_connecte=; path=/; max-age=0; SameSite=Lax";
         }
         throw new ApiError("Session expirée. Veuillez vous reconnecter.", 401);
       }
@@ -360,6 +364,8 @@ export async function logout() {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("user");
+      // Retirer aussi le cookie témoin lu par src/proxy.ts (voir useAuth.tsx)
+      document.cookie = "mc_connecte=; path=/; max-age=0; SameSite=Lax";
     }
   }
 }

@@ -49,7 +49,8 @@ est vide, le signaler et proposer la commande ci-dessus avant tout commit.
 ## Conventions importantes
 
 - **Auth** : token JWT en `localStorage` ; refresh via cookie httpOnly + fallback body.
-  Redirection des routes protégées gérée **côté client** dans `useAuth` (pas de middleware).
+  Garde serveur optimiste via `src/proxy.ts` (redirige `/dashboard` vers `/auth/login` sans le
+  cookie témoin `mc_connecte`, posé et retiré par `useAuth`) ; l'autorisation réelle est faite par l'API.
 - **Temps réel** : socket.io vers `NEXT_PUBLIC_API_URL` (chat, alertes SOS via
   `EmergencyListener`). Toujours nettoyer les listeners (`socket.off`) au démontage.
 - **Variables `NEXT_PUBLIC_*`** : `API_URL`, `BASE_URL`, `MAPBOX_ACCESS_TOKEN`,
@@ -89,8 +90,7 @@ nouveau domaine de stockage à la CSP.
 
 Voir la liste complète dans le `CLAUDE.md` racine. En résumé : **zéro test**, typage
 **`any`** sur les payloads API (`api_carnet.ts`…), **PWA serwist commentée** dans
-`next.config.ts` (offline non fonctionnel malgré les deps), pas de `middleware.ts`
-(flash de contenu protégé), accessibilité faible (peu d'ARIA), pas de retry/back-off
+`next.config.ts` (offline non fonctionnel malgré les deps), accessibilité faible (peu d'ARIA), pas de retry/back-off
 réseau (important en contexte de connexion instable).
 
 <!-- orchestrator:start v2 -->
