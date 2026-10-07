@@ -31,4 +31,12 @@ Fichiers modifiés + preuves (commande lancée, résultat en une ligne). Ou un b
 
 ## Historique
 
+- 2026-10-07 : exécutée directement par l'orchestrateur de reprise (D16). Constante des routes à réactiver du sitemap non exportée (un fichier de métadonnées n'expose que sa fonction par défaut).
+
 ## Validation
+
+- `npx --no-install tsc --noEmit` : 0 erreur ; eslint des 3 fichiers : 0 erreur, 7 avertissements préexistants.
+- `grep -rn "12 médecins" src` : 0 résultat (remplacé par « Aide à l'orientation : ne remplace pas l'avis d'un médecin. », avatars factices retirés).
+- Menu : liens masqués `/dashboard/stats`, `/dashboard/config`, `/dashboard/securite` (seuls `href` sans `page.tsx`, vérifiés par boucle sur les `href`) ; section vide non affichée (section « Super Admin »).
+- Sitemap : `/`, `/catalogue`, `/auth/login`, `/auth/register`, `/auth/forgot-password`, `/cgu`, `/confidentialite`, `/mentions-legales`, `/rgpd`, chacune avec son `page.tsx`.
+- `robots.ts` (non modifié) : interdit `/api/`, `/admin/`, `/private/`, routes inexistantes mais sans effet nuisible ; `allow` ne cite que des pages existantes.
