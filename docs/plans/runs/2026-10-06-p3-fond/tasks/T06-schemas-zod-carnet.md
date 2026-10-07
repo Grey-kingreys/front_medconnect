@@ -39,4 +39,17 @@ Chemins + preuves (commande lancée, résultat en une ligne) + incompatibilités
 
 ## Historique
 
+2026-10-06 | dur | interrompu | travail laissé non commité (orchestrateur figé)
+2026-10-07 | orchestrateur | réussi | repris et validé sans sous-agent ; zod ^4.6.5 (version 4)
+
+DTO back vs schéma : identique champ par champ pour les 5 envois (mêmes obligatoires, mêmes @Length, mêmes dates ISO, même énumération de statut). Écarts volontaires plus souples : `.nullish()` (accepte null comme @IsOptional), `z.guid()` pour @IsUUID, `medicaments` liste au contenu non vérifié (le back n'a pas de @ValidateNested).
+
+Incompatibilités d'appelants (non modifiés, D04, pour P2) : `prochainRappel: ""` envoyé par les deux formulaires de vaccination quand le champ est vide, refusé par le back comme par le schéma. Aucun champ hors DTO trouvé.
+
 ## Validation
+
+grep any api_carnet.ts | aucune occurrence | 6461953
+npm test | 4 fichiers, 32 tests OK | 6461953
+npx --no-install tsc --noEmit | exit 0, appelants P2 compilent sans modification | 6461953
+eslint api_carnet.ts, api_carnet.test.ts, schemas/carnet.ts, schemas/carnet.test.ts | exit 0 | 6461953
+npm ci --dry-run | aucune désynchronisation du lock | 6461953

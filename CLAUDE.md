@@ -30,8 +30,8 @@ Les gates (`.githooks/gate-lib.sh`) : pre-commit = `tsc --noEmit` sur tout le pr
 sur les **seuls fichiers indexés** (la dette existante ne bloque pas, mais tout fichier
 touché doit être propre), dans
 le conteneur `frontend` via `docker compose exec` s'il est démarré, sinon en local ;
-pre-push = `npm run build`, **toujours en local** (dans le conteneur, il écraserait le
-`.next` du serveur de dev). **Consigne pour Claude** : si `git config core.hooksPath`
+pre-push = `npm test` (Vitest) puis `npm run build`, **toujours en local** (dans le
+conteneur, le build écraserait le `.next` du serveur de dev). **Consigne pour Claude** : si `git config core.hooksPath`
 est vide, le signaler et proposer la commande ci-dessus avant tout commit.
 
 ## Structure
@@ -87,8 +87,9 @@ nouveau domaine de stockage à la CSP.
 
 ## ⚠️ Dette/risques spécifiques frontend
 
-Voir la liste complète dans le `CLAUDE.md` racine. En résumé : **zéro test**, typage
-**`any`** sur les payloads API (`api_carnet.ts`…), **PWA serwist commentée** dans
+Voir la liste complète dans le `CLAUDE.md` racine. En résumé : tests encore rares (socle Vitest :
+`npm test`, fichiers `src/**/*.test.{ts,tsx}`), typage **`any`** sur les payloads API
+(sauf les 5 envois de `api_carnet.ts`, validés par Zod dans `src/lib/schemas/carnet.ts`), **PWA serwist commentée** dans
 `next.config.ts` (offline non fonctionnel malgré les deps), pas de `middleware.ts`
 (flash de contenu protégé), accessibilité faible (peu d'ARIA), pas de retry/back-off
 réseau (important en contexte de connexion instable).
@@ -99,7 +100,7 @@ réseau (important en contexte de connexion instable).
 Audience: mixte par surface : non-dev pour tout le produit (landing publique, pages légales, connexion et inscription, dashboard de tous les rôles : patient, médecin, pharmacien, agent d'accueil, administrateur de structure, super-admin) ; dev uniquement pour `/debug` (outil interne de diagnostic de connexion, jamais montré aux utilisateurs)
 Maturité: avancé (anti-slop préventif + passe curative disponible)
 Langues: tout en français : interface (locale fr-GN, chaînes en dur dans les composants, aucun dossier de traduction), messages, logs, commentaires de code, docs, plans, commits ; identifiants et noms de fichiers existants conservés tels quels (pas de renommage)
-Gate: `tsc --noEmit` (projet) puis `eslint` (fichiers indexés) (pre-commit, via docker compose exec frontend si démarré, sinon local) ; `npm run build` (pre-push, toujours local, aucun test automatisé : le build tient lieu de gate)
+Gate: `tsc --noEmit` (projet) puis `eslint` (fichiers indexés) (pre-commit, via docker compose exec frontend si démarré, sinon local) ; `npm test` (Vitest) puis `npm run build` (pre-push, toujours local)
 
 Règles contraignantes, détail dans docs/ORCHESTRATOR.md :
 - **Audience** (prioritaire) : avant toute UI, tout texte visible ou message d'erreur, appliquer le régime de l'audience ci-dessus (section 1). Non-dev : vocabulaire utilisateur, erreurs humaines et actionnables, empty states qui guident, preuves exigées.
