@@ -223,7 +223,8 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
       e.preventDefault();
       setLoading(true);
       try {
-        await createVaccination({ ...form, patientId });
+        // Rappel laissé vide : champ non envoyé (une date est attendue)
+        await createVaccination({ ...form, prochainRappel: form.prochainRappel || undefined, patientId });
         handleSuccess();
       } catch (err) {
         console.error(err);

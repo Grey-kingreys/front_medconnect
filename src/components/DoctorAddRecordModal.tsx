@@ -280,7 +280,8 @@ function VaccinForm({ patientId, currentUser, onFinish, setSubmitting, submittin
     setSubmitting(true);
     try {
       const administrePar = `Dr. ${currentUser?.prenom || ""} ${currentUser?.nom || ""}`.trim();
-      await createVaccination({ ...form, patientId, administrePar });
+      // Rappel laissé vide : champ non envoyé (une date est attendue)
+      await createVaccination({ ...form, prochainRappel: form.prochainRappel || undefined, patientId, administrePar });
       onFinish();
     } catch (err) {
       console.error(err);
