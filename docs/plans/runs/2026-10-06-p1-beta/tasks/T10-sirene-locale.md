@@ -34,6 +34,7 @@ Liste des fichiers créés ou modifiés + preuves (commandes lancées, résultat
 ## Historique
 
 2026-10-06 | spécifié | succès | -
+2026-10-07 | orchestrateur (reprise, D07) | validé | revalidé après merge sur orch/p1-beta (en-tête WAV, grep pixabay 0, tsc et eslint 0 erreur) | 6f35e9f, merge 5333dbf
 
 ## Validation
 

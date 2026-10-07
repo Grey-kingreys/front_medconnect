@@ -36,4 +36,9 @@ Fichier créé + preuves (commandes lancées, résultat en une ligne chacune). O
 
 ## Historique
 
+2026-10-06 | spécifié | succès | ajout de NEXT_PUBLIC_MAPBOX_ACCESS_TOKEN et NEXT_PUBLIC_GOOGLE_SITE_VERIFICATION vides, NEXT_TELEMETRY_DISABLED
+2026-10-07 | orchestrateur (reprise, D07) | validé | aucun fichier .env dans le worktree : le build n'a lu que les variables factices
+
 ## Validation
+
+js-yaml load ; tsc --noEmit ; `env -i` + variables du YAML puis npm run build | YAML OK, 5 étapes ; 0 erreur ; succès (Compiled successfully) | da2f0a7, merge 580fdb4

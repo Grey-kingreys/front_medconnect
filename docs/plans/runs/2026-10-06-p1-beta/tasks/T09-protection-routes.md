@@ -42,4 +42,10 @@ Liste des fichiers modifiés ou créés + preuves (commandes lancées, résultat
 
 ## Historique
 
+2026-10-06 | dur | succès | proxy étendu à `/debug` pour un vrai 404 (D06) ; aucun lien de l'interface vers `/debug`
+2026-10-07 | orchestrateur (reprise, D07) | validé | diff relu contre la spec : cookie posé dans loginUser, refreshProfile, refresh silencieux et avant la redirection depuis /auth ; retiré dans chaque chemin qui vide access_token (useAuth et api_auth)
+
 ## Validation
+
+tsc --noEmit ; eslint proxy.ts, debug/layout.tsx, useAuth.tsx, api_auth.ts ; npm run build | 0 erreur ; 0 erreur (1 avertissement) ; succès, « ƒ Proxy (Middleware) » listé
+next start -p 3117 puis curl | /dashboard 307 vers /auth/login ; /dashboard avec cookie mc_connecte=1 : 200 ; /debug 404 ; / 200 | 363af6e

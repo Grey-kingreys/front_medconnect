@@ -90,8 +90,7 @@ nouveau domaine de stockage à la CSP.
 
 Voir la liste complète dans le `CLAUDE.md` racine. En résumé : **zéro test**, typage
 **`any`** sur les payloads API (`api_carnet.ts`…), **PWA serwist commentée** dans
-`next.config.ts` (offline non fonctionnel malgré les deps), pas de `middleware.ts`
-(flash de contenu protégé), accessibilité faible (peu d'ARIA), pas de retry/back-off
+`next.config.ts` (offline non fonctionnel malgré les deps), accessibilité faible (peu d'ARIA), pas de retry/back-off
 réseau (important en contexte de connexion instable).
 
 <!-- orchestrator:start v2 -->
