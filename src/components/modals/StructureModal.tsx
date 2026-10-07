@@ -4,12 +4,15 @@ import { createStructure, StructureType } from "@/lib/api_admin";
 import { updateMyStructure, MyStructure, UpdateStructurePayload } from "@/lib/api_structure";
 import { ApiError } from "@/lib/api_auth";
 import { MapModal } from "./MapModal";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { MapPin, Navigation } from "lucide-react";
 
 type StructureModalMode = "create" | "edit" | "view";
 
 interface StructureModalProps {
   mode: StructureModalMode;
+  // Dette de typage préexistante (point 21), conservée pour ne pas changer les appelants.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   structure?: any; // Generic any to handle both Structure and MyStructure types
   onClose: () => void;
   onSuccess?: () => void;
@@ -58,6 +61,8 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  // Échap est laissé à la carte quand elle est ouverte par-dessus.
+  const { dialogProps, titleId } = useDialogA11y({ isOpen: true, onClose, closeOnEscape: !saving && !showMap });
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,21 +110,22 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div 
+      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div
+        {...dialogProps}
         className="relative w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl overflow-hidden animate-slide-up max-h-[90vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex-shrink-0 flex items-center justify-between p-5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">
+            <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-white">
               {mode === "create" ? "Créer une structure" : mode === "edit" ? "Modifier la structure" : "Détails de la structure"}
             </h2>
             {mode === "create" && (
               <p className="text-xs text-slate-500 mt-0.5">Un email d&apos;invitation sera envoyé automatiquement</p>
             )}
           </div>
-          <button type="button" onClick={onClose} className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+          <button type="button" onClick={onClose} aria-label="Fermer" className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>

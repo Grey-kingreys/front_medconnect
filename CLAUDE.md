@@ -30,8 +30,8 @@ Les gates (`.githooks/gate-lib.sh`) : pre-commit = `tsc --noEmit` sur tout le pr
 sur les **seuls fichiers indexés** (la dette existante ne bloque pas, mais tout fichier
 touché doit être propre), dans
 le conteneur `frontend` via `docker compose exec` s'il est démarré, sinon en local ;
-pre-push = `npm run build`, **toujours en local** (dans le conteneur, il écraserait le
-`.next` du serveur de dev). **Consigne pour Claude** : si `git config core.hooksPath`
+pre-push = `npm test` (Vitest) puis `npm run build`, **toujours en local** (dans le
+conteneur, le build écraserait le `.next` du serveur de dev). **Consigne pour Claude** : si `git config core.hooksPath`
 est vide, le signaler et proposer la commande ci-dessus avant tout commit.
 
 ## Structure
@@ -88,10 +88,20 @@ nouveau domaine de stockage à la CSP.
 
 ## ⚠️ Dette/risques spécifiques frontend
 
-Voir la liste complète dans le `CLAUDE.md` racine. En résumé : **zéro test**, typage
-**`any`** sur les payloads API (`api_carnet.ts`…), **PWA serwist commentée** dans
-`next.config.ts` (offline non fonctionnel malgré les deps), accessibilité faible (peu d'ARIA), pas de retry/back-off
-réseau (important en contexte de connexion instable).
+Référence à jour : `BACKLOG-PRIORISE.md` à la racine du monorepo. Les points P0 à P3 ont
+été intégrés le 2026-10-07 (branche `integration/2026-10`, runs archivés dans
+`docs/plans/archive/`). Déjà en place : garde serveur du tableau de bord (`src/proxy.ts`,
+vérification optimiste par cookie témoin, l'autorisation réelle reste faite par l'API),
+`/debug` introuvable en production, délai et nouvelles tentatives réseau sur les lectures
+(`authFetch`), notifications à l'écran au lieu des `alert()`, modales accessibles, validation
+Zod des 5 envois du carnet (`src/lib/schemas/carnet.ts`). Reste notamment :
+- **Tests** : socle Vitest (`npm test`, fichiers `src/**/*.test.{ts,tsx}`), encore peu de tests.
+- **Typage** : `any` sur les autres payloads d'API ; access token toujours en `localStorage`.
+- **PWA** : serwist commenté dans `next.config.ts`, pas de mode hors connexion.
+- **Lint** : plusieurs fichiers avec un `eslint-disable` global marqué « Dette préexistante,
+  backlog points 21 et 22 ».
+- **Parcours non joués** : SOS, ordonnance, import du stock et carnet à valider dans un
+  navigateur avec une base de développement.
 
 <!-- orchestrator:start v2 -->
 ## Règles du projet et orchestrateur
@@ -99,7 +109,7 @@ réseau (important en contexte de connexion instable).
 Audience: mixte par surface : non-dev pour tout le produit (landing publique, pages légales, connexion et inscription, dashboard de tous les rôles : patient, médecin, pharmacien, agent d'accueil, administrateur de structure, super-admin) ; dev uniquement pour `/debug` (outil interne de diagnostic de connexion, jamais montré aux utilisateurs)
 Maturité: avancé (anti-slop préventif + passe curative disponible)
 Langues: tout en français : interface (locale fr-GN, chaînes en dur dans les composants, aucun dossier de traduction), messages, logs, commentaires de code, docs, plans, commits ; identifiants et noms de fichiers existants conservés tels quels (pas de renommage)
-Gate: `tsc --noEmit` (projet) puis `eslint` (fichiers indexés) (pre-commit, via docker compose exec frontend si démarré, sinon local) ; `npm run build` (pre-push, toujours local, aucun test automatisé : le build tient lieu de gate)
+Gate: `tsc --noEmit` (projet) puis `eslint` (fichiers indexés) (pre-commit, via docker compose exec frontend si démarré, sinon local) ; `npm test` (Vitest) puis `npm run build` (pre-push, toujours local)
 
 Règles contraignantes, détail dans docs/ORCHESTRATOR.md :
 - **Audience** (prioritaire) : avant toute UI, tout texte visible ou message d'erreur, appliquer le régime de l'audience ci-dessus (section 1). Non-dev : vocabulaire utilisateur, erreurs humaines et actionnables, empty states qui guident, preuves exigées.
