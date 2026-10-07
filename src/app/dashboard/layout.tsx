@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect } from "react";
@@ -38,6 +40,7 @@ import { PWAInstallButton } from "@/components/PWAInstallButton";
 import EmergencyButton from "@/components/EmergencyButton";
 import EmergencyListener from "@/components/EmergencyListener";
 import NotificationBell from "@/components/NotificationBell";
+import ToastProvider from "@/components/Toast";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -51,6 +54,13 @@ interface NavSection {
   title: string;
   items: NavItem[];
 }
+
+// Pages pas encore créées : réafficher le lien en retirant la route de cette liste
+const ROUTES_NON_DISPONIBLES = new Set([
+  "/dashboard/stats",
+  "/dashboard/config",
+  "/dashboard/securite",
+]);
 
 // ─── Navigation par rôle ────────────────────────────────────────
 
@@ -249,7 +259,10 @@ function Sidebar({
 
   if (!user) return null;
 
-  const sections = getNavSections(user.role);
+  // Les liens vers des pages pas encore créées sont masqués, une section vide n'est pas affichée
+  const sections = getNavSections(user.role)
+    .map((section) => ({ ...section, items: section.items.filter((item) => !ROUTES_NON_DISPONIBLES.has(item.href)) }))
+    .filter((section) => section.items.length > 0);
   const roleLabel = getRoleLabel(user.role);
   const roleGradient = getRoleColor(user.role);
   const initials = `${user.prenom[0] || ""}${user.nom[0] || ""}`.toUpperCase();
@@ -467,6 +480,7 @@ export default function DashboardLayout({
   }
 
   return (
+    <ToastProvider>
     <div className="min-h-screen bg-slate-50 dark:bg-[#030712] transition-colors duration-300">
       <Sidebar
         collapsed={collapsed}
@@ -521,5 +535,6 @@ export default function DashboardLayout({
       <EmergencyButton />
       <EmergencyListener />
     </div>
+    </ToastProvider>
   );
 }

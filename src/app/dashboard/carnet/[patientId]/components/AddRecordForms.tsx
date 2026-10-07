@@ -1,14 +1,19 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react/no-unescaped-entities, react-hooks/static-components */
 
 import { useState } from "react";
 import { 
-  X, Plus, ClipboardList, Pill, Syringe, Calendar, 
+  X, ClipboardList, Pill, Syringe, Calendar, 
   Loader2, CheckCircle2, AlertCircle, Save, Activity
 } from "lucide-react";
 import {
   createConsultation, createOrdonnance, createVaccination, createRendezVous, createAnalyse
 } from "@/lib/api_carnet";
+import type { LigneMedicament } from "@/lib/api_carnet";
+import OrdonnanceMedicamentsInput from "@/components/OrdonnanceMedicamentsInput";
 import FileUpload from "@/components/FileUpload";
+import { useToast, messageErreurPour } from "@/hooks/useToast";
 import type { StoredFileView } from "@/lib/api_storage";
 interface ModalProps {
   isOpen: boolean;
@@ -56,6 +61,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
   const [activeModal, setActiveModal] = useState<"consultation" | "ordonnance" | "vaccin" | "rendezvous" | "analyse" | null>(null);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const { notifier } = useToast();
 
   const resetState = () => {
     setActiveModal(null);
@@ -88,7 +94,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de la création de la consultation");
+        notifier(messageErreurPour(err, "La consultation n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };
@@ -146,13 +152,10 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
 
   // ─── Ordonnance Form ─────────────────────────────────────────────
   const OrdonnanceForm = () => {
-    const [medicaments, setMedicaments] = useState([{ nom: "", dosage: "", duree: "", instructions: "" }]);
+    const [medicaments, setMedicaments] = useState<LigneMedicament[]>([{ nom: "", dosage: "", duree: "", instructions: "" }]);
     const [notes, setNotes] = useState("");
     const [scanFileId, setScanFileId] = useState<string | null>(null);
     const [scanName, setScanName] = useState("");
-
-    const addMedicament = () => setMedicaments([...medicaments, { nom: "", dosage: "", duree: "", instructions: "" }]);
-    const removeMedicament = (index: number) => setMedicaments(medicaments.filter((_, i) => i !== index));
 
     const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -162,77 +165,14 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de la création de l'ordonnance");
+        notifier(messageErreurPour(err, "L'ordonnance n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };
 
     return (
       <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Médicaments</label>
-            <button type="button" onClick={addMedicament} className="text-xs font-black text-primary-600 hover:text-primary-700 flex items-center gap-1">
-              <Plus className="w-4 h-4" /> Ajouter
-            </button>
-          </div>
-          {medicaments.map((m, i) => (
-            <div key={i} className="p-6 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl space-y-4 relative group">
-              {medicaments.length > 1 && (
-                <button type="button" onClick={() => removeMedicament(i)} className="absolute top-4 right-4 p-1 text-slate-400 hover:text-rose-500 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input 
-                  required
-                  className="w-full p-3 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
-                  placeholder="Nom du médicament"
-                  value={m.nom}
-                  onChange={e => {
-                    const newMeds = [...medicaments];
-                    newMeds[i].nom = e.target.value;
-                    setMedicaments(newMeds);
-                  }}
-                />
-                <input 
-                  required
-                  className="w-full p-3 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
-                  placeholder="Dosage (ex: 1 mat, 1 soir)"
-                  value={m.dosage}
-                  onChange={e => {
-                    const newMeds = [...medicaments];
-                    newMeds[i].dosage = e.target.value;
-                    setMedicaments(newMeds);
-                  }}
-                />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <input 
-                  required
-                  className="w-full p-3 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
-                  placeholder="Durée (ex: 5 jours)"
-                  value={m.duree}
-                  onChange={e => {
-                    const newMeds = [...medicaments];
-                    newMeds[i].duree = e.target.value;
-                    setMedicaments(newMeds);
-                  }}
-                />
-                <input 
-                  className="w-full p-3 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl outline-none"
-                  placeholder="Instructions (ex: avant repas)"
-                  value={m.instructions}
-                  onChange={e => {
-                    const newMeds = [...medicaments];
-                    newMeds[i].instructions = e.target.value;
-                    setMedicaments(newMeds);
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
+        <OrdonnanceMedicamentsInput value={medicaments} onChange={setMedicaments} />
         <div className="space-y-2">
           <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Notes (Optionnel)</label>
           <textarea
@@ -285,11 +225,12 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
       e.preventDefault();
       setLoading(true);
       try {
-        await createVaccination({ ...form, patientId });
+        // Rappel laissé vide : champ non envoyé (une date est attendue)
+        await createVaccination({ ...form, prochainRappel: form.prochainRappel || undefined, patientId });
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de l'enregistrement du vaccin");
+        notifier(messageErreurPour(err, "La vaccination n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };
@@ -365,7 +306,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de l'enregistrement de l'analyse");
+        notifier(messageErreurPour(err, "L'analyse n'a pas pu être enregistrée. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };
@@ -458,7 +399,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
         handleSuccess();
       } catch (err) {
         console.error(err);
-        alert("Erreur lors de la programmation du rendez-vous");
+        notifier(messageErreurPour(err, "Le rendez-vous n'a pas pu être programmé. Vérifiez votre connexion puis réessayez."), "erreur");
         setLoading(false);
       }
     };

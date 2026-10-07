@@ -1,14 +1,33 @@
 import type { MetadataRoute } from "next";
 
+// Pages de contenu, villes et services prévus pour le référencement : à réactiver
+// (les ajouter à la sortie de sitemap()) quand les pages existeront sous src/app/.
+// Non exportée : un fichier de métadonnées Next n'expose que sa fonction par défaut.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ROUTES_A_REACTIVER = {
+  contenu: ["/about", "/features", "/pricing", "/contact", "/faq", "/privacy", "/terms"],
+  villes: ["conakry", "labe", "kindia", "kankan", "nzerekore", "boke", "mamou", "faranah"].map(
+    (ville) => `/locations/${ville}`
+  ),
+  services: [
+    "carnet-sante",
+    "diagnostic-ia",
+    "pharmacie-ligne",
+    "urgences",
+    "geolocalisation",
+    "teleconsultation",
+  ].map((service) => `/services/${service}`),
+};
+
 /**
- * Sitemap dynamique pour MedConnecte Guinée
- * Génère automatiquement les URLs principales pour le SEO
+ * Sitemap pour MedConnecte Guinée
+ * Ne liste que les pages publiques qui existent réellement.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com";
   const currentDate = new Date();
 
-  // URLs statiques principales
+  // Accueil et catalogue public
   const staticRoutes: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
@@ -16,6 +35,16 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: "daily",
       priority: 1.0,
     },
+    {
+      url: `${baseUrl}/catalogue`,
+      lastModified: currentDate,
+      changeFrequency: "weekly",
+      priority: 0.8,
+    },
+  ];
+
+  // Connexion et inscription
+  const authRoutes: MetadataRoute.Sitemap = [
     {
       url: `${baseUrl}/auth/login`,
       lastModified: currentDate,
@@ -26,7 +55,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${baseUrl}/auth/register`,
       lastModified: currentDate,
       changeFrequency: "monthly",
-      priority: 0.9,
+      priority: 0.8,
     },
     {
       url: `${baseUrl}/auth/forgot-password`,
@@ -36,92 +65,15 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
   ];
 
-  // URLs de contenu
-  const contentRoutes: MetadataRoute.Sitemap = [
-    {
-      url: `${baseUrl}/about`,
+  // Pages légales
+  const legalRoutes: MetadataRoute.Sitemap = ["/cgu", "/confidentialite", "/mentions-legales", "/rgpd"].map(
+    (route) => ({
+      url: `${baseUrl}${route}`,
       lastModified: currentDate,
-      changeFrequency: "monthly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/features`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.8,
-    },
-    {
-      url: `${baseUrl}/pricing`,
-      lastModified: currentDate,
-      changeFrequency: "weekly",
-      priority: 0.7,
-    },
-    {
-      url: `${baseUrl}/contact`,
-      lastModified: currentDate,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/faq`,
-      lastModified: currentDate,
-      changeFrequency: "monthly",
-      priority: 0.6,
-    },
-    {
-      url: `${baseUrl}/privacy`,
-      lastModified: currentDate,
-      changeFrequency: "yearly",
+      changeFrequency: "yearly" as const,
       priority: 0.3,
-    },
-    {
-      url: `${baseUrl}/terms`,
-      lastModified: currentDate,
-      changeFrequency: "yearly",
-      priority: 0.3,
-    },
-  ];
+    })
+  );
 
-  // Villes principales de Guinée (SEO local)
-  const cities = [
-    "conakry",
-    "labe",
-    "kindia",
-    "kankan",
-    "nzerekore",
-    "boke",
-    "mamou",
-    "faranah",
-  ];
-
-  const cityRoutes: MetadataRoute.Sitemap = cities.map((city) => ({
-    url: `${baseUrl}/locations/${city}`,
-    lastModified: currentDate,
-    changeFrequency: "weekly" as const,
-    priority: 0.7,
-  }));
-
-  // Services principaux (SEO fonctionnalités)
-  const services = [
-    "carnet-sante",
-    "diagnostic-ia",
-    "pharmacie-ligne",
-    "urgences",
-    "geolocalisation",
-    "teleconsultation",
-  ];
-
-  const serviceRoutes: MetadataRoute.Sitemap = services.map((service) => ({
-    url: `${baseUrl}/services/${service}`,
-    lastModified: currentDate,
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
-
-  return [
-    ...staticRoutes,
-    ...contentRoutes,
-    ...cityRoutes,
-    ...serviceRoutes,
-  ];
+  return [...staticRoutes, ...authRoutes, ...legalRoutes];
 }

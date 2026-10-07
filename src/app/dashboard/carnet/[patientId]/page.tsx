@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, react/no-unescaped-entities */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
@@ -6,7 +8,7 @@ import { useParams, useRouter } from "next/navigation";
 import { 
   Activity, AlertCircle, 
   Loader2, ShieldAlert, Droplet, User as UserIcon, Phone,
-  ClipboardList, CheckCircle2, ArrowLeft, Plus, Ruler, Scale
+  ClipboardList, CheckCircle2, ArrowLeft, Plus, Ruler, Scale, Search
 } from "lucide-react";
 import { getPatientCarnet, PatientCarnet } from "@/lib/api_carnet";
 import AddRecordForms from "./components/AddRecordForms";
@@ -24,6 +26,12 @@ const calculateAge = (dateNaissance: string): number => {
   return age;
 };
 
+
+// Met en minuscules et retire les accents pour une recherche tolérante
+const normaliser = (val: unknown): string =>
+  String(val ?? "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+type FiltreType = "tout" | "consultations" | "ordonnances" | "analyses" | "vaccinations";
 
 const BLOOD_GROUPS = [
   { value: "A_POSITIF", label: "A+" },
@@ -45,6 +53,8 @@ export default function PatientCarnetViewPage() {
   const [data, setData] = useState<PatientCarnet | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [recherche, setRecherche] = useState("");
+  const [filtreType, setFiltreType] = useState<FiltreType>("tout");
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -95,6 +105,46 @@ export default function PatientCarnetViewPage() {
   const allergies = safeParse(profil?.allergies) as string[];
   const pathologies = safeParse(profil?.pathologies) as string[];
   const traitements = safeParse(profil?.traitements) as string[];
+
+  // Filtrage côté client sur les données déjà chargées
+  const requete = normaliser(recherche.trim());
+  const contient = (...champs: unknown[]) =>
+    !requete || champs.some((champ) => normaliser(champ).includes(requete));
+  const medicamentsTexte = (meds: unknown): string => {
+    const liste = safeParse(meds);
+    return Array.isArray(liste)
+      ? liste.map((m: string | { nom?: string; dosage?: string }) =>(typeof m === "string" ? m : `${m?.nom ?? ""} ${m?.dosage ?? ""}`)).join(" ")
+      : "";
+  };
+  const consultationsFiltrees = consultations.filter((c) =>
+    contient(c.motif, c.diagnostic, c.notes, c.medecinNom));
+  const ordonnancesFiltrees = ordonnances.filter((o) =>
+    contient(medicamentsTexte(o.medicaments), o.notes));
+  const analysesFiltrees = analyses.filter((a) =>
+    contient(a.typeAnalyse, a.resultats, a.laboratoire, a.notes));
+  const vaccinationsFiltrees = vaccinations.filter((v) =>
+    contient(v.vaccin, v.notes));
+
+  const filtresDisponibles: { cle: FiltreType; libelle: string; nombre: number }[] = [
+    { cle: "tout", libelle: "Tout", nombre: consultationsFiltrees.length + ordonnancesFiltrees.length + analysesFiltrees.length + vaccinationsFiltrees.length },
+    { cle: "consultations", libelle: "Consultations", nombre: consultationsFiltrees.length },
+    { cle: "ordonnances", libelle: "Ordonnances", nombre: ordonnancesFiltrees.length },
+    { cle: "analyses", libelle: "Analyses", nombre: analysesFiltrees.length },
+    { cle: "vaccinations", libelle: "Vaccinations", nombre: vaccinationsFiltrees.length },
+  ];
+  const nombreResultats = filtresDisponibles.find((f) => f.cle === filtreType)?.nombre ?? 0;
+  const rechercheActive = requete !== "";
+  const voirSection = (cle: Exclude<FiltreType, "tout">, nombre: number) =>
+    (filtreType === "tout" || filtreType === cle) && (!rechercheActive || nombre > 0);
+  const voirConsultations = voirSection("consultations", consultationsFiltrees.length);
+  const voirOrdonnances = voirSection("ordonnances", ordonnancesFiltrees.length);
+  const voirVaccinations = voirSection("vaccinations", vaccinationsFiltrees.length);
+  const voirAnalyses = voirSection("analyses", analysesFiltrees.length);
+  const aucunResultat = rechercheActive && nombreResultats === 0;
+  const effacerRecherche = () => {
+    setRecherche("");
+    setFiltreType("tout");
+  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-fade-in">
@@ -295,15 +345,65 @@ export default function PatientCarnetViewPage() {
         <h3 className="text-sm font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
           <ClipboardList className="w-4 h-4 text-primary-500" /> Historique Médical
         </h3>
-        
+
+        {/* Recherche et filtre par type */}
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+            <input
+              type="text"
+              aria-label="Rechercher dans le carnet"
+              placeholder="Rechercher dans le carnet (diagnostic, médicament, analyse, vaccin...)"
+              value={recherche}
+              onChange={(e) => setRecherche(e.target.value)}
+              className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800 rounded-2xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500/50 transition-all shadow-sm"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2" role="group" aria-label="Filtrer par type">
+            {filtresDisponibles.map((f) => (
+              <button
+                key={f.cle}
+                type="button"
+                aria-pressed={filtreType === f.cle}
+                onClick={() => setFiltreType(f.cle)}
+                className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+                  filtreType === f.cle
+                    ? "bg-primary-600 border-primary-600 text-white"
+                    : "bg-white dark:bg-slate-900/60 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:text-primary-500"
+                }`}
+              >
+                {f.libelle} ({f.nombre})
+              </button>
+            ))}
+          </div>
+          <p className="text-sm text-slate-500" aria-live="polite">
+            {nombreResultats} élément(s) affiché(s)
+          </p>
+        </div>
+
+        {aucunResultat && (
+          <div className="text-center py-10 bg-white dark:bg-[#0f172a]/80 border border-slate-200 dark:border-slate-800/50 rounded-[2rem] space-y-4">
+            <p className="text-sm text-slate-500">Aucun élément ne correspond à votre recherche.</p>
+            <button
+              type="button"
+              onClick={effacerRecherche}
+              className="px-5 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-colors"
+            >
+              Effacer la recherche
+            </button>
+          </div>
+        )}
+
+        {(voirConsultations || voirOrdonnances) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Consultations List */}
+          {voirConsultations && (
           <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
             <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
               <Activity className="w-5 h-5 text-primary-500" /> Consultations
             </h4>
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
-              {consultations.map((c) => (
+              {consultationsFiltrees.map((c) => (
                 <div key={c.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-primary-500/30 transition-all group">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs font-bold text-primary-500">{new Date(c.dateConsultation).toLocaleDateString('fr-FR')}</span>
@@ -322,14 +422,16 @@ export default function PatientCarnetViewPage() {
               )}
             </div>
           </div>
+          )}
 
           {/* Ordonnances List */}
+          {voirOrdonnances && (
           <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
             <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
               <ClipboardList className="w-5 h-5 text-secondary-500" /> Ordonnances
             </h4>
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
-              {ordonnances.map((o) => (
+              {ordonnancesFiltrees.map((o) => (
                 <div key={o.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 hover:border-secondary-500/30 transition-all">
                   <div className="flex justify-between items-start mb-3">
                     <span className="text-xs font-bold text-secondary-500">{new Date(o.dateEmission).toLocaleDateString('fr-FR')}</span>
@@ -353,16 +455,20 @@ export default function PatientCarnetViewPage() {
               )}
             </div>
           </div>
+          )}
         </div>
+        )}
 
+        {(voirVaccinations || voirAnalyses) && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Vaccinations List */}
+          {voirVaccinations && (
           <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
             <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
               <Droplet className="w-5 h-5 text-accent-500" /> Vaccinations
             </h4>
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
-              {vaccinations.map((v) => (
+              {vaccinationsFiltrees.map((v) => (
                 <div key={v.id} className="flex items-center gap-4 p-3 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="w-10 h-10 rounded-xl bg-accent-500/10 flex items-center justify-center text-accent-500">
                     <Droplet className="w-5 h-5" />
@@ -382,14 +488,16 @@ export default function PatientCarnetViewPage() {
               {vaccinations.length === 0 && <p className="text-center py-6 text-sm text-slate-500 italic">Aucun vaccin</p>}
             </div>
           </div>
+          )}
 
           {/* Lab Results (Analyses) */}
+          {voirAnalyses && (
           <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-8 shadow-xl">
             <h4 className="font-bold text-slate-900 dark:text-white mb-6 flex items-center gap-2">
               <Activity className="w-5 h-5 text-rose-500" /> Résultats d'Analyses
             </h4>
             <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2 scrollbar-thin">
-              {analyses.map((a) => (
+              {analysesFiltrees.map((a) => (
                 <div key={a.id} className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-xl border border-slate-100 dark:border-slate-800">
                   <div className="flex justify-between items-start mb-2">
                     <p className="text-sm font-bold text-slate-900 dark:text-white">{a.typeAnalyse}</p>
@@ -402,7 +510,9 @@ export default function PatientCarnetViewPage() {
               {analyses.length === 0 && <p className="text-center py-6 text-sm text-slate-500 italic">Aucune analyse</p>}
             </div>
           </div>
+          )}
         </div>
+        )}
       </div>
     </div>
   );

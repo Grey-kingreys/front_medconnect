@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/immutability, react/no-unescaped-entities */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect } from "react";
@@ -20,8 +22,10 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { createAutoDiagnostic, getAutoDiagnostics, AutoDiagnostic } from "@/lib/api_carnet";
+import { useToast, messageErreurPour } from "@/hooks/useToast";
 
 export default function DiagnosticPage() {
+  const { notifier } = useToast();
   const [symptomes, setSymptomes] = useState("");
   const [lastSymptomes, setLastSymptomes] = useState("");
   const [analyzing, setAnalyzing] = useState(false);
@@ -60,7 +64,7 @@ export default function DiagnosticPage() {
       fetchHistory();
     } catch (err: any) {
       setSymptomes(message);
-      alert(err.message || "Erreur lors de l'analyse");
+      notifier(messageErreurPour(err, "L'analyse de vos symptômes n'a pas pu aboutir. Vérifiez votre connexion puis réessayez."), "erreur");
     } finally {
       setAnalyzing(false);
     }
@@ -86,10 +90,7 @@ export default function DiagnosticPage() {
               Décrivez vos symptômes en langage naturel. Notre IA médicale analyse vos données pour vous orienter vers la meilleure prise en charge.
             </p>
             <div className="flex items-center justify-center md:justify-start gap-4">
-               <div className="flex -space-x-3">
-                 {[1,2,3].map(i => <div key={i} className="w-10 h-10 rounded-full border-2 border-slate-900 bg-slate-800 flex items-center justify-center text-[10px] font-bold">Dr</div>)}
-               </div>
-               <p className="text-xs text-slate-500">Validé par une équipe de <span className="text-white font-bold">12 médecins</span></p>
+               <p className="text-xs text-slate-400">Aide à l&apos;orientation : <span className="text-white font-bold">ne remplace pas l&apos;avis d&apos;un médecin.</span></p>
             </div>
           </div>
           
