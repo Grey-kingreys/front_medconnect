@@ -32,4 +32,12 @@ Fichiers modifiés et créés + preuves (commande lancée, résultat en une lign
 
 ## Historique
 
+- Tentative 1 (implementeur-specifie, worktree `front-p2-voieB`) : travail laissé non commité. Repris le 2026-10-07 : expression de retrait des accents réécrite en `\p{Diacritic}` (caractères combinants littéraux illisibles), en-tête de dette eslint (D15). La page n'affiche pas de rendez-vous : 4 types filtrés.
+
 ## Validation
+
+- `npx --no-install tsc --noEmit` : 0 erreur.
+- `npx --no-install eslint` (page) : 0 erreur, 3 avertissements préexistants.
+- État vide filtré : « Aucun élément ne correspond à votre recherche. » + bouton `onClick={effacerRecherche}` (réinitialise recherche et filtre).
+- Tirets et termes interdits : 0 occurrence dans les lignes ajoutées.
+- Commit 5f3ba3e sur `task/T07-carnet-recherche`, merge e0b7a4b dans `orch/p2-fonctionnalites`.
