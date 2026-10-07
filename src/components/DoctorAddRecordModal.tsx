@@ -1,13 +1,17 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any, react/no-unescaped-entities, react-hooks/immutability */
 
 import { useState, useEffect } from "react";
 import { 
   X, Search, User, ClipboardList, Pill, Syringe, Calendar, 
-  Loader2, CheckCircle2, Save, Plus, ArrowRight
+  Loader2, CheckCircle2, Save, ArrowRight
 } from "lucide-react";
 import { 
   createConsultation, createOrdonnance, createVaccination, createRendezVous 
 } from "@/lib/api_carnet";
+import type { LigneMedicament } from "@/lib/api_carnet";
+import OrdonnanceMedicamentsInput from "@/components/OrdonnanceMedicamentsInput";
 import { useAuth } from "@/hooks/useAuth";
 import { getMyPatients, PatientSummary } from "@/lib/api_patients";
 
@@ -241,7 +245,7 @@ function ConsultationForm({ patientId, currentUser, onFinish, setSubmitting, sub
 }
 
 function OrdonnanceForm({ patientId, currentUser, onFinish, setSubmitting, submitting }: any) {
-  const [medicaments, setMedicaments] = useState([{ nom: "", dosage: "", duree: "", instructions: "" }]);
+  const [medicaments, setMedicaments] = useState<LigneMedicament[]>([{ nom: "", dosage: "", duree: "", instructions: "" }]);
   const [notes, setNotes] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -260,22 +264,7 @@ function OrdonnanceForm({ patientId, currentUser, onFinish, setSubmitting, submi
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <div className="space-y-4">
-        {medicaments.map((m, i) => (
-          <div key={i} className="p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl relative group">
-            {medicaments.length > 1 && <button type="button" onClick={() => setMedicaments(medicaments.filter((_, idx) => idx !== i))} className="absolute top-2 right-2 text-slate-400 hover:text-rose-500"><X className="w-4 h-4" /></button>}
-            <div className="grid grid-cols-2 gap-3">
-              <input required className="p-3 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm" placeholder="Médicament" value={m.nom} onChange={e => { const n = [...medicaments]; n[i].nom = e.target.value; setMedicaments(n); }} />
-              <input required className="p-3 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm" placeholder="Dosage" value={m.dosage} onChange={e => { const n = [...medicaments]; n[i].dosage = e.target.value; setMedicaments(n); }} />
-              <input required className="p-3 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm" placeholder="Durée" value={m.duree} onChange={e => { const n = [...medicaments]; n[i].duree = e.target.value; setMedicaments(n); }} />
-              <input className="p-3 bg-white dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-xl text-sm" placeholder="Instructions" value={m.instructions} onChange={e => { const n = [...medicaments]; n[i].instructions = e.target.value; setMedicaments(n); }} />
-            </div>
-          </div>
-        ))}
-        <button type="button" onClick={() => setMedicaments([...medicaments, { nom: "", dosage: "", duree: "", instructions: "" }])} className="w-full py-3 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-400 hover:text-primary-500 hover:border-primary-500 transition-all flex items-center justify-center gap-2 text-xs font-bold uppercase tracking-widest">
-          <Plus className="w-4 h-4" /> Ajouter un médicament
-        </button>
-      </div>
+      <OrdonnanceMedicamentsInput value={medicaments} onChange={setMedicaments} />
       <button disabled={submitting} className="w-full py-4 bg-secondary-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl hover:bg-secondary-700 transition-all flex items-center justify-center gap-2">
         {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Save className="w-5 h-5" /> Générer l'ordonnance</>}
       </button>

@@ -10,7 +10,7 @@ Détails: docs/plans/runs/2026-10-06-p2-fonctionnalites/ (niveau P2 du BACKLOG-P
 
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
-| T05 | Ordonnance : saisie avec suggestions du catalogue (F2) | spécifié | dispatché | 1 |
+| T11 | Vaccination : rappel vide non envoyé (signalé par P3) | spécifié | à faire | 0 |
 | T07 | Carnet patient : recherche et filtre (F3) | spécifié | dispatché | 1 |
 | T08 | Crédibilité et navigation (17) | spécifié | à faire | 0 |
 | T06 | SOS : délai et compte à rebours (F5) | spécifié | à faire | 0 |
@@ -18,6 +18,8 @@ Détails: docs/plans/runs/2026-10-06-p2-fonctionnalites/ (niveau P2 du BACKLOG-P
 | T10 | Import Excel du stock (F1) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
+
+- T05 Ordonnance : saisie avec suggestions du catalogue (F2) : validé, commit T05
 
 ## Questions parquées
 

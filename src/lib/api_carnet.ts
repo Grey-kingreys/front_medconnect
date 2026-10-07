@@ -1,3 +1,5 @@
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { authFetch } from "./api_auth";
 
 export type GroupeSanguin = "A_POSITIF" | "A_NEGATIF" | "B_POSITIF" | "B_NEGATIF" | "AB_POSITIF" | "AB_NEGATIF" | "O_POSITIF" | "O_NEGATIF" | "INCONNU";
@@ -149,6 +151,15 @@ export const createConsultation = (data: any) =>
   });
 
 export const getOrdonnances = () => authFetch<Ordonnance[]>("/carnet-sante/ordonnances");
+
+/** Ligne de médicament d'une ordonnance. `medicamentId` n'est présent que si la ligne est liée au catalogue. */
+export interface LigneMedicament {
+  nom: string;
+  dosage: string;
+  duree: string;
+  instructions?: string;
+  medicamentId?: string;
+}
 
 export const createOrdonnance = (data: any) =>
   authFetch<Ordonnance>("/carnet-sante/ordonnances", {

@@ -34,4 +34,13 @@ Fichiers modifiés et créés + preuves (commande lancée, résultat en une lign
 
 ## Historique
 
+- Tentative 1 (implementeur-specifie) : travail laissé non commité, orchestrateur figé. Repris et validé le 2026-10-07 par l'orchestrateur de reprise ; en-têtes eslint de dette préexistante ajoutés (D15). Suggestions lues via `getCatalogue` (nom réel de la fonction de catalogue dans `api_pharmacie.ts`).
+
 ## Validation
+
+- `npx --no-install tsc --noEmit` : 0 erreur.
+- `npx --no-install eslint` (4 fichiers touchés) : 0 erreur, 2 avertissements préexistants (variables inutilisées).
+- Les deux `OrdonnanceForm` importent `OrdonnanceMedicamentsInput`, plus aucun bloc de saisie dupliqué.
+- Saisie manuelle : `delete suivante.medicamentId` ; choix d'une suggestion : `onChange({ ...ligne, nom: m.nom, medicamentId: m.id })`.
+- Termes interdits et tirets : 0 occurrence dans les lignes ajoutées.
+- Parcours navigateur non joué : aucun serveur ne tourne pendant ce run.
