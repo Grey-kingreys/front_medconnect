@@ -40,4 +40,13 @@ Fichiers modifiés et créés + preuves (commande lancée, résultat en une lign
 
 ## Historique
 
+- 2026-10-07 : exécutée directement par l'orchestrateur de reprise (D16), contre le contrat back mergé (eb53eb9). Confirmation explicite en ligne dans la modale (pas de seconde modale). Le nom du modèle retombe sur « modele-import-stock.xlsx » car le serveur n'expose pas `Content-Disposition` en CORS.
+
 ## Validation
+
+- `npx --no-install tsc --noEmit` : 0 erreur ; eslint des 3 fichiers : 0 erreur, 4 avertissements préexistants.
+- Appels : `authDownload(\`/pharmacie/stock/${structureId}/import/modele\`)`, `.../import/apercu` et `.../import` en POST avec `formulaire.append("fichier", fichier)`.
+- Aucune ligne acceptée : « Aucune ligne ne peut être importée. Corrigez le fichier puis choisissez-le à nouveau. » + « Choisir un autre fichier » ; erreurs : `role="alert"` avec `messageErreurPour(err, ...)` sur les 3 appels, boutons désactivés et indicateur pendant les envois.
+- Contrôles avant envoi : extension `.xlsx` et 2 Mo, messages humains.
+- Accessibilité : `role="dialog"`, `aria-modal`, `aria-labelledby`, focus à l'ouverture et rendu à la fermeture, Échap ferme (sauf envoi en cours).
+- Termes interdits et tirets : 0 occurrence dans les chaînes visibles ajoutées.

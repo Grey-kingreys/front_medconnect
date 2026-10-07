@@ -10,7 +10,6 @@ Détails: docs/plans/runs/2026-10-06-p2-fonctionnalites/ (niveau P2 du BACKLOG-P
 
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
-| T10 | Import Excel du stock (F1) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
 
@@ -19,7 +18,8 @@ Détails: docs/plans/runs/2026-10-06-p2-fonctionnalites/ (niveau P2 du BACKLOG-P
 - T06 SOS : délai et compte à rebours (F5) : validé, 4d86c52
 - T07 Carnet patient : recherche et filtre (F3) : validé, 5f3ba3e (merge e0b7a4b)
 - T08 Crédibilité et navigation (17) : validé, 03578ef
-- T09 Résilience réseau et notifications (18) : validé, commit T09
+- T09 Résilience réseau et notifications (18) : validé, b770453
+- T10 Import Excel du stock (F1) : validé, commit T10
 
 ## Questions parquées
 
