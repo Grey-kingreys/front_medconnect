@@ -20,14 +20,21 @@ beforeEach(() => {
 describe("api_carnet : creations en POST", () => {
   const cas = [
     ["createConsultation", createConsultation, "/carnet-sante/consultations", { motif: "Fievre", patientId: "p1" }],
-    ["createOrdonnance", createOrdonnance, "/carnet-sante/ordonnances", { medicaments: "[]", patientId: "p1" }],
+    // Corps conformes aux DTO du back (voir src/lib/schemas/carnet.ts), validés avant l'envoi.
+    ["createOrdonnance", createOrdonnance, "/carnet-sante/ordonnances", { medicaments: [], patientId: "p1" }],
     ["createVaccination", createVaccination, "/carnet-sante/vaccinations", { vaccin: "BCG", dateVaccin: "2026-01-01" }],
-    ["createAnalyse", createAnalyse, "/carnet-sante/analyses", { type: "NFS", patientId: "p1" }],
-    ["createRendezVous", createRendezVous, "/carnet-sante/rendez-vous", { date: "2026-12-01", motif: "Suivi" }],
+    [
+      "createAnalyse",
+      createAnalyse,
+      "/carnet-sante/analyses",
+      { typeAnalyse: "NFS", resultats: "Normal", dateAnalyse: "2026-01-01", patientId: "p1" },
+    ],
+    ["createRendezVous", createRendezVous, "/carnet-sante/rendez-vous", { date: "2026-12-01", motif: "Suivi", patientId: "p1" }],
   ] as const;
 
   it.each(cas)("%s appelle authFetch avec le bon chemin et le corps JSON", (_nom, fn, chemin, data) => {
-    fn(data);
+    // Chaque fonction a son propre type d'entrée : on les appelle de façon uniforme ici.
+    (fn as (d: unknown) => Promise<unknown>)(data);
     expect(mockedAuthFetch).toHaveBeenCalledTimes(1);
     const [endpoint, options] = mockedAuthFetch.mock.calls[0];
     expect(endpoint).toBe(chemin);
