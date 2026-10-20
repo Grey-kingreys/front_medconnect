@@ -4,8 +4,11 @@ import {
   MapPin,
 } from "lucide-react";
 import Image from "next/image";
+import Link from "next/link";
 
 /* Custom SVG icons for social media (removed from lucide-react) */
+/* Icônes gardées pour le point 24 (comptes officiels en attente) : inutilisées tant que socialLinks est vide. */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 function FacebookIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -42,8 +45,10 @@ function LinkedinIcon({ className }: { className?: string }) {
   );
 }
 
+/* eslint-enable @typescript-eslint/no-unused-vars */
+
 /**
- * Seuls les liens ayant une destination réelle sont listés : un `href="#"` en
+ * Seuls les liens ayant une destination réelle sont listés : un lien vers « # » seul en
  * pied de page se comporte comme un lien mort (remonte en haut sans rien faire)
  * et dégrade autant la confiance que le référencement. Les entrées retirées
  * (Mises à jour, À propos, Blog, Carrières, Partenariats, Documentation, Centre
@@ -76,7 +81,7 @@ export default function Footer() {
         <div className="py-16 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="col-span-2">
-            <a href="/" className="flex items-center gap-2.5 mb-4 group">
+            <Link href="/" className="flex items-center gap-2.5 mb-4 group">
               <Image
                 src="/images/logo.png"
                 alt="MedConnecte Logo"
@@ -91,7 +96,7 @@ export default function Footer() {
                 <span className="text-[var(--foreground)]">Med</span>
                 <span className="gradient-text">Connecte</span>
               </span>
-            </a>
+            </Link>
             <p className="text-sm text-[var(--muted)] leading-relaxed max-w-sm mb-6">
               La plateforme de santé connectée qui améliore l&apos;accès aux soins
               en Afrique de l&apos;Ouest. Votre santé mérite le meilleur de la

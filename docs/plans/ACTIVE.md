@@ -10,9 +10,12 @@ Détails: docs/plans/runs/2026-10-20-lot1/ (tasks/, rapports/, decisions.md)
 
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
-| F2 | Compteurs du tableau de bord sur les vraies données (tasks/F2-compteurs-tableau-de-bord.md) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
+
+- F3 Plus aucun lien vide sur la page d'accueil, test de garde : validé par le chef front (commit « fix(accueil): ... (F3) », rapports/F3-chef.md)
+
+- F2 Compteurs du tableau de bord sur les vraies données : commit a7e1c33 « feat(dashboard): ... (F2) », rapports/F2-chef.md
 
 - F1 Alertes SOS selon la permission sos:respond : validé par le chef front (commit « fix(sos): ... (F1) », rapports/F1-chef.md)
 
@@ -20,8 +23,8 @@ Détails: docs/plans/runs/2026-10-20-lot1/ (tasks/, rapports/, decisions.md)
 
 ## Dernières décisions (5 max, historique complet dans decisions.md)
 
-- D08 libellés exacts : « Patients de la structure », « Structures en service »
-- D09 RDV à venir du médecin : affectés, futurs, PROGRAMME ou CONFIRME
-- D10 compteurs chargés source par source, « Réessayer », 403 = carte masquée
-- D11 page du tableau de bord propre au lint, logique dans lib/compteurs_tableau_de_bord.ts
+- D13 seul « href="#" » restant = commentaire de Footer.tsx, reformulé
+- D14 test de garde des liens de la page d'accueil (liens_accueil.test.ts)
+- D15 juridique et contacts du pied de page non touchés (attente porteur)
+- D16 Footer.tsx : Link pour le logo et eslint-disable borné aux icônes, pour passer le pre-commit
 - D12 graphiques fictifs (DashboardCharts) hors périmètre F2, signalés
