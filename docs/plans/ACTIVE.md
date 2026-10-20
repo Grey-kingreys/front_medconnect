@@ -10,6 +10,7 @@ Détails: docs/plans/runs/2026-10-20-lot1/ (tasks/, rapports/, decisions.md)
 
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
+| F2 | Compteurs du tableau de bord sur les vraies données (tasks/F2-compteurs-tableau-de-bord.md) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
 
@@ -19,8 +20,8 @@ Détails: docs/plans/runs/2026-10-20-lot1/ (tasks/, rapports/, decisions.md)
 
 ## Dernières décisions (5 max, historique complet dans decisions.md)
 
-- D02 SOS : aucune écoute tant que le profil n'est pas chargé, pas de repli sur le rôle
-- D03 SOS : reconnexion seulement si utilisateur ou droit change, perte du droit = déconnexion
-- D04 code `sos:respond` en littéral, pas de fichier de constantes
-- D05 EmergencyButton (patient) hors périmètre F1
-- D06 dette lint d'EmergencyListener non traitée dans F1
+- D08 libellés exacts : « Patients de la structure », « Structures en service »
+- D09 RDV à venir du médecin : affectés, futurs, PROGRAMME ou CONFIRME
+- D10 compteurs chargés source par source, « Réessayer », 403 = carte masquée
+- D11 page du tableau de bord propre au lint, logique dans lib/compteurs_tableau_de_bord.ts
+- D12 graphiques fictifs (DashboardCharts) hors périmètre F2, signalés

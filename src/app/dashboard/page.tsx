@@ -22,13 +22,12 @@ import {
   Heart,
   Clock,
   Sparkles,
-  AlertCircle,
   Headset,
   MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
-import { getMyStructure, MyStructure } from "@/lib/api_structure";
-import { getRendezVous } from "@/lib/api_carnet";
+import { ApiError } from "@/lib/api_auth";
+import { sourcesCompteurs, type CleCompteur } from "@/lib/compteurs_tableau_de_bord";
 import DashboardCharts from "@/components/DashboardCharts";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -42,12 +41,18 @@ interface QuickAction {
 }
 
 interface StatCard {
+  cle: CleCompteur;
   label: string;
-  value: string;
-  change?: string;
   icon: React.ReactNode;
   color: string;
 }
+
+// État d'affichage d'un compteur (absent = en cours de chargement)
+type EtatCompteur =
+  | { statut: "chargement" }
+  | { statut: "pret"; valeur: number }
+  | { statut: "erreur" }
+  | { statut: "masque" };
 
 // ─── Contenu par rôle ───────────────────────────────────────────
 
@@ -279,44 +284,39 @@ function getStatsCards(role: string): StatCard[] {
   switch (role) {
     case "PATIENT":
       return [
-        { label: "Consultations", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Ordonnances", value: "—", icon: <ClipboardList className="w-5 h-5" />, color: "text-secondary-400" },
-        { label: "Vaccinations", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-accent-400" },
-        { label: "Diagnostics IA", value: "—", icon: <Bot className="w-5 h-5" />, color: "text-cyan-400" },
+        { cle: "patientConsultations", label: "Consultations", icon: <Stethoscope className="w-5 h-5" />, color: "text-primary-400" },
+        { cle: "patientOrdonnances", label: "Ordonnances", icon: <ClipboardList className="w-5 h-5" />, color: "text-secondary-400" },
+        { cle: "patientVaccinations", label: "Vaccinations", icon: <Activity className="w-5 h-5" />, color: "text-accent-400" },
+        { cle: "patientDiagnosticsIA", label: "Diagnostics IA", icon: <Bot className="w-5 h-5" />, color: "text-cyan-400" },
       ];
     case "MEDECIN":
       return [
-        { label: "Patients", value: "—", icon: <Users className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Consultations aujourd'hui", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-secondary-400" },
-        { label: "Ordonnances émises", value: "—", icon: <ClipboardList className="w-5 h-5" />, color: "text-accent-400" },
-        { label: "Rendez-vous à venir", value: "—", icon: <Calendar className="w-5 h-5" />, color: "text-amber-400" },
+        { cle: "medecinPatients", label: "Patients de la structure", icon: <Users className="w-5 h-5" />, color: "text-primary-400" },
+        { cle: "medecinConsultationsAujourdhui", label: "Consultations aujourd'hui", icon: <Stethoscope className="w-5 h-5" />, color: "text-secondary-400" },
+        { cle: "medecinRendezVousAVenir", label: "Rendez-vous à venir", icon: <Calendar className="w-5 h-5" />, color: "text-amber-400" },
       ];
     case "PHARMACIEN":
       return [
-        { label: "Médicaments en stock", value: "—", icon: <Package className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Ruptures de stock", value: "—", icon: <Pill className="w-5 h-5" />, color: "text-emergency-500" },
-        { label: "Ordonnances traitées", value: "—", icon: <ClipboardList className="w-5 h-5" />, color: "text-secondary-400" },
+        { cle: "pharmacieMedicamentsEnStock", label: "Médicaments en stock", icon: <Package className="w-5 h-5" />, color: "text-primary-400" },
+        { cle: "pharmacieRuptures", label: "Ruptures de stock", icon: <Pill className="w-5 h-5" />, color: "text-emergency-500" },
       ];
     case "ADMIN":
     case "SUPER_ADMIN":
       return [
-        { label: "Utilisateurs", value: "—", icon: <Users className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Structures", value: "—", icon: <Building2 className="w-5 h-5" />, color: "text-secondary-400" },
-        { label: "Consultations / mois", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-accent-400" },
-        { label: "Croissance", value: "—", change: "+0%", icon: <TrendingUp className="w-5 h-5" />, color: "text-cyan-400" },
+        { cle: "adminUtilisateurs", label: "Utilisateurs", icon: <Users className="w-5 h-5" />, color: "text-primary-400" },
+        { cle: "adminStructures", label: "Structures en service", icon: <Building2 className="w-5 h-5" />, color: "text-secondary-400" },
       ];
     case "STRUCTURE_ADMIN":
       return [
-        { label: "Médecins", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Pharmaciens", value: "—", icon: <Pill className="w-5 h-5" />, color: "text-secondary-400" },
-        { label: "Patients Inscrits", value: "—", icon: <Users className="w-5 h-5" />, color: "text-accent-400" },
-        { label: "Consultations / mois", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-cyan-400" },
+        { cle: "structureMedecins", label: "Médecins", icon: <Stethoscope className="w-5 h-5" />, color: "text-primary-400" },
+        { cle: "structurePharmaciens", label: "Pharmaciens", icon: <Pill className="w-5 h-5" />, color: "text-secondary-400" },
+        { cle: "structurePatients", label: "Patients de la structure", icon: <Users className="w-5 h-5" />, color: "text-accent-400" },
       ];
     case "ACCUEIL":
       return [
-        { label: "RDV en attente", value: "—", icon: <Clock className="w-5 h-5" />, color: "text-amber-400" },
-        { label: "RDV aujourd'hui", value: "—", icon: <Calendar className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "RDV à venir", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-secondary-400" },
+        { cle: "accueilRdvEnAttente", label: "RDV en attente", icon: <Clock className="w-5 h-5" />, color: "text-amber-400" },
+        { cle: "accueilRdvAujourdhui", label: "RDV aujourd'hui", icon: <Calendar className="w-5 h-5" />, color: "text-primary-400" },
+        { cle: "accueilRdvAVenir", label: "RDV à venir", icon: <Activity className="w-5 h-5" />, color: "text-secondary-400" },
       ];
     default:
       return [];
@@ -325,10 +325,12 @@ function getStatsCards(role: string): StatCard[] {
 
 // ─── Components ─────────────────────────────────────────────────
 
-function StatsGrid({ cards }: { cards: StatCard[] }) {
+function StatsGrid({ cards, etats }: { cards: StatCard[]; etats: Partial<Record<CleCompteur, EtatCompteur>> }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card) => (
+      {cards.map((card) => {
+        const etat: EtatCompteur = etats[card.cle] ?? { statut: "chargement" };
+        return (
         <div
           key={card.label}
           className="group relative bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-5 hover:border-slate-300 dark:hover:border-slate-700/50 transition-all duration-300"
@@ -337,16 +339,23 @@ function StatsGrid({ cards }: { cards: StatCard[] }) {
             <div className={`p-2 rounded-xl bg-slate-800/50 ${card.color}`}>
               {card.icon}
             </div>
-            {card.change && (
-              <span className="text-xs font-medium text-secondary-400 bg-secondary-500/10 px-2 py-0.5 rounded-full">
-                {card.change}
-              </span>
-            )}
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{card.value}</p>
+          {etat.statut === "pret" && (
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{etat.valeur.toLocaleString("fr-FR")}</p>
+          )}
+          {etat.statut === "erreur" && (
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 h-8 flex items-center">Indisponible</p>
+          )}
+          {etat.statut === "chargement" && (
+            <div className="mb-1 h-8 flex items-center">
+              <span aria-hidden="true" className="block h-6 w-12 rounded-md bg-slate-200 dark:bg-slate-700/60 animate-pulse" />
+              <span className="sr-only">Chargement</span>
+            </div>
+          )}
           <p className="text-xs text-slate-500">{card.label}</p>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
@@ -391,16 +400,12 @@ function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
 export default function DashboardPage() {
   const { user, profile } = useAuth();
   const router = useRouter();
-  
-  const [structureStats, setStructureStats] = useState<{ medecins: number; pharmaciens: number; actifs: number; }>({
-    medecins: 0, pharmaciens: 0, actifs: 0
-  });
-  const [accueilStats, setAccueilStats] = useState<{ enAttente: number; aujourdhui: number; aVenir: number }>({
-    enAttente: 0, aujourdhui: 0, aVenir: 0
-  });
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Éviter les erreurs d'hydratation
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -411,61 +416,64 @@ export default function DashboardPage() {
     }
   }, [user, router, mounted]);
 
-  useEffect(() => {
-    if (user?.role === "STRUCTURE_ADMIN") {
-      getMyStructure().then((res) => {
-        const membres = res.data.membres || [];
-        setStructureStats({
-          medecins: membres.filter(m => m.role === "MEDECIN").length,
-          pharmaciens: membres.filter(m => m.role === "PHARMACIEN").length,
-          actifs: membres.filter(m => m.isActive).length,
-        });
-      }).catch(console.error);
-    }
-  }, [user]);
+  const [etatsCompteurs, setEtatsCompteurs] = useState<Partial<Record<CleCompteur, EtatCompteur>>>({});
+  const [essaiCompteurs, setEssaiCompteurs] = useState(0);
+  const utilisateurId = user?.id;
+  const role = user?.role;
+  const structureId = user?.structureId;
 
+  // Chaque source se charge indépendamment : un échec ne vide pas les autres cartes
   useEffect(() => {
-    if (user?.role === "ACCUEIL") {
-      getRendezVous().then((res) => {
-        const rv = res.data || [];
-        const today = new Date().toDateString();
-        const now = new Date();
-        setAccueilStats({
-          enAttente: rv.filter(a => a.status === "EN_ATTENTE").length,
-          aujourdhui: rv.filter(a => new Date(a.date).toDateString() === today).length,
-          aVenir: rv.filter(a => new Date(a.date) > now && ["PROGRAMME", "CONFIRME", "EN_ATTENTE"].includes(a.status)).length,
+    if (!utilisateurId || !role) return;
+    let actif = true;
+    const appliquer = (cles: CleCompteur[], etatDe: (cle: CleCompteur) => EtatCompteur) =>
+      setEtatsCompteurs((prec) => {
+        const suivant = { ...prec };
+        for (const cle of cles) suivant[cle] = etatDe(cle);
+        return suivant;
+      });
+    for (const source of sourcesCompteurs(role, { id: utilisateurId, structureId })) {
+      source
+        .charger()
+        .then((valeurs) => {
+          if (!actif) return;
+          appliquer(source.cles, (cle) => {
+            const valeur = valeurs[cle];
+            return typeof valeur === "number" ? { statut: "pret", valeur } : { statut: "erreur" };
+          });
+        })
+        .catch((err: unknown) => {
+          if (!actif) return;
+          // Droit absent (rôle personnalisé) : la carte disparaît au lieu d'afficher une erreur
+          const masque = err instanceof ApiError && err.status === 403;
+          appliquer(source.cles, () => (masque ? { statut: "masque" } : { statut: "erreur" }));
         });
-      }).catch(console.error);
     }
-  }, [user]);
+    return () => {
+      actif = false;
+    };
+  }, [utilisateurId, role, structureId, essaiCompteurs]);
+
+  // Repasse les cartes en erreur en chargement puis relance toutes les sources
+  const reessayerCompteurs = () => {
+    setEtatsCompteurs((prec) => {
+      const suivant = { ...prec };
+      for (const cle of Object.keys(suivant) as CleCompteur[]) {
+        if (suivant[cle]?.statut === "erreur") suivant[cle] = { statut: "chargement" };
+      }
+      return suivant;
+    });
+    setEssaiCompteurs((n) => n + 1);
+  };
 
   if (!mounted || !user) return <LoadingSpinner fullPage message="Vérification de l'accès..." />;
   if (user.role === "SUPER_ADMIN") return <LoadingSpinner fullPage message="Redirection vers l'espace Super Admin..." />;
 
   const welcomeMessage = getWelcomeMessage(user.role);
   const quickActions = getQuickActions(user.role);
-  let statsCards = getStatsCards(user.role);
-
-  // Update STRUCTURE_ADMIN stats dynamically
-  if (user.role === "STRUCTURE_ADMIN") {
-    statsCards = statsCards.map((card) => {
-      if (card.label === "Médecins") return { ...card, value: structureStats.medecins.toString() };
-      if (card.label === "Pharmaciens") return { ...card, value: structureStats.pharmaciens.toString() };
-      if (card.label === "Patients Inscrits") return { ...card, value: "0" }; // TODO: Connect patients
-      if (card.label === "Consultations / mois") return { ...card, value: "0" }; // TODO: Connect consultations
-      return card;
-    });
-  }
-
-  // Update ACCUEIL stats dynamically (depuis les RDV de la structure)
-  if (user.role === "ACCUEIL") {
-    statsCards = statsCards.map((card) => {
-      if (card.label === "RDV en attente") return { ...card, value: accueilStats.enAttente.toString() };
-      if (card.label === "RDV aujourd'hui") return { ...card, value: accueilStats.aujourdhui.toString() };
-      if (card.label === "RDV à venir") return { ...card, value: accueilStats.aVenir.toString() };
-      return card;
-    });
-  }
+  const statsCards = getStatsCards(user.role).filter((c) => etatsCompteurs[c.cle]?.statut !== "masque");
+  const compteursEnErreur = statsCards.some((c) => etatsCompteurs[c.cle]?.statut === "erreur");
+  const compteursEnChargement = statsCards.some((c) => (etatsCompteurs[c.cle]?.statut ?? "chargement") === "chargement");
 
   // Les graphiques n'existent que pour certains rôles (DashboardCharts renvoie null sinon).
   const showCharts = ["PATIENT", "MEDECIN", "PHARMACIEN", "STRUCTURE_ADMIN"].includes(user.role);
@@ -542,11 +550,23 @@ export default function DashboardPage() {
 
       {/* Stats */}
       {statsCards.length > 0 && (
-        <section>
+        <section aria-busy={compteursEnChargement}>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
             Aperçu
           </h2>
-          <StatsGrid cards={statsCards} />
+          <StatsGrid cards={statsCards} etats={etatsCompteurs} />
+          {compteursEnErreur && (
+            <div role="status" className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+              <p>Certains chiffres n&apos;ont pas pu être chargés. Vérifiez votre connexion puis réessayez.</p>
+              <button
+                type="button"
+                onClick={reessayerCompteurs}
+                className="self-start sm:self-auto px-4 py-2 rounded-xl text-sm font-medium bg-primary-500/10 text-primary-700 dark:text-primary-400 hover:bg-primary-500/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
         </section>
       )}
 
