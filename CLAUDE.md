@@ -51,6 +51,12 @@ est vide, le signaler et proposer la commande ci-dessus avant tout commit.
 - **Auth** : token JWT en `localStorage` ; refresh via cookie httpOnly + fallback body.
   Garde serveur optimiste via `src/proxy.ts` (redirige `/dashboard` vers `/auth/login` sans le
   cookie témoin `mc_connecte`, posé et retiré par `useAuth`) ; l'autorisation réelle est faite par l'API.
+  Tout succès de connexion passe par `useTerminerConnexion` (`hooks/useAuth.tsx`) : jeton, utilisateur,
+  cookie témoin, puis `/dashboard`.
+- **Mode démo** : piloté **uniquement par le back** (`DEMO_MODE`), **aucune variable côté front**.
+  `components/ComptesDemo.tsx` (page de connexion) liste les comptes de `GET /auth/demo/comptes`
+  (`getComptesDemo`, un seul essai, `[]` sur 404 ou erreur) et connecte d'un clic via
+  `POST /auth/demo/connexion` (`connexionDemo`). En production la liste répond 404 : rien ne s'affiche.
 - **Temps réel** : socket.io vers `NEXT_PUBLIC_API_URL` (chat, alertes SOS via
   `EmergencyListener`). Toujours nettoyer les listeners (`socket.off`) au démontage.
 - **Variables `NEXT_PUBLIC_*`** : `API_URL`, `BASE_URL`, `MAPBOX_ACCESS_TOKEN`,

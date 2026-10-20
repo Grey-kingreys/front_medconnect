@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, LogIn, Loader2, AlertCircle } from "lucide-react";
 import { login, ApiError } from "@/lib/api_auth";
-import { useAuth } from "@/hooks/useAuth";
+import { useTerminerConnexion } from "@/hooks/useAuth";
+import ComptesDemo from "@/components/ComptesDemo";
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { loginUser } = useAuth();
+  const terminerConnexion = useTerminerConnexion();
   const [form, setForm] = useState({ email: "", password: "" });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -27,10 +26,8 @@ export default function LoginPage() {
 
     try {
       const res = await login(form.email, form.password);
-      // Mettre à jour le contexte Auth (stocke les tokens + set le user)
-      loginUser(res.data);
-      // Rediriger vers le dashboard
-      router.push("/dashboard");
+      // Contexte Auth mis à jour (jeton, utilisateur, cookie témoin) puis tableau de bord
+      terminerConnexion(res.data);
     } catch (err) {
       if (err instanceof ApiError) {
         setError(err.message);
@@ -153,6 +150,9 @@ export default function LoginPage() {
           Créer un compte
         </Link>
       </p>
+
+      {/* Comptes de démonstration : aucun rendu si le mode est désactivé */}
+      <ComptesDemo />
     </>
   );
 }

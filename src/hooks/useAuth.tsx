@@ -306,3 +306,20 @@ export function useAuth() {
   }
   return context;
 }
+
+/**
+ * Traitement unique du succès d'une connexion (formulaire ou compte de démonstration) :
+ * stockage du jeton et de l'utilisateur, cookie témoin, profil chargé en arrière-plan
+ * (via `loginUser`), puis direction le tableau de bord, qui s'adapte au rôle.
+ */
+export function useTerminerConnexion() {
+  const { loginUser } = useAuth();
+  const router = useRouter();
+  return useCallback(
+    (data: LoginResponse) => {
+      loginUser(data);
+      router.push("/dashboard");
+    },
+    [loginUser, router]
+  );
+}

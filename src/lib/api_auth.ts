@@ -1,5 +1,3 @@
-// Dette préexistante, backlog points 21 et 22
-/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * MedConnecte Auth API
  * 
@@ -45,6 +43,8 @@ export interface UserProfile {
   structureId?: string;
   /** URL publique de la photo de profil (bucket R2 public), null si aucune. */
   avatarUrl?: string | null;
+  /** Permissions effectives renvoyées par /auth/me (ex. "catalogue:write"). */
+  permissions?: string[];
   structure?: {
     id: string;
     nom: string;
@@ -106,22 +106,28 @@ const messageErreur = (body: CorpsReponse): string =>
       ? body.message[0]
       : "Une erreur est survenue";
 
+/** Réglages internes d'un appel : un seul essai et aucune trace d'échec (appels facultatifs). */
+interface ReglagesAppel {
+  tentativeUnique?: boolean;
+  sansJournal?: boolean;
+}
+
 /**
  * Envoi commun à apiFetch et authDownload : délai de 20 s par tentative, nouvelles
  * tentatives (1 s puis 3 s) pour GET et HEAD seulement, sur erreur réseau, délai
  * dépassé ou 502/503/504. Une annulation par l'appelant est propagée sans nouvel essai.
  */
-async function envoyer(endpoint: string, options: RequestInit): Promise<Response> {
+async function envoyer(endpoint: string, options: RequestInit, reglages: ReglagesAppel = {}): Promise<Response> {
   const methode = (options.method || "GET").toUpperCase();
   const lecture = methode === "GET" || methode === "HEAD";
   const signalAppelant = options.signal ?? undefined;
 
   if (typeof navigator !== "undefined" && navigator.onLine === false) {
-    signalerEchec(methode, endpoint, 0);
+    if (!reglages.sansJournal) signalerEchec(methode, endpoint, 0);
     throw new ApiError(MSG_HORS_CONNEXION, 0);
   }
 
-  const tentatives = lecture ? ATTENTES_NOUVELLE_TENTATIVE_MS.length + 1 : 1;
+  const tentatives = lecture && !reglages.tentativeUnique ? ATTENTES_NOUVELLE_TENTATIVE_MS.length + 1 : 1;
   let derniereErreur = new ApiError(MSG_HORS_CONNEXION, 0);
 
   for (let i = 0; i < tentatives; i++) {
@@ -155,23 +161,28 @@ async function envoyer(endpoint: string, options: RequestInit): Promise<Response
     }
   }
 
-  signalerEchec(methode, endpoint, derniereErreur.status);
+  if (!reglages.sansJournal) signalerEchec(methode, endpoint, derniereErreur.status);
   throw derniereErreur;
 }
 
 export async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  reglages: ReglagesAppel = {}
 ): Promise<ApiResponse<T>> {
   // Corps FormData : le navigateur fixe lui-même l'en-tête multipart
   const estFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
-  const res = await envoyer(endpoint, {
-    ...options,
-    headers: {
-      ...(estFormData ? {} : { "Content-Type": "application/json" }),
-      ...options.headers,
+  const res = await envoyer(
+    endpoint,
+    {
+      ...options,
+      headers: {
+        ...(estFormData ? {} : { "Content-Type": "application/json" }),
+        ...options.headers,
+      },
     },
-  });
+    reglages
+  );
 
   let body: CorpsReponse = {};
   try {
@@ -183,7 +194,9 @@ export async function apiFetch<T>(
 
   if (!res.ok) {
     // Un 401 est d'abord traité par le rafraîchissement de la connexion (authFetch)
-    if (res.status !== 401) signalerEchec((options.method || "GET").toUpperCase(), endpoint, res.status);
+    if (res.status !== 401 && !reglages.sansJournal) {
+      signalerEchec((options.method || "GET").toUpperCase(), endpoint, res.status);
+    }
     throw new ApiError(messageErreur(body), res.status, body);
   }
 
@@ -316,13 +329,84 @@ export class ApiError extends Error {
 // ─── Auth Functions ─────────────────────────────────────────────
 
 /**
+ * Demande de connexion commune au formulaire et aux comptes de démonstration :
+ * même envoi (POST sans jeton, cookie de rafraîchissement posé par le serveur) et même
+ * réponse. Le succès est ensuite traité par `useTerminerConnexion` (hooks/useAuth).
+ */
+function demanderConnexion(endpoint: string, corps: Record<string, string>) {
+  return apiFetch<LoginResponse>(endpoint, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
+/**
  * Connexion utilisateur
  */
 export async function login(email: string, password: string) {
-  return apiFetch<LoginResponse>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
+  return demanderConnexion("/auth/login", { email, password });
+}
+
+// ─── Mode démonstration ─────────────────────────────────────────
+// Piloté par le serveur (variable DEMO_MODE côté back) : en production la liste
+// répond 404 et rien ne s'affiche.
+
+export type RoleDemo =
+  | "PATIENT"
+  | "MEDECIN"
+  | "PHARMACIEN"
+  | "STRUCTURE_ADMIN"
+  | "ADMIN"
+  | "SUPER_ADMIN"
+  | "ACCUEIL";
+
+export interface CompteDemo {
+  id: string;
+  email: string;
+  nom: string;
+  prenom: string;
+  role: RoleDemo;
+  /** Libellé du rôle, prêt à afficher */
+  roleLibelle: string;
+  structureNom: string | null;
+  /** Courte présentation du compte, prête à afficher */
+  description: string;
+}
+
+const estCompteDemo = (c: unknown): c is CompteDemo => {
+  if (!c || typeof c !== "object") return false;
+  const v = c as Record<string, unknown>;
+  return (
+    typeof v.id === "string" &&
+    typeof v.nom === "string" &&
+    typeof v.prenom === "string" &&
+    typeof v.role === "string" &&
+    typeof v.roleLibelle === "string" &&
+    typeof v.description === "string" &&
+    (v.structureNom === null || v.structureNom === undefined || typeof v.structureNom === "string")
+  );
+};
+
+/**
+ * Liste des comptes de démonstration. Un seul essai, sans trace d'échec : renvoie []
+ * si le mode est désactivé (404), hors connexion ou en cas de toute autre erreur.
+ * Ne lève jamais d'exception.
+ */
+export async function getComptesDemo(): Promise<CompteDemo[]> {
+  try {
+    const res = await apiFetch<unknown>("/auth/demo/comptes", {}, { tentativeUnique: true, sansJournal: true });
+    if (!Array.isArray(res?.data)) return [];
+    return res.data.filter(estCompteDemo).map((c) => ({ ...c, structureNom: c.structureNom ?? null }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Connexion à un compte de démonstration : même réponse et mêmes effets que `login`.
+ */
+export async function connexionDemo(userId: string) {
+  return demanderConnexion("/auth/demo/connexion", { userId });
 }
 
 /**

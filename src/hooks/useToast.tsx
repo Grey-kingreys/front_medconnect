@@ -13,7 +13,7 @@ export const ToastContext = createContext<ContexteToast | null>(null);
 
 /**
  * Notifications à l'écran (D11) : `const { notifier } = useToast(); notifier("...", "erreur")`.
- * Le fournisseur est monté dans le tableau de bord (`components/Toast.tsx`).
+ * Le fournisseur (`components/Toast.tsx`) est monté dans le tableau de bord et dans les pages de connexion (`app/auth/layout.tsx`).
  */
 export function useToast(): ContexteToast {
   const contexte = useContext(ToastContext);
