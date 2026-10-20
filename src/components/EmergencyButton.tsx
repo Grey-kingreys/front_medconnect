@@ -83,6 +83,8 @@ export default function EmergencyButton() {
   const [alerte, setAlerte] = useState<Urgence | null>(null);
   const [erreurEnvoi, setErreurEnvoi] = useState<string | null>(null);
   const [envoiEchoue, setEnvoiEchoue] = useState(false);
+  // Alerte enregistrée mais aucun établissement prévenu (pas de position, aucun soignant)
+  const [aucunEtablissement, setAucunEtablissement] = useState(false);
   const [maintenant, setMaintenant] = useState(() => Date.now());
 
   const chargerAlerte = useCallback(async () => {
@@ -134,6 +136,7 @@ export default function EmergencyButton() {
   const relancer = () => {
     setErreurEnvoi(null);
     setEnvoiEchoue(false);
+    setAucunEtablissement(false);
     setCountdown(5);
     setView("sos_confirm");
     setTimerActive(true);
@@ -179,12 +182,15 @@ export default function EmergencyButton() {
 
   const sendRequest = async (loc: {lat: number, lng: number} | null) => {
     try {
-      await createUrgence({
+      const res = await createUrgence({
         latitude: loc?.lat,
         longitude: loc?.lng,
         message: "Urgence vitale déclenchée depuis le dashboard."
       });
-      setErreurEnvoi(null);
+      // Le serveur dit exactement qui a été prévenu : aucun faux succès affiché.
+      const personnePrevenue = res.data?.structuresAlertees === 0;
+      setAucunEtablissement(personnePrevenue);
+      setErreurEnvoi(personnePrevenue ? res.message ?? null : null);
       setEnvoiEchoue(false);
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
@@ -317,14 +323,14 @@ export default function EmergencyButton() {
               {view === "sos_sent" && (
                 <div className="space-y-6 animate-in zoom-in duration-300">
                   <div className="flex flex-col items-center text-center gap-4">
-                    {envoiEchoue ? (
+                    {envoiEchoue || aucunEtablissement ? (
                       <div className="w-20 h-20 bg-emergency-500/10 rounded-full flex items-center justify-center text-emergency-600"><AlertTriangle className="w-12 h-12" /></div>
                     ) : (
                       <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500"><CheckCircle2 className="w-12 h-12" /></div>
                     )}
                     <div>
                       <h4 className="text-2xl font-black text-slate-900 dark:text-white mb-1">
-                        {envoiEchoue ? "Alerte non envoyée" : priseEnCharge ? "Prise en charge" : "Alerte envoyée"}
+                        {envoiEchoue ? "Alerte non envoyée" : aucunEtablissement ? "Aucun établissement alerté" : priseEnCharge ? "Prise en charge" : "Alerte envoyée"}
                       </h4>
                       {!envoiEchoue && (
                         <p className="text-sm text-slate-500">Position partagée : {location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Localisation en cours..."}</p>
@@ -335,12 +341,12 @@ export default function EmergencyButton() {
                   {erreurEnvoi && (
                     <p role="alert" className="text-sm font-bold text-center text-emergency-600 dark:text-emergency-500">{erreurEnvoi}</p>
                   )}
-                  {envoiEchoue && (
+                  {(envoiEchoue || aucunEtablissement) && (
                     <button
                       onClick={relancer}
                       className="w-full py-4 bg-emergency-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-emergency-500 transition-all"
                     >
-                      Réessayer l&apos;envoi
+                      {aucunEtablissement ? "Relancer l'alerte" : "Réessayer l'envoi"}
                     </button>
                   )}
 

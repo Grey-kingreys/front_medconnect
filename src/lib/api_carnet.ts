@@ -51,6 +51,11 @@ export interface Urgence {
   structurePriseEnCharge?: { id: string; nom: string } | null;
   finDelaiAt?: string | null;
   peutRelancerA?: string | null;
+  // Renseignés par POST /carnet-sante/sos : ce qui a réellement été prévenu
+  structuresAlertees?: number;
+  soignantsAlertes?: number;
+  procheAlerte?: boolean;
+  positionTransmise?: boolean;
 }
 
 export interface Consultation {
