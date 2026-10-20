@@ -42,7 +42,10 @@ interface EmergencyAlert {
 }
 
 export default function EmergencyListener() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  // Même règle que le serveur : seuls les titulaires de sos:respond reçoivent les alertes SOS
+  const peutRepondreSOS = profile?.permissions?.includes("sos:respond") ?? false;
+  const utilisateurId = user?.id;
   const [socket, setSocket] = useState<Socket | null>(null);
   const [activeAlert, setActiveAlert] = useState<EmergencyAlert | null>(null);
   const [handledBy, setHandledBy] = useState<string | null>(null);
@@ -77,7 +80,7 @@ export default function EmergencyListener() {
 
   // Initialize Socket
   useEffect(() => {
-    if (!user || (user.role !== "MEDECIN" && user.role !== "STRUCTURE_ADMIN" && user.role !== "ADMIN")) {
+    if (!utilisateurId || !peutRepondreSOS) {
       return;
     }
 
@@ -94,7 +97,7 @@ export default function EmergencyListener() {
     return () => {
       newSocket.disconnect();
     };
-  }, [user]);
+  }, [utilisateurId, peutRepondreSOS]);
 
   // Listen for alerts
   useEffect(() => {
