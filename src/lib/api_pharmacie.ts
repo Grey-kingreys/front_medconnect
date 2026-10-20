@@ -143,14 +143,16 @@ export interface LigneImportStock {
   notes?: string;
 }
 
-/** Rapport de l'aperçu ; `importees` n'est présent qu'après l'import. */
-export interface RapportImportStock {
+/** Rapport de l'aperçu (stock ou catalogue) ; `importees` n'est présent qu'après l'import. */
+export interface RapportImport<L> {
   totalLignes: number;
   acceptees: number;
   rejetees: number;
   importees?: number;
-  lignes: LigneImportStock[];
+  lignes: L[];
 }
+
+export type RapportImportStock = RapportImport<LigneImportStock>;
 
 const corpsImport = (fichier: File) => {
   const formulaire = new FormData();
@@ -175,6 +177,48 @@ export async function apercuImportStock(structureId: string, fichier: File) {
 /** Refait l'analyse et enregistre les lignes acceptées (la quantité remplace celle en stock). */
 export async function importerStock(structureId: string, fichier: File) {
   return authFetch<RapportImportStock>(`/pharmacie/stock/${structureId}/import`, {
+    method: "POST",
+    body: corpsImport(fichier),
+  });
+}
+
+// ─── Import Excel du catalogue ──────────────────────────────────
+
+/** Résultat de l'analyse d'une ligne du fichier Excel du catalogue. */
+export interface LigneImportCatalogue {
+  /** Numéro de la ligne dans Excel (la ligne 1 contient les titres). */
+  ligne: number;
+  /** Nom tel qu'écrit dans le fichier. */
+  nom: string;
+  statut: "acceptee" | "rejetee";
+  raison?: string;
+  nomGenerique?: string;
+  /** Catégorie retenue (orthographe du catalogue si elle existe déjà). */
+  categorie?: string;
+  description?: string;
+  ordonnanceRequise?: boolean;
+  formes?: string[];
+}
+
+export type RapportImportCatalogue = RapportImport<LigneImportCatalogue>;
+
+/** Télécharge le modèle Excel du catalogue ; renvoie le contenu et le nom du fichier. */
+export async function telechargerModeleImportCatalogue() {
+  const { blob, filename } = await authDownload("/pharmacie/catalogue/import/modele");
+  return { blob, filename: filename ?? "modele-import-catalogue.xlsx" };
+}
+
+/** Analyse le fichier du catalogue sans rien enregistrer. */
+export async function apercuImportCatalogue(fichier: File) {
+  return authFetch<RapportImportCatalogue>("/pharmacie/catalogue/import/apercu", {
+    method: "POST",
+    body: corpsImport(fichier),
+  });
+}
+
+/** Refait l'analyse et ajoute au catalogue les médicaments acceptés (les existants ne sont jamais modifiés). */
+export async function importerCatalogue(fichier: File) {
+  return authFetch<RapportImportCatalogue>("/pharmacie/catalogue/import", {
     method: "POST",
     body: corpsImport(fichier),
   });
