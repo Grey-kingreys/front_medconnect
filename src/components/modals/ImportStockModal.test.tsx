@@ -200,7 +200,7 @@ describe("ImportStockModal en mode stock", () => {
     expect(livraison).toHaveAccessibleDescription("Les quantités du fichier s'ajoutent à votre stock actuel.");
   });
 
-  it("vérifie en mode « remplacer » par défaut, rappelle le mode et montre la colonne Stock", async () => {
+  it("vérifie en mode « inventaire » par défaut, rappelle le mode et montre la colonne Stock", async () => {
     mockedApercuStock.mockResolvedValue({ data: RAPPORT_STOCK, message: "", success: true });
     afficherStock();
 
@@ -208,12 +208,12 @@ describe("ImportStockModal en mode stock", () => {
     verifier();
 
     expect(await screen.findByText(/Mode choisi/)).toHaveTextContent(`Mode choisi : « ${INVENTAIRE} ». Les quantités du fichier deviennent votre stock.`);
-    expect(mockedApercuStock).toHaveBeenCalledWith("s1", f, "remplacer");
+    expect(mockedApercuStock).toHaveBeenCalledWith("s1", f, "inventaire");
     expect(screen.getByRole("columnheader", { name: "Stock" })).toBeInTheDocument();
     expect(screen.getByRole("row", { name: /Doliprane 500/ })).toHaveTextContent("5 → devient 15");
   });
 
-  it("vérifie en mode « ajouter » quand la livraison est choisie à l'étape 1", async () => {
+  it("vérifie en mode « livraison » quand la livraison est choisie à l'étape 1", async () => {
     mockedApercuStock.mockResolvedValue({ data: RAPPORT_STOCK, message: "", success: true });
     afficherStock();
 
@@ -224,10 +224,10 @@ describe("ImportStockModal en mode stock", () => {
     expect(await screen.findByText(/Mode choisi/)).toHaveTextContent(
       `Mode choisi : « ${LIVRAISON} ». Les quantités du fichier s'ajoutent à votre stock actuel.`,
     );
-    expect(mockedApercuStock).toHaveBeenCalledWith("s1", f, "ajouter");
+    expect(mockedApercuStock).toHaveBeenCalledWith("s1", f, "livraison");
   });
 
-  it("importe en mode « ajouter » après confirmation adaptée à la livraison", async () => {
+  it("importe en mode « livraison » après confirmation adaptée à la livraison", async () => {
     mockedApercuStock.mockResolvedValue({ data: RAPPORT_STOCK, message: "", success: true });
     mockedImporterStock.mockResolvedValue({ data: { ...RAPPORT_STOCK, importees: 2 }, message: "", success: true });
     afficherStock();
@@ -240,10 +240,10 @@ describe("ImportStockModal en mode stock", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmer l'import" }));
 
     await waitFor(() => expect(mockedImporterStock).toHaveBeenCalledTimes(1));
-    expect(mockedImporterStock).toHaveBeenCalledWith("s1", f, "ajouter");
+    expect(mockedImporterStock).toHaveBeenCalledWith("s1", f, "livraison");
   });
 
-  it("importe en mode « remplacer » après confirmation adaptée à l'inventaire", async () => {
+  it("importe en mode « inventaire » après confirmation adaptée à l'inventaire", async () => {
     mockedApercuStock.mockResolvedValue({ data: RAPPORT_STOCK, message: "", success: true });
     mockedImporterStock.mockResolvedValue({ data: { ...RAPPORT_STOCK, importees: 2 }, message: "", success: true });
     afficherStock();
@@ -255,7 +255,7 @@ describe("ImportStockModal en mode stock", () => {
     fireEvent.click(screen.getByRole("button", { name: "Confirmer l'import" }));
 
     await waitFor(() => expect(mockedImporterStock).toHaveBeenCalledTimes(1));
-    expect(mockedImporterStock).toHaveBeenCalledWith("s1", f, "remplacer");
+    expect(mockedImporterStock).toHaveBeenCalledWith("s1", f, "inventaire");
   });
 
   it("relance l'aperçu quand on change de mode à l'étape 2, puis importe avec ce mode", async () => {
@@ -269,12 +269,12 @@ describe("ImportStockModal en mode stock", () => {
     fireEvent.click(screen.getByRole("radio", { name: LIVRAISON }));
 
     await waitFor(() => expect(mockedApercuStock).toHaveBeenCalledTimes(2));
-    expect(mockedApercuStock).toHaveBeenLastCalledWith("s1", f, "ajouter");
+    expect(mockedApercuStock).toHaveBeenLastCalledWith("s1", f, "livraison");
     await waitFor(() => expect(screen.getByText(/Mode choisi/)).toHaveTextContent(LIVRAISON));
 
     fireEvent.click(await screen.findByRole("button", { name: "Importer 2 médicaments" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmer l'import" }));
-    await waitFor(() => expect(mockedImporterStock).toHaveBeenCalledWith("s1", f, "ajouter"));
+    await waitFor(() => expect(mockedImporterStock).toHaveBeenCalledWith("s1", f, "livraison"));
   });
 
   it("revient au mode précédent et garde l'aperçu si la nouvelle vérification échoue", async () => {
@@ -295,7 +295,7 @@ describe("ImportStockModal en mode stock", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Importer 2 médicaments" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirmer l'import" }));
-    await waitFor(() => expect(mockedImporterStock).toHaveBeenCalledWith("s1", f, "remplacer"));
+    await waitFor(() => expect(mockedImporterStock).toHaveBeenCalledWith("s1", f, "inventaire"));
   });
 
   it("n'affiche ni flèche ni erreur quand un ancien serveur ne donne pas les quantités avant et après", async () => {

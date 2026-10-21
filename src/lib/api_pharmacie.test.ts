@@ -74,31 +74,31 @@ describe("api_pharmacie, import Excel du catalogue", () => {
 describe("api_pharmacie, import Excel du stock", () => {
   it("apercuImportStock envoie le fichier et le mode choisi", () => {
     const f = fichier();
-    apercuImportStock("s1", f, "ajouter");
+    apercuImportStock("s1", f, "livraison");
 
     const [endpoint, options] = mockedAuthFetch.mock.calls[0];
     expect(endpoint).toBe("/pharmacie/stock/s1/import/apercu");
     expect(options?.method).toBe("POST");
     expect(options?.body).toBeInstanceOf(FormData);
     expect((options?.body as FormData).get("fichier")).toBe(f);
-    expect((options?.body as FormData).get("mode")).toBe("ajouter");
+    expect((options?.body as FormData).get("mode")).toBe("livraison");
   });
 
-  it("apercuImportStock prend le mode « remplacer » par défaut", () => {
+  it("apercuImportStock prend le mode « inventaire » par défaut", () => {
     apercuImportStock("s1", fichier());
 
     const [, options] = mockedAuthFetch.mock.calls[0];
-    expect((options?.body as FormData).get("mode")).toBe("remplacer");
+    expect((options?.body as FormData).get("mode")).toBe("inventaire");
   });
 
   it("importerStock envoie le fichier et le mode en POST sur la route d'import", () => {
     const f = fichier();
-    importerStock("s1", f, "ajouter");
+    importerStock("s1", f, "livraison");
 
     const [endpoint, options] = mockedAuthFetch.mock.calls[0];
     expect(endpoint).toBe("/pharmacie/stock/s1/import");
     expect(options?.method).toBe("POST");
-    expect((options?.body as FormData).get("mode")).toBe("ajouter");
+    expect((options?.body as FormData).get("mode")).toBe("livraison");
     expect((options?.body as FormData).get("fichier")).toBe(f);
   });
 });

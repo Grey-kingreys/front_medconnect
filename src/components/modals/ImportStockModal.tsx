@@ -572,8 +572,8 @@ export function configImportStock(structureId: string): ConfigImportExcel<LigneI
       "Choisissez ensuite si les quantités du fichier remplacent votre stock (inventaire) ou s'y ajoutent (livraison).",
     ],
     modes: [
-      { valeur: "remplacer", libelle: "Inventaire : remplacer les quantités", explication: "Les quantités du fichier deviennent votre stock." },
-      { valeur: "ajouter", libelle: "Livraison : ajouter aux quantités", explication: "Les quantités du fichier s'ajoutent à votre stock actuel." },
+      { valeur: "inventaire", libelle: "Inventaire : remplacer les quantités", explication: "Les quantités du fichier deviennent votre stock." },
+      { valeur: "livraison", libelle: "Livraison : ajouter aux quantités", explication: "Les quantités du fichier s'ajoutent à votre stock actuel." },
     ],
     colonnes: [
       { titre: "Médicament reconnu", rendu: (l) => l.medicamentNom },
@@ -588,7 +588,7 @@ export function configImportStock(structureId: string): ConfigImportExcel<LigneI
       filtreRejetees: "Afficher seulement les lignes à corriger",
       boutonImporter: (n) => `Importer ${pluriel(n, "médicament", "médicaments")}`,
       confirmation: (n, mode) =>
-        mode === "ajouter"
+        mode === "livraison"
           ? `Pour ${pluriel(n, "médicament", "médicaments")}, la quantité du fichier sera ajoutée à celle en stock. Confirmer ?`
           : `Pour ${pluriel(n, "médicament", "médicaments")}, la quantité en stock sera remplacée par celle du fichier. Confirmer ?`,
       boutonConfirmer: "Confirmer l'import",
