@@ -6,6 +6,8 @@
  */
 
 import { deconnexionForcee, motifDepuisReponse, MESSAGES_DECONNEXION, type MotifDeconnexion } from "./deconnexion_forcee";
+import { estPermissionRefusee, signalerAccesRefuse } from "./acces";
+import type { StructureType } from "./api_admin";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -47,6 +49,8 @@ export interface UserProfile {
   avatarUrl?: string | null;
   /** Permissions effectives renvoyées par /auth/me (ex. "catalogue:write"). */
   permissions?: string[];
+  /** Type de la structure de rattachement (absent sur un ancien serveur, null sans structure). */
+  structureType?: StructureType | null;
   structure?: {
     id: string;
     nom: string;
@@ -295,15 +299,23 @@ export async function authFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  return avecRafraichissement((token) =>
-    apiFetch<T>(endpoint, {
-      ...options,
-      headers: {
-        ...options.headers,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    })
-  );
+  try {
+    return await avecRafraichissement((token) =>
+      apiFetch<T>(endpoint, {
+        ...options,
+        headers: {
+          ...options.headers,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+    );
+  } catch (err) {
+    // Lecture refusée faute de droit : le tableau de bord remplace la page par un message
+    if ((options.method ?? "GET").toUpperCase() === "GET" && estPermissionRefusee(err)) {
+      signalerAccesRefuse();
+    }
+    throw err;
+  }
 }
 
 /**

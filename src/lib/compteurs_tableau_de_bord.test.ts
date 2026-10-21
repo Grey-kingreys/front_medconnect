@@ -4,7 +4,7 @@ import { getMyPatients } from "@/lib/api_patients";
 import { getMyStock } from "@/lib/api_pharmacie";
 import { getUserStats } from "@/lib/api_admin";
 import { getAllStructures, getMyStructure } from "@/lib/api_structure";
-import { sourcesCompteurs, type ValeursCompteurs } from "./compteurs_tableau_de_bord";
+import { sourcesCompteurs, type CleCompteur, type ValeursCompteurs } from "./compteurs_tableau_de_bord";
 
 vi.mock("@/lib/api_carnet", () => ({
   getAutoDiagnostics: vi.fn(),
@@ -27,8 +27,19 @@ const aucunMockAppele = () =>
     (f) => vi.mocked(f).mock.calls.length === 0,
   );
 
+const CLES_PAR_ROLE: Record<string, CleCompteur[]> = {
+  PATIENT: ["patientConsultations", "patientOrdonnances", "patientVaccinations", "patientDiagnosticsIA"],
+  MEDECIN: ["medecinPatients", "medecinConsultationsAujourdhui", "medecinRendezVousAVenir"],
+  PHARMACIEN: ["pharmacieMedicamentsEnStock", "pharmacieRuptures"],
+  ADMIN: ["adminUtilisateurs", "adminStructures"],
+  STRUCTURE_ADMIN: ["structureMedecins", "structurePharmaciens", "structurePatients"],
+  ACCUEIL: ["accueilRdvEnAttente", "accueilRdvAujourdhui", "accueilRdvAVenir"],
+};
+
+const TOUTES_LES_CLES: CleCompteur[] = Object.values(CLES_PAR_ROLE).flat();
+
 async function charger(role: string, utilisateur: { id: string; structureId?: string }) {
-  const sources = sourcesCompteurs(role, utilisateur, MAINTENANT);
+  const sources = sourcesCompteurs(CLES_PAR_ROLE[role], utilisateur, MAINTENANT);
   const valeurs: ValeursCompteurs = {};
   for (const source of sources) Object.assign(valeurs, await source.charger());
   return { sources, valeurs };
@@ -93,7 +104,7 @@ describe("sourcesCompteurs", () => {
   });
 
   it("échoue sans interroger le stock pour un pharmacien sans structure", async () => {
-    const sources = sourcesCompteurs("PHARMACIEN", { id: "ph1" }, MAINTENANT);
+    const sources = sourcesCompteurs(CLES_PAR_ROLE.PHARMACIEN, { id: "ph1" }, MAINTENANT);
     expect(sources).toHaveLength(1);
     await expect(sources[0].charger()).rejects.toThrow();
     expect(getMyStock).not.toHaveBeenCalled();
@@ -130,8 +141,15 @@ describe("sourcesCompteurs", () => {
     expect(valeurs).toEqual({ accueilRdvEnAttente: 2, accueilRdvAujourdhui: 2, accueilRdvAVenir: 3 });
   });
 
-  it.each(["SUPER_ADMIN", "INFIRMIER"])("ne renvoie aucune source pour le rôle %s", (role) => {
-    expect(sourcesCompteurs(role, { id: "x1", structureId: "s1" }, MAINTENANT)).toEqual([]);
+  it("ne renvoie aucune source sans clé demandée", () => {
+    expect(sourcesCompteurs([], { id: "x1", structureId: "s1" }, MAINTENANT)).toEqual([]);
+    expect(aucunMockAppele()).toBe(true);
+  });
+
+  it("ne renvoie que la source qui porte la clé demandée, avec ses deux clés", () => {
+    const sources = sourcesCompteurs(["structurePharmaciens"], { id: "sa1" }, MAINTENANT);
+    expect(sources).toHaveLength(1);
+    expect(sources[0].cles).toEqual(["structureMedecins", "structurePharmaciens"]);
     expect(aucunMockAppele()).toBe(true);
   });
 
@@ -145,12 +163,11 @@ describe("sourcesCompteurs", () => {
     vi.mocked(getUserStats).mockResolvedValue(reponse({ total: 0 }));
     vi.mocked(getAllStructures).mockResolvedValue(reponse([]));
     vi.mocked(getMyStructure).mockResolvedValue(reponse({ membres: [] }));
-    const roles = ["PATIENT", "MEDECIN", "PHARMACIEN", "ADMIN", "STRUCTURE_ADMIN", "ACCUEIL"];
-    for (const role of roles) {
-      for (const source of sourcesCompteurs(role, { id: "u1", structureId: "s1" }, MAINTENANT)) {
-        const valeurs = await source.charger();
-        expect(Object.keys(valeurs).sort()).toEqual([...source.cles].sort());
-      }
+    const sources = sourcesCompteurs(TOUTES_LES_CLES, { id: "u1", structureId: "s1" }, MAINTENANT);
+    expect(sources).toHaveLength(11);
+    for (const source of sources) {
+      const valeurs = await source.charger();
+      expect(Object.keys(valeurs).sort()).toEqual([...source.cles].sort());
     }
   });
 });

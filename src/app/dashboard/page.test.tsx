@@ -1,15 +1,21 @@
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ApiError } from "@/lib/api_auth";
+import { ApiError, type AuthUser, type UserProfile } from "@/lib/api_auth";
 import { getConsultations, getRendezVous } from "@/lib/api_carnet";
 import { getMyPatients } from "@/lib/api_patients";
+import { getMyStructure } from "@/lib/api_structure";
 import DashboardPage from "./page";
 
-vi.mock("@/hooks/useAuth", () => {
-  const user = { id: "m1", email: "medecin@exemple.com", nom: "Camara", prenom: "Awa", role: "MEDECIN", structureId: "s1" };
-  return { useAuth: () => ({ user, profile: null }) };
-});
+const medecin = { id: "m1", email: "medecin@exemple.com", nom: "Camara", prenom: "Awa", role: "MEDECIN", structureId: "s1" };
+const etat = vi.hoisted(() => ({
+  utilisateur: null as AuthUser | null,
+  profil: null as UserProfile | null,
+}));
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({ user: etat.utilisateur, profile: etat.profil }),
+}));
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
+vi.mock("@/lib/api_structure", () => ({ getMyStructure: vi.fn(), getAllStructures: vi.fn() }));
 const { graphiquesRendus } = vi.hoisted(() => ({ graphiquesRendus: vi.fn() }));
 vi.mock("@/components/DashboardCharts", () => ({ default: graphiquesRendus }));
 vi.mock("@/lib/api_carnet", () => ({ getConsultations: vi.fn(), getRendezVous: vi.fn() }));
@@ -38,6 +44,8 @@ const rendezVousAVenir = () =>
 describe("Aperçu du tableau de bord", () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    etat.utilisateur = medecin;
+    etat.profil = null;
   });
 
   afterEach(() => {
@@ -103,5 +111,30 @@ describe("Aperçu du tableau de bord", () => {
     expect(within(carteDe("Rendez-vous à venir")).getByText("2")).toBeTruthy();
     expect(screen.queryByText("Patients de la structure")).toBeNull();
     expect(screen.queryByText(MESSAGE_ERREUR)).toBeNull();
+  });
+
+  it("n'affiche à l'administrateur de pharmacie que ce qui concerne sa pharmacie", async () => {
+    etat.utilisateur = { id: "a1", email: "admin@exemple.com", nom: "Bah", prenom: "Fanta", role: "STRUCTURE_ADMIN", structureId: "s2" };
+    etat.profil = {
+      id: "a1",
+      email: "admin@exemple.com",
+      nom: "Bah",
+      prenom: "Fanta",
+      role: "STRUCTURE_ADMIN",
+      isActive: true,
+      permissions: ["structure:read", "structure:write", "membre:read", "membre:manage", "role:manage"],
+      structureType: "PHARMACIE",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    vi.mocked(getMyStructure).mockResolvedValue(reponse({ membres: [{ role: "PHARMACIEN" }, { role: "PHARMACIEN" }] }));
+    render(<DashboardPage />);
+    expect(await within(carteDe("Pharmaciens")).findByText("2")).toBeTruthy();
+    expect(screen.queryByText("Patients de la structure")).toBeNull();
+    expect(screen.queryByText("Médecins")).toBeNull();
+    const acces = screen.getByText("Accès rapide").parentElement as HTMLElement;
+    expect(within(acces).getByText("Ma pharmacie")).toBeTruthy();
+    expect(within(acces).getByText("Équipe de la pharmacie")).toBeTruthy();
+    expect(getMyPatients).not.toHaveBeenCalled();
   });
 });
