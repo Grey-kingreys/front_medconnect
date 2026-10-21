@@ -12,6 +12,7 @@ Détails: docs/plans/runs/2026-10-20-lot2/ (tasks/, rapports/, decisions.md)
 |----|-------|------|--------|-------|
 | F4 | Mes appareils connectés, déconnexion à distance et déconnexion forcée (tasks/F4-appareils-connectes.md) | spécifié | à faire | 0 |
 | F5 | Message « numéro déjà utilisé » et aide au format du téléphone (tasks/F5-numero-deja-utilise.md) | spécifié | à faire | 0 |
+| F6 | Retrait des graphiques fictifs et du badge « En direct » du tableau de bord (tasks/F6-graphiques-fictifs-tableau-de-bord.md) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
 
@@ -19,8 +20,8 @@ Détails: docs/plans/runs/2026-10-20-lot2/ (tasks/, rapports/, decisions.md)
 
 ## Dernières décisions (5 max, historique complet dans decisions.md)
 
-- D08 case « Déconnecter mes autres appareils » cochée par défaut, succès visible formulaire fermé
-- D13 erreurs du téléphone lues par src/lib/erreur_telephone.ts (3 formulaires)
-- D14 détection par details.code : TELEPHONE_DEJA_UTILISE, ou VALIDATION avec champ telephone
 - D15 pas de bandeau général si l'erreur ne concerne que le téléphone
 - D17 périmètre F5 : inscription, profil, UserModal (setup-structure et structures exclus)
+- D20 aucune route du back ne donne une série : aucun graphique branché
+- D21 section graphiques masquée par SHOW_CHARTS = false, badge « En direct » supprimé
+- D22 DashboardCharts.tsx non modifié (dette de lint préexistante)

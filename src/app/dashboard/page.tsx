@@ -18,7 +18,6 @@ import {
   Package,
   ShieldCheck,
   ArrowRight,
-  TrendingUp,
   Heart,
   Clock,
   Sparkles,
@@ -29,6 +28,10 @@ import Link from "next/link";
 import { ApiError } from "@/lib/api_auth";
 import { sourcesCompteurs, type CleCompteur } from "@/lib/compteurs_tableau_de_bord";
 import DashboardCharts from "@/components/DashboardCharts";
+
+// Graphiques « Analyses et Tendances » : données fictives codées en dur dans DashboardCharts.
+// Masqués tant qu'aucune route du back ne fournit de vraies séries (ne jamais montrer de chiffres inventés).
+const SHOW_CHARTS = false;
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -475,8 +478,8 @@ export default function DashboardPage() {
   const compteursEnErreur = statsCards.some((c) => etatsCompteurs[c.cle]?.statut === "erreur");
   const compteursEnChargement = statsCards.some((c) => (etatsCompteurs[c.cle]?.statut ?? "chargement") === "chargement");
 
-  // Les graphiques n'existent que pour certains rôles (DashboardCharts renvoie null sinon).
-  const showCharts = ["PATIENT", "MEDECIN", "PHARMACIEN", "STRUCTURE_ADMIN"].includes(user.role);
+  // Les graphiques n'existent que pour certains rôles (DashboardCharts renvoie null sinon) et restent masqués par SHOW_CHARTS.
+  const showCharts = SHOW_CHARTS && ["PATIENT", "MEDECIN", "PHARMACIEN", "STRUCTURE_ADMIN"].includes(user.role);
 
   const now = new Date();
   const hour = now.getHours();
@@ -577,10 +580,6 @@ export default function DashboardPage() {
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
               Analyses et Tendances
             </h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-primary-500/10 rounded-full">
-              <TrendingUp className="w-3.5 h-3.5 text-primary-500" />
-              <span className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">En direct</span>
-            </div>
           </div>
           <DashboardCharts role={user.role} />
         </section>

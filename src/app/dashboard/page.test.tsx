@@ -10,7 +10,8 @@ vi.mock("@/hooks/useAuth", () => {
   return { useAuth: () => ({ user, profile: null }) };
 });
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: vi.fn() }) }));
-vi.mock("@/components/DashboardCharts", () => ({ default: () => null }));
+const { graphiquesRendus } = vi.hoisted(() => ({ graphiquesRendus: vi.fn() }));
+vi.mock("@/components/DashboardCharts", () => ({ default: graphiquesRendus }));
 vi.mock("@/lib/api_carnet", () => ({ getConsultations: vi.fn(), getRendezVous: vi.fn() }));
 vi.mock("@/lib/api_patients", () => ({ getMyPatients: vi.fn() }));
 
@@ -79,6 +80,18 @@ describe("Aperçu du tableau de bord", () => {
     await waitFor(() => expect(screen.queryByText(MESSAGE_ERREUR)).toBeNull());
     expect(within(carteDe("Patients de la structure")).getByText("7")).toBeTruthy();
     expect(within(carteDe("Rendez-vous à venir")).getByText("2")).toBeTruthy();
+  });
+
+  it("n'affiche ni graphiques fictifs ni badge « En direct »", async () => {
+    vi.mocked(getMyPatients).mockResolvedValue(reponse(Array.from({ length: 7 }, () => ({}))));
+    vi.mocked(getConsultations).mockResolvedValue(consultationsDuJour());
+    vi.mocked(getRendezVous).mockResolvedValue(rendezVousAVenir());
+    render(<DashboardPage />);
+    expect(await within(carteDe("Patients de la structure")).findByText("7")).toBeTruthy();
+    expect(screen.queryByText("Analyses et Tendances")).toBeNull();
+    expect(screen.queryByText("En direct")).toBeNull();
+    expect(graphiquesRendus).not.toHaveBeenCalled();
+    expect(screen.getByText("Accès rapide")).toBeTruthy();
   });
 
   it("masque la carte dont le droit est absent sans afficher d'erreur", async () => {
