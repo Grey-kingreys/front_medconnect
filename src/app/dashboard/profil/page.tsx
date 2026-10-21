@@ -13,6 +13,7 @@ import {
 import FileUpload from "@/components/FileUpload";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import type { StoredFileView } from "@/lib/api_storage";
+import { AIDE_TELEPHONE, messageErreurTelephone, erreurSeulementTelephone } from "@/lib/erreur_telephone";
 import {
   User,
   Mail,
@@ -82,6 +83,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState("");
   const [saveSuccess, setSaveSuccess] = useState("");
+  const [telephoneError, setTelephoneError] = useState("");
 
   // Password form
   const [showPasswordForm, setShowPasswordForm] = useState(false);
@@ -176,11 +178,13 @@ export default function ProfilePage() {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (saveError) setSaveError("");
     if (saveSuccess) setSaveSuccess("");
+    if (e.target.name === "telephone" && telephoneError) setTelephoneError("");
   };
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaveError("");
+    setTelephoneError("");
     setSaveSuccess("");
     setSaving(true);
 
@@ -215,10 +219,14 @@ export default function ProfilePage() {
       setSaveSuccess("Profil mis à jour avec succès !");
       setEditing(false);
     } catch (err) {
-      if (err instanceof ApiError) {
-        setSaveError(err.message);
-      } else {
-        setSaveError("Une erreur est survenue lors de la mise à jour.");
+      const erreurTel = messageErreurTelephone(err);
+      setTelephoneError(erreurTel ?? "");
+      if (!(erreurTel && erreurSeulementTelephone(err))) {
+        if (err instanceof ApiError) {
+          setSaveError(err.message);
+        } else {
+          setSaveError("Une erreur est survenue lors de la mise à jour.");
+        }
       }
     } finally {
       setSaving(false);
@@ -288,6 +296,7 @@ export default function ProfilePage() {
     setEditing(false);
     setSaveError("");
     setSaveSuccess("");
+    setTelephoneError("");
   };
 
   // ─── Render ───────────────────────────────────────────────────
@@ -514,9 +523,17 @@ export default function ProfilePage() {
                 onChange={handleFormChange}
                 disabled={!editing}
                 placeholder="Non renseigné"
-                className="w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-invalid={telephoneError ? true : undefined}
+                aria-describedby={telephoneError ? "telephone-erreur telephone-aide" : editing ? "telephone-aide" : undefined}
+                className={`w-full pl-12 pr-4 py-3.5 bg-white dark:bg-slate-900/60 border ${telephoneError ? "border-emergency-500/50" : "border-slate-200 dark:border-slate-700/50"} rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm disabled:opacity-50 disabled:cursor-not-allowed`}
               />
             </div>
+            {telephoneError && (
+              <p id="telephone-erreur" role="alert" className="mt-1.5 text-xs text-emergency-500">{telephoneError}</p>
+            )}
+            {editing && (
+              <p id="telephone-aide" className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{AIDE_TELEPHONE}</p>
+            )}
           </div>
 
           {/* Date de naissance */}

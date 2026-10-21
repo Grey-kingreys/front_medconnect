@@ -11,6 +11,7 @@ Détails: docs/plans/runs/2026-10-20-lot2/ (tasks/, rapports/, decisions.md)
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
 | F4 | Mes appareils connectés, déconnexion à distance et déconnexion forcée (tasks/F4-appareils-connectes.md) | spécifié | à faire | 0 |
+| F5 | Message « numéro déjà utilisé » et aide au format du téléphone (tasks/F5-numero-deja-utilise.md) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
 
@@ -18,8 +19,8 @@ Détails: docs/plans/runs/2026-10-20-lot2/ (tasks/, rapports/, decisions.md)
 
 ## Dernières décisions (5 max, historique complet dans decisions.md)
 
-- D01 page /dashboard/appareils, ouverte depuis la carte Sécurité du profil
-- D03 déconnexion forcée centralisée (src/lib/deconnexion_forcee.ts), motif par sessionStorage
-- D05 sessionRevoquee écouté sur les 2 connexions en direct existantes, pas de nouvelle connexion
-- D07 confirmation par DeleteConfirmModal étendu (icone, libelleEnCours)
 - D08 case « Déconnecter mes autres appareils » cochée par défaut, succès visible formulaire fermé
+- D13 erreurs du téléphone lues par src/lib/erreur_telephone.ts (3 formulaires)
+- D14 détection par details.code : TELEPHONE_DEJA_UTILISE, ou VALIDATION avec champ telephone
+- D15 pas de bandeau général si l'erreur ne concerne que le téléphone
+- D17 périmètre F5 : inscription, profil, UserModal (setup-structure et structures exclus)

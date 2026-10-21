@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { register, ApiError } from "@/lib/api_auth";
 import { useAuth } from "@/hooks/useAuth";
+import { AIDE_TELEPHONE, messageErreurTelephone, erreurSeulementTelephone } from "@/lib/erreur_telephone";
 
 const passwordRules = [
   { label: "Au moins 8 caractères", test: (p: string) => p.length >= 8 },
@@ -45,15 +46,18 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [telephoneError, setTelephoneError] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError("");
+    if (e.target.name === "telephone" && telephoneError) setTelephoneError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setTelephoneError("");
 
     // Validation côté client
     if (form.password !== form.confirmPassword) {
@@ -86,10 +90,14 @@ export default function RegisterPage() {
       // Rediriger vers le dashboard
       router.push("/dashboard");
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Impossible de créer le compte. Vérifiez votre connexion.");
+      const erreurTel = messageErreurTelephone(err);
+      setTelephoneError(erreurTel ?? "");
+      if (!(erreurTel && erreurSeulementTelephone(err))) {
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError("Impossible de créer le compte. Vérifiez votre connexion.");
+        }
       }
     } finally {
       setLoading(false);
@@ -196,10 +204,16 @@ export default function RegisterPage() {
               type="tel"
               value={form.telephone}
               onChange={handleChange}
-              placeholder="+224 622 123 456"
-              className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              placeholder="620 00 00 00"
+              aria-invalid={telephoneError ? true : undefined}
+              aria-describedby={telephoneError ? "telephone-erreur telephone-aide" : "telephone-aide"}
+              className={`w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border ${telephoneError ? "border-emergency-500/50" : "border-slate-200 dark:border-slate-700/50"} rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm`}
             />
           </div>
+          {telephoneError && (
+            <p id="telephone-erreur" role="alert" className="mt-1.5 text-xs text-emergency-500">{telephoneError}</p>
+          )}
+          <p id="telephone-aide" className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{AIDE_TELEPHONE}</p>
         </div>
 
         {/* Date de naissance */}

@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { X, AlertCircle, Loader2, Plus, Mail, ChevronDown, ShieldAlert, Stethoscope, Pill } from "lucide-react";
-import { createUser, ApiError as ApiAdminError } from "@/lib/api_admin";
-import { createMembre, createSuperAdmin, MembreRole, ApiError as ApiStructureError } from "@/lib/api_structure";
+import { X, AlertCircle, Loader2, Plus, Mail, ChevronDown, ShieldAlert } from "lucide-react";
+import { createUser } from "@/lib/api_admin";
+import { createMembre, createSuperAdmin, MembreRole } from "@/lib/api_structure";
+import { AIDE_TELEPHONE, messageErreurTelephone, erreurSeulementTelephone } from "@/lib/erreur_telephone";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 type UserModalMode = "create_super_admin" | "create_admin_user" | "create_membre";
@@ -67,6 +68,7 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [telephoneError, setTelephoneError] = useState("");
   const { dialogProps, titleId } = useDialogA11y({ isOpen: true, onClose, closeOnEscape: !saving });
 
   const submit = async (e: React.FormEvent) => {
@@ -77,6 +79,7 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
     }
     setSaving(true);
     setError("");
+    setTelephoneError("");
 
     try {
       if (isMembreMode) {
@@ -101,13 +104,18 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
       onSuccess();
       onClose();
     } catch (err: unknown) {
-      setError((err instanceof Error && err.message) || "Une erreur est survenue.");
+      const erreurTel = messageErreurTelephone(err);
+      setTelephoneError(erreurTel ?? "");
+      if (!(erreurTel && erreurSeulementTelephone(err))) {
+        setError((err instanceof Error && err.message) || "Une erreur est survenue.");
+      }
     } finally {
       setSaving(false);
     }
   };
 
   const cls = "w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 text-sm transition-all";
+  const clsErreur = cls.replace("border-slate-200 dark:border-slate-700/50", "border-emergency-500/50");
 
   const getTitle = () => {
     if (isSuperAdminMode) return "Nouveau Super Admin";
@@ -180,8 +188,21 @@ export function UserModal({ mode, structureId, structureType, onClose, onSuccess
             )}
 
             <div className={isSuperAdminMode ? "col-span-2" : ""}>
-              <label className="block text-sm text-slate-600 dark:text-slate-300 mb-2">Téléphone</label>
-              <input type="tel" value={form.telephone} onChange={e => setForm(p => ({ ...p, telephone: e.target.value }))} className={cls} placeholder="+224 622..." />
+              <label htmlFor="user-telephone" className="block text-sm text-slate-600 dark:text-slate-300 mb-2">Téléphone</label>
+              <input
+                id="user-telephone"
+                type="tel"
+                value={form.telephone}
+                onChange={e => { setForm(p => ({ ...p, telephone: e.target.value })); setTelephoneError(""); }}
+                aria-invalid={telephoneError ? true : undefined}
+                aria-describedby={telephoneError ? "user-telephone-erreur user-telephone-aide" : "user-telephone-aide"}
+                className={telephoneError ? clsErreur : cls}
+                placeholder="620 00 00 00"
+              />
+              {telephoneError && (
+                <p id="user-telephone-erreur" role="alert" className="mt-1.5 text-xs text-emergency-500">{telephoneError}</p>
+              )}
+              <p id="user-telephone-aide" className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{AIDE_TELEPHONE}</p>
             </div>
 
             {form.role === "MEDECIN" && (
