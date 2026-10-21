@@ -5,7 +5,9 @@ import {
   createConsultation,
   createOrdonnance,
   createRendezVous,
+  createUrgence,
   createVaccination,
+  nouvelleCleIdempotence,
   updateRendezVousStatus,
 } from "./api_carnet";
 
@@ -40,6 +42,45 @@ describe("api_carnet : creations en POST", () => {
     expect(endpoint).toBe(chemin);
     expect(options?.method).toBe("POST");
     expect(JSON.parse(options?.body as string)).toEqual(data);
+  });
+});
+
+describe("createUrgence", () => {
+  it("envoie la position mesurée et la clé d'idempotence", () => {
+    createUrgence(
+      {
+        latitude: 9.5,
+        longitude: -13.7,
+        precision: 25,
+        horodatagePosition: "2026-10-21T10:00:00.000Z",
+        source: "navigateur",
+        message: "SOS",
+      },
+      "cle-1"
+    );
+    const [endpoint, options] = mockedAuthFetch.mock.calls[0];
+    expect(endpoint).toBe("/carnet-sante/sos");
+    expect(options?.method).toBe("POST");
+    const corps = JSON.parse(options?.body as string);
+    expect(corps).toMatchObject({ precision: 25, horodatagePosition: "2026-10-21T10:00:00.000Z", source: "navigateur" });
+    expect(options?.headers).toMatchObject({ "Idempotency-Key": "cle-1" });
+  });
+});
+
+describe("nouvelleCleIdempotence", () => {
+  const FORMAT_UUID_V4 = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
+
+  it("renvoie un UUID v4 avec crypto.randomUUID", () => {
+    expect(nouvelleCleIdempotence()).toMatch(FORMAT_UUID_V4);
+  });
+
+  it("renvoie un UUID v4 sans crypto.randomUUID", () => {
+    vi.stubGlobal("crypto", { getRandomValues: crypto.getRandomValues.bind(crypto) });
+    try {
+      expect(nouvelleCleIdempotence()).toMatch(FORMAT_UUID_V4);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });
 

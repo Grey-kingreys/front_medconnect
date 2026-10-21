@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MapPin, Target, ZoomIn, ZoomOut, Layers, Crosshair } from "lucide-react";
+import { localiserPrecisement, REGLAGES_RAPIDES } from "@/lib/geolocalisation";
 
 interface GlobePickerProps {
   initialLat?: number;
@@ -243,9 +244,9 @@ export default function GlobePicker({
 
   const handleAutoLocation = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const { latitude, longitude } = pos.coords;
+    localiserPrecisement(REGLAGES_RAPIDES).then((r) => {
+      if (!r.ok || !map.current) return;
+      const { latitude, longitude } = r.position;
       map.current?.flyTo({ center: [longitude, latitude], zoom: 15 });
       if (onLocationSelect) {
         if (marker.current) {
