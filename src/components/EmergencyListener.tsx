@@ -1,19 +1,17 @@
-/* Dette préexistante, backlog points 21 et 22 */
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, react-hooks/immutability, react/no-unescaped-entities */
 "use client";
 // Dette préexistante, backlog points 21 et 22
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/immutability, react-hooks/set-state-in-effect, react/no-unescaped-entities */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
 import { takeChargeSOS } from "@/lib/api_carnet";
 import { ApiError } from "@/lib/api_auth";
+import { gererSessionRevoquee } from "@/lib/deconnexion_forcee";
 import { 
   AlertTriangle, 
   MapPin, 
-  User, 
-  Phone, 
+  User,
   Bell, 
   X, 
   ChevronRight,
@@ -92,9 +90,12 @@ export default function EmergencyListener() {
       transports: ["websocket"]
     });
 
+    newSocket.on("sessionRevoquee", gererSessionRevoquee);
+
     setSocket(newSocket);
 
     return () => {
+      newSocket.off("sessionRevoquee", gererSessionRevoquee);
       newSocket.disconnect();
     };
   }, [utilisateurId, peutRepondreSOS]);

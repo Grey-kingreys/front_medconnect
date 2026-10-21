@@ -1,6 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { EVENEMENT_DECONNEXION_FORCEE } from "@/lib/deconnexion_forcee";
 import { AuthProvider, useAuth, useTerminerConnexion } from "./useAuth";
 
 const push = vi.fn();
@@ -45,5 +46,22 @@ describe("useTerminerConnexion", () => {
     expect(document.cookie).toContain("mc_connecte=1");
     expect(result.current.auth.user).toEqual(DONNEES.user);
     expect(push).toHaveBeenCalledWith("/dashboard");
+  });
+});
+
+describe("AuthProvider", () => {
+  it("déconnexion forcée : vide l'utilisateur et ouvre la page de connexion", () => {
+    const { result } = renderHook(() => ({ terminer: useTerminerConnexion(), auth: useAuth() }), {
+      wrapper: enveloppe,
+    });
+    act(() => result.current.terminer(DONNEES));
+    push.mockReset();
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(EVENEMENT_DECONNEXION_FORCEE, { detail: { motif: "SESSION_REVOQUEE" } }));
+    });
+
+    expect(result.current.auth.user).toBeNull();
+    expect(push).toHaveBeenCalledWith("/auth/login");
   });
 });

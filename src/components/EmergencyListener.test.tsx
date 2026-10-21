@@ -1,6 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { AuthUser, UserProfile } from "@/lib/api_auth";
+import { gererSessionRevoquee } from "@/lib/deconnexion_forcee";
 import EmergencyListener from "./EmergencyListener";
 
 const { etatAuth, ioMock, socketFactice, gestionnaires } = vi.hoisted(() => {
@@ -85,6 +86,15 @@ describe("EmergencyListener : écoute selon la permission sos:respond", () => {
     });
 
     expect(screen.getByText("Mariama Bah")).toBeInTheDocument();
+  });
+
+  it("écoute la déconnexion à distance de l'appareil (sessionRevoquee)", () => {
+    etatAuth.user = utilisateur("INFIRMIER_URGENCES");
+    etatAuth.profile = profil("INFIRMIER_URGENCES", ["sos:respond"]);
+
+    render(<EmergencyListener />);
+
+    expect(socketFactice.on).toHaveBeenCalledWith("sessionRevoquee", gererSessionRevoquee);
   });
 
   it("n'ouvre pas la connexion pour un médecin sans sos:respond", () => {

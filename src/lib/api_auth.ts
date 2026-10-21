@@ -5,6 +5,8 @@
  * L'URL du backend est lue depuis NEXT_PUBLIC_API_URL dans .env
  */
 
+import { deconnexionForcee, motifDepuisReponse, MESSAGES_DECONNEXION, type MotifDeconnexion } from "./deconnexion_forcee";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -208,6 +210,12 @@ let refreshPromise: Promise<ApiResponse<{ access_token: string }>> | null = null
 const lireJeton = () =>
   typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
+/** Déconnexion forcée (appareil déconnecté ou compte désactivé) : prévient l'application et renvoie l'erreur à lever. */
+function arreterConnexion(motif: MotifDeconnexion, details?: Record<string, unknown>): ApiError {
+  deconnexionForcee(motif);
+  return new ApiError(MESSAGES_DECONNEXION[motif], 401, details);
+}
+
 /**
  * Exécute un appel authentifié ; en cas de 401 (jeton expiré), rafraîchit la connexion
  * puis réessaie une seule fois. Partagé par authFetch et authDownload.
@@ -218,6 +226,9 @@ async function avecRafraichissement<R>(appel: (token: string | null) => Promise<
   } catch (err) {
     // Si 401 → tenter un refresh du token puis réessayer une seule fois
     if (err instanceof ApiError && err.status === 401) {
+      // Appareil déconnecté ou compte désactivé : inutile de rafraîchir la connexion
+      const motifImmediat = motifDepuisReponse(err.status, err.details);
+      if (motifImmediat) throw arreterConnexion(motifImmediat, err.details);
       try {
         // Utiliser une promesse partagée pour éviter les appels concurrents.
         // Le refresh token vit dans un cookie httpOnly (envoyé via credentials:include),
@@ -240,10 +251,14 @@ async function avecRafraichissement<R>(appel: (token: string | null) => Promise<
 
         // Réessayer la requête originale avec le nouveau token
         return await appel(refreshRes.data.access_token);
-      } catch {
+      } catch (errRafraichissement) {
         // Nettoyer la promesse en cas d'échec
         refreshPromise = null;
-        
+        if (errRafraichissement instanceof ApiError) {
+          const motif = motifDepuisReponse(errRafraichissement.status, errRafraichissement.details);
+          if (motif) throw arreterConnexion(motif, errRafraichissement.details);
+        }
+
         // Refresh échoué → session expirée, nettoyer le localStorage
         if (typeof window !== "undefined") {
           localStorage.removeItem("access_token");
@@ -503,12 +518,13 @@ export async function removeMyAvatar() {
 }
 
 /**
- * Changer le mot de passe de l'utilisateur connecté
+ * Changer le mot de passe de l'utilisateur connecté ; `deconnecterAutresAppareils`
+ * déconnecte aussi les autres appareils du compte (vrai par défaut côté serveur).
  */
-export async function changePassword(currentPassword: string, newPassword: string) {
-  return authFetch<null>("/auth/change-password", {
+export async function changePassword(currentPassword: string, newPassword: string, deconnecterAutresAppareils: boolean) {
+  return authFetch<{ appareilsDeconnectes: number }>("/auth/change-password", {
     method: "POST",
-    body: JSON.stringify({ currentPassword, newPassword }),
+    body: JSON.stringify({ currentPassword, newPassword, deconnecterAutresAppareils }),
   });
 }
 
@@ -536,6 +552,10 @@ export async function refreshAccessToken() {
     return res;
   } catch (err) {
     refreshPromise = null;
+    if (err instanceof ApiError) {
+      const motif = motifDepuisReponse(err.status, err.details);
+      if (motif) throw arreterConnexion(motif, err.details);
+    }
     throw err;
   }
 }

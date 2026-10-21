@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, ReactNode } from "react";
-import { Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { Trash2, Loader2, AlertTriangle, type LucideIcon } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface DeleteConfirmModalProps {
@@ -11,6 +11,10 @@ interface DeleteConfirmModalProps {
   title?: string;
   description: ReactNode;
   confirmLabel?: string;
+  /** Icône de la modale (corbeille par défaut) */
+  icone?: LucideIcon;
+  /** Texte du bouton pendant l'action ("Suppression..." par défaut) */
+  libelleEnCours?: string;
 }
 
 export function DeleteConfirmModal({
@@ -20,6 +24,8 @@ export function DeleteConfirmModal({
   title = "Confirmer la suppression",
   description,
   confirmLabel = "Supprimer",
+  icone: Icone = Trash2,
+  libelleEnCours = "Suppression...",
 }: DeleteConfirmModalProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
@@ -46,7 +52,7 @@ export function DeleteConfirmModal({
         <div className="flex flex-col items-center text-center gap-5">
 
           <div className="w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center">
-            <Trash2 className="w-8 h-8 text-rose-500" />
+            <Icone className="w-8 h-8 text-rose-500" />
           </div>
 
           <div className="space-y-2">
@@ -76,8 +82,8 @@ export function DeleteConfirmModal({
               disabled={deleting}
               className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-500 transition-all shadow-lg shadow-rose-500/20 disabled:opacity-60"
             >
-              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              {deleting ? "Suppression..." : confirmLabel}
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icone className="w-4 h-4" />}
+              {deleting ? libelleEnCours : confirmLabel}
             </button>
           </div>
         </div>

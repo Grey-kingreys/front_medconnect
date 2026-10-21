@@ -3,13 +3,14 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
-import { getConversations, getMessages, startConversation, Conversation, Message } from "@/lib/api_chat";
-import { 
-  Send, MapPin, Loader2, User as UserIcon, Building2, Phone, Search, AlertCircle, Menu, ArrowLeft
+import { getConversations, getMessages, Conversation, Message } from "@/lib/api_chat";
+import { gererSessionRevoquee } from "@/lib/deconnexion_forcee";
+import {
+  Send, MapPin, Loader2, User as UserIcon, Building2, Search, ArrowLeft
 } from "lucide-react";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -38,9 +39,12 @@ export default function ChatPage() {
       transports: ["websocket"]
     });
 
+    newSocket.on("sessionRevoquee", gererSessionRevoquee);
+
     setSocket(newSocket);
 
     return () => {
+      newSocket.off("sessionRevoquee", gererSessionRevoquee);
       newSocket.disconnect();
     };
   }, []);
