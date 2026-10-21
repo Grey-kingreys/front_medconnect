@@ -1,6 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
+import { MSG_REGLES_NON_RESPECTEES } from "@/lib/regles_mot_de_passe";
 import RegisterPage from "./page";
 
 const { register, push, loginUser } = vi.hoisted(() => ({
@@ -93,5 +94,18 @@ describe("Page d'inscription, téléphone", () => {
 
     fireEvent.change(screen.getByLabelText(/Téléphone/), { target: { value: "620000002" } });
     expect(document.getElementById("telephone-erreur")).toBeNull();
+  });
+});
+
+describe("Page d'inscription, mot de passe", () => {
+  it("refuse un mot de passe sans majuscule, sans appeler le serveur", () => {
+    render(<RegisterPage />);
+    fireEvent.change(screen.getByLabelText("Mot de passe"), { target: { value: "motdepasse1" } });
+    fireEvent.change(screen.getByLabelText("Confirmer le mot de passe"), { target: { value: "motdepasse1" } });
+    const bouton = screen.getByRole("button", { name: /Créer mon compte/ });
+    fireEvent.submit(bouton.closest("form") as HTMLFormElement);
+
+    expect(register).not.toHaveBeenCalled();
+    expect(document.getElementById("password-erreur")).toHaveTextContent(MSG_REGLES_NON_RESPECTEES);
   });
 });

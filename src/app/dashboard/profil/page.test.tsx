@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, changePassword, updateProfile } from "@/lib/api_auth";
+import { MSG_REGLES_NON_RESPECTEES } from "@/lib/regles_mot_de_passe";
 import ProfilPage from "./page";
 
 const { etatAuth } = vi.hoisted(() => ({
@@ -140,5 +141,76 @@ describe("Profil : téléphone", () => {
 
     await waitFor(() => expect(screen.getByText(GENERIQUE)).toBeInTheDocument());
     expect(document.getElementById("telephone-erreur")).toBeNull();
+  });
+});
+
+describe("Profil : changement du mot de passe", () => {
+  function ouvrirLeFormulaire() {
+    render(<ProfilPage />);
+    fireEvent.click(screen.getByRole("button", { name: "Changer" }));
+  }
+
+  function remplir(actuel: string, nouveau: string) {
+    fireEvent.change(screen.getByLabelText("Mot de passe actuel"), { target: { value: actuel } });
+    fireEvent.change(screen.getByLabelText("Nouveau mot de passe"), { target: { value: nouveau } });
+    fireEvent.change(screen.getByLabelText("Confirmer le nouveau mot de passe"), { target: { value: nouveau } });
+    fireEvent.click(screen.getByRole("button", { name: "Changer le mot de passe" }));
+  }
+
+  it("affiche la liste des règles dès l'ouverture du formulaire", () => {
+    ouvrirLeFormulaire();
+
+    expect(screen.getByText("Une lettre majuscule")).toBeInTheDocument();
+    expect(screen.getByLabelText("Nouveau mot de passe").getAttribute("aria-describedby")).toContain(
+      "newPassword-regles",
+    );
+  });
+
+  it("refuse un mot de passe qui ne respecte pas les règles, sans appeler le serveur", () => {
+    ouvrirLeFormulaire();
+    remplir("Ancien123", "nouveau123");
+
+    expect(changePasswordMock).not.toHaveBeenCalled();
+    expect(document.getElementById("newPassword-erreur")).toHaveTextContent(MSG_REGLES_NON_RESPECTEES);
+    expect(screen.getByLabelText("Nouveau mot de passe")).toHaveAttribute("aria-invalid", "true");
+  });
+
+  it("affiche sous le champ un mot de passe actuel incorrect et garde le formulaire ouvert", async () => {
+    const message = "Le mot de passe actuel est incorrect.";
+    changePasswordMock.mockRejectedValue(new ApiError(message, 400, { code: "MOT_DE_PASSE_ACTUEL_INCORRECT" }));
+    ouvrirLeFormulaire();
+    remplir("Faux1234", "Nouveau123");
+
+    await waitFor(() => expect(screen.getAllByText(message)).toHaveLength(1));
+    expect(document.getElementById("currentPassword-erreur")).toHaveTextContent(message);
+    expect(screen.getByLabelText("Mot de passe actuel")).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: "Changer le mot de passe" })).toBeInTheDocument();
+  });
+
+  it("efface l'erreur du mot de passe actuel dès qu'on le modifie", async () => {
+    changePasswordMock.mockRejectedValue(
+      new ApiError("Le mot de passe actuel est incorrect.", 400, { code: "MOT_DE_PASSE_ACTUEL_INCORRECT" }),
+    );
+    ouvrirLeFormulaire();
+    remplir("Faux1234", "Nouveau123");
+    await waitFor(() => expect(document.getElementById("currentPassword-erreur")).not.toBeNull());
+
+    fireEvent.change(screen.getByLabelText("Mot de passe actuel"), { target: { value: "Faux12345" } });
+
+    expect(document.getElementById("currentPassword-erreur")).toBeNull();
+  });
+
+  it("affiche sous le champ le refus du serveur sur le nouveau mot de passe", async () => {
+    changePasswordMock.mockRejectedValue(
+      new ApiError("x", 400, {
+        code: "VALIDATION",
+        champs: [{ champ: "newPassword", contraintes: ["matches"], message: "Message du serveur" }],
+      }),
+    );
+    ouvrirLeFormulaire();
+    remplir("Ancien123", "Nouveau123");
+
+    await waitFor(() => expect(screen.getAllByText("Message du serveur")).toHaveLength(1));
+    expect(document.getElementById("newPassword-erreur")).toHaveTextContent("Message du serveur");
   });
 });

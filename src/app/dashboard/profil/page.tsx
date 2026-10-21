@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -14,6 +14,14 @@ import FileUpload from "@/components/FileUpload";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import type { StoredFileView } from "@/lib/api_storage";
 import { AIDE_TELEPHONE, messageErreurTelephone, erreurSeulementTelephone } from "@/lib/erreur_telephone";
+import ReglesMotDePasse, { descriptionMotDePasse } from "@/components/ReglesMotDePasse";
+import {
+  motDePasseValide,
+  estMotDePasseActuelIncorrect,
+  messageErreurNouveauMotDePasse,
+  MSG_REGLES_NON_RESPECTEES,
+  LONGUEUR_MAX_MOT_DE_PASSE,
+} from "@/lib/regles_mot_de_passe";
 import {
   User,
   Mail,
@@ -101,6 +109,10 @@ export default function ProfilePage() {
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
   const [deconnecterAutres, setDeconnecterAutres] = useState(true);
+  const [currentPasswordError, setCurrentPasswordError] = useState("");
+  const [newPasswordError, setNewPasswordError] = useState("");
+  const champMotDePasseActuel = useRef<HTMLInputElement>(null);
+  const champNouveauMotDePasse = useRef<HTMLInputElement>(null);
 
   // Avatar
   const [avatarBusy, setAvatarBusy] = useState(false);
@@ -237,20 +249,25 @@ export default function ProfilePage() {
     setPasswordForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (passwordError) setPasswordError("");
     if (passwordSuccess) setPasswordSuccess("");
+    if (e.target.name === "currentPassword") setCurrentPasswordError("");
+    if (e.target.name === "newPassword") setNewPasswordError("");
   };
 
   const handleSavePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordError("");
     setPasswordSuccess("");
+    setCurrentPasswordError("");
+    setNewPasswordError("");
 
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setPasswordError("Les mots de passe ne correspondent pas.");
+    if (!motDePasseValide(passwordForm.newPassword)) {
+      setNewPasswordError(MSG_REGLES_NON_RESPECTEES);
+      champNouveauMotDePasse.current?.focus();
       return;
     }
 
-    if (passwordForm.newPassword.length < 8) {
-      setPasswordError("Le nouveau mot de passe doit contenir au moins 8 caractères.");
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("Les mots de passe ne correspondent pas.");
       return;
     }
 
@@ -271,7 +288,14 @@ export default function ProfilePage() {
       setDeconnecterAutres(true);
       setShowPasswordForm(false);
     } catch (err) {
-      if (err instanceof ApiError) {
+      const erreurNouveau = messageErreurNouveauMotDePasse(err);
+      if (estMotDePasseActuelIncorrect(err)) {
+        setCurrentPasswordError((err as ApiError).message);
+        champMotDePasseActuel.current?.focus();
+      } else if (erreurNouveau) {
+        setNewPasswordError(erreurNouveau);
+        champNouveauMotDePasse.current?.focus();
+      } else if (err instanceof ApiError) {
         setPasswordError(err.message);
       } else {
         setPasswordError("Une erreur est survenue.");
@@ -711,6 +735,10 @@ export default function ProfilePage() {
                     value={passwordForm.currentPassword}
                     onChange={handlePasswordChange}
                     required
+                    ref={champMotDePasseActuel}
+                    autoComplete="current-password"
+                    aria-invalid={currentPasswordError ? true : undefined}
+                    aria-describedby={currentPasswordError ? "currentPassword-erreur" : undefined}
                     className="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                   />
                   <button
@@ -727,6 +755,9 @@ export default function ProfilePage() {
                     )}
                   </button>
                 </div>
+                {currentPasswordError && (
+                  <p id="currentPassword-erreur" role="alert" className="mt-1.5 text-xs text-emergency-500">{currentPasswordError}</p>
+                )}
               </div>
 
               {/* New Password */}
@@ -743,7 +774,11 @@ export default function ProfilePage() {
                     value={passwordForm.newPassword}
                     onChange={handlePasswordChange}
                     required
-                    minLength={8}
+                    ref={champNouveauMotDePasse}
+                    maxLength={LONGUEUR_MAX_MOT_DE_PASSE}
+                    autoComplete="new-password"
+                    aria-invalid={newPasswordError ? true : undefined}
+                    aria-describedby={descriptionMotDePasse("newPassword", newPasswordError)}
                     className="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                   />
                   <button
@@ -760,6 +795,7 @@ export default function ProfilePage() {
                     )}
                   </button>
                 </div>
+                <ReglesMotDePasse motDePasse={passwordForm.newPassword} idChamp="newPassword" erreur={newPasswordError} />
               </div>
 
               {/* Confirm Password */}
@@ -776,7 +812,8 @@ export default function ProfilePage() {
                     value={passwordForm.confirmPassword}
                     onChange={handlePasswordChange}
                     required
-                    minLength={8}
+                    maxLength={LONGUEUR_MAX_MOT_DE_PASSE}
+                    autoComplete="new-password"
                     className="w-full pl-12 pr-12 py-3.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
                   />
                   <button
@@ -816,6 +853,8 @@ export default function ProfilePage() {
                   onClick={() => {
                     setShowPasswordForm(false);
                     setPasswordError("");
+                    setCurrentPasswordError("");
+                    setNewPasswordError("");
                     setPasswordSuccess("");
                     setDeconnecterAutres(true);
                     setPasswordForm({
