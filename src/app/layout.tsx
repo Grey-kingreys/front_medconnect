@@ -4,7 +4,7 @@ import "./globals.css";
 import { AuthProvider } from "@/hooks/useAuth";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import StructuredData from "@/components/StructuredData";
-import Script from "next/script";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 
 
 const inter = Inter({
@@ -153,21 +153,10 @@ export default function RootLayout({
           <AuthProvider>
             <StructuredData />
             {children}
-            <Script
-              id="unregister-sw"
-              strategy="afterInteractive"
-              dangerouslySetInnerHTML={{
-                __html: `
-                  if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(function(registrations) {
-                      for(let registration of registrations) {
-                        registration.unregister();
-                      }
-                    });
-                  }
-                `,
-              }}
-            />
+            {/* Remplace le script qui désinscrivait tous les service workers :
+                l'ancien SW serwist est maintenant écrasé par un SW minimal sans
+                cache, nécessaire à l'installabilité de la PWA. */}
+            <ServiceWorkerRegistration />
           </AuthProvider>
         </ThemeProvider>
 

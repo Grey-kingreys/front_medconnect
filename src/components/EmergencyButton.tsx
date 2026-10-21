@@ -1,6 +1,8 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/immutability, react-hooks/set-state-in-effect, prefer-const, react/no-unescaped-entities */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { 
   AlertCircle, 
   Bot, 
@@ -19,7 +21,19 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePathname } from "next/navigation";
-import { getProfilMedical, ProfilMedical, createUrgence, getAiFirstAid } from "@/lib/api_carnet";
+import { getProfilMedical, ProfilMedical, createUrgence, getAiFirstAid, getMonAlerteEnCours, Urgence } from "@/lib/api_carnet";
+import { ApiError } from "@/lib/api_auth";
+
+// Relecture de l'alerte en attente de prise en charge (D14)
+const INTERVALLE_RELECTURE_MS = 20_000;
+
+// Compte à rebours affiché en mm:ss
+const formatMmSs = (ms: number) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
+const minutesRestantes = (ms: number) => Math.max(1, Math.ceil(ms / 60_000));
+const libelleMinutes = (n: number) => `${n} minute${n > 1 ? "s" : ""}`;
 
 export default function EmergencyButton() {
   const { user } = useAuth();
@@ -65,7 +79,75 @@ export default function EmergencyButton() {
     return () => clearInterval(interval);
   }, [timerActive, countdown]);
 
+  // Alerte en cours (F5) : état lu sur le serveur, relu périodiquement, compte à rebours
+  const [alerte, setAlerte] = useState<Urgence | null>(null);
+  const [erreurEnvoi, setErreurEnvoi] = useState<string | null>(null);
+  const [envoiEchoue, setEnvoiEchoue] = useState(false);
+  // Alerte enregistrée mais aucun établissement prévenu (pas de position, aucun soignant)
+  const [aucunEtablissement, setAucunEtablissement] = useState(false);
+  const [maintenant, setMaintenant] = useState(() => Date.now());
+
+  const chargerAlerte = useCallback(async () => {
+    try {
+      const res = await getMonAlerteEnCours();
+      setAlerte(res.data ?? null);
+      return res.data ?? null;
+    } catch {
+      // Lecture silencieuse : l'écran garde le dernier état connu
+      return null;
+    }
+  }, []);
+
+  // Tant que l'alerte attend une prise en charge, relecture toutes les 20 s
+  const enAttente = isOpen && alerte?.status === "LANCE";
+  useEffect(() => {
+    if (!enAttente) return;
+    const id = setInterval(chargerAlerte, INTERVALLE_RELECTURE_MS);
+    return () => clearInterval(id);
+  }, [enAttente, chargerAlerte]);
+
+  // Horloge à la seconde pour le compte à rebours et le délai avant relance
+  const horlogeActive = isOpen && !!alerte;
+  useEffect(() => {
+    if (!horlogeActive) return;
+    const id = setInterval(() => setMaintenant(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [horlogeActive]);
+
   if (user?.role !== "PATIENT") return null;
+
+  const ouvrir = () => {
+    setIsOpen(true);
+    getLoc();
+    setTimerActive(true);
+    setView("sos_confirm");
+    setErreurEnvoi(null);
+    setEnvoiEchoue(false);
+    // Une alerte encore active bloque la relance : afficher son état au lieu d'envoyer
+    chargerAlerte().then(a => {
+      if (a?.peutRelancerA && new Date(a.peutRelancerA).getTime() > Date.now()) {
+        setTimerActive(false);
+        setView("sos_sent");
+      }
+    });
+  };
+
+  // Rejoue le flux d'envoi existant (position, compte à rebours de 5 s)
+  const relancer = () => {
+    setErreurEnvoi(null);
+    setEnvoiEchoue(false);
+    setAucunEtablissement(false);
+    setCountdown(5);
+    setView("sos_confirm");
+    setTimerActive(true);
+    getLoc();
+  };
+
+  const priseEnCharge = alerte?.status === "PRIS_EN_CHARGE";
+  const finDelaiMs = alerte?.finDelaiAt ? new Date(alerte.finDelaiAt).getTime() - maintenant : 0;
+  const delaiDepasse = priseEnCharge && finDelaiMs <= 0;
+  const relanceMs = alerte?.peutRelancerA ? new Date(alerte.peutRelancerA).getTime() - maintenant : 0;
+  const relanceBloquee = relanceMs > 0;
 
   const getLoc = () => {
     setLocLoading(true);
@@ -100,16 +182,29 @@ export default function EmergencyButton() {
 
   const sendRequest = async (loc: {lat: number, lng: number} | null) => {
     try {
-      await createUrgence({
+      const res = await createUrgence({
         latitude: loc?.lat,
         longitude: loc?.lng,
         message: "Urgence vitale déclenchée depuis le dashboard."
       });
-      setView("sos_sent");
+      // Le serveur dit exactement qui a été prévenu : aucun faux succès affiché.
+      const personnePrevenue = res.data?.structuresAlertees === 0;
+      setAucunEtablissement(personnePrevenue);
+      setErreurEnvoi(personnePrevenue ? res.message ?? null : null);
+      setEnvoiEchoue(false);
     } catch (err) {
-      console.error("Erreur lors de l'envoi du SOS réel", err);
-      setView("sos_sent");
+      if (err instanceof ApiError && err.status === 409) {
+        // Alerte déjà en cours : message du serveur affiché tel quel
+        setErreurEnvoi(err.message);
+        setEnvoiEchoue(false);
+      } else {
+        setErreurEnvoi("L'alerte n'a pas pu être envoyée. Vérifiez votre connexion puis réessayez, ou appelez directement les secours.");
+        setEnvoiEchoue(true);
+      }
     }
+    setMaintenant(Date.now());
+    setView("sos_sent");
+    chargerAlerte();
   };
 
   const handleGetFirstAid = async (label: string) => {
@@ -151,7 +246,7 @@ export default function EmergencyButton() {
       {/* Floating Trigger Button */}
       <div className={`fixed ${isInputPage ? 'bottom-28 md:bottom-6' : 'bottom-6'} right-6 z-[60] transition-all duration-300`}>
         <button
-          onClick={() => { setIsOpen(true); getLoc(); setTimerActive(true); setView("sos_confirm"); }}
+          onClick={ouvrir}
           className="group relative w-16 h-16 flex items-center justify-center rounded-full shadow-2xl shadow-emergency-500/40 transition-all duration-500 hover:scale-110 active:scale-95 overflow-hidden"
         >
           <div className="absolute inset-0 bg-emergency-500 animate-ping opacity-20" />
@@ -228,12 +323,77 @@ export default function EmergencyButton() {
               {view === "sos_sent" && (
                 <div className="space-y-6 animate-in zoom-in duration-300">
                   <div className="flex flex-col items-center text-center gap-4">
-                    <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500"><CheckCircle2 className="w-12 h-12" /></div>
+                    {envoiEchoue || aucunEtablissement ? (
+                      <div className="w-20 h-20 bg-emergency-500/10 rounded-full flex items-center justify-center text-emergency-600"><AlertTriangle className="w-12 h-12" /></div>
+                    ) : (
+                      <div className="w-20 h-20 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500"><CheckCircle2 className="w-12 h-12" /></div>
+                    )}
                     <div>
-                      <h4 className="text-2xl font-black text-slate-900 dark:text-white mb-1">SOS Envoyé !</h4>
-                      <p className="text-sm text-slate-500">Position partagée : {location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Localisation en cours..."}</p>
+                      <h4 className="text-2xl font-black text-slate-900 dark:text-white mb-1">
+                        {envoiEchoue ? "Alerte non envoyée" : aucunEtablissement ? "Aucun établissement alerté" : priseEnCharge ? "Prise en charge" : "Alerte envoyée"}
+                      </h4>
+                      {!envoiEchoue && (
+                        <p className="text-sm text-slate-500">Position partagée : {location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Localisation en cours..."}</p>
+                      )}
                     </div>
                   </div>
+
+                  {erreurEnvoi && (
+                    <p role="alert" className="text-sm font-bold text-center text-emergency-600 dark:text-emergency-500">{erreurEnvoi}</p>
+                  )}
+                  {(envoiEchoue || aucunEtablissement) && (
+                    <button
+                      onClick={relancer}
+                      className="w-full py-4 bg-emergency-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-emergency-500 transition-all"
+                    >
+                      {aucunEtablissement ? "Relancer l'alerte" : "Réessayer l'envoi"}
+                    </button>
+                  )}
+
+                  {/* Suivi de l'alerte en cours : prise en charge, délai d'arrivée, relance */}
+                  {!envoiEchoue && alerte && (
+                    <div aria-live="polite" className="p-5 rounded-3xl border-2 border-slate-200 dark:border-slate-700 text-center space-y-3">
+                      {priseEnCharge && !delaiDepasse && (
+                        <>
+                          <p className="text-base font-black text-emerald-700 dark:text-emerald-400">
+                            {alerte.structurePriseEnCharge?.nom ?? "Un établissement de santé"} a pris en charge votre alerte
+                          </p>
+                          <p aria-hidden="true" className="text-sm text-slate-700 dark:text-slate-200">
+                            Les secours arrivent dans environ{" "}
+                            <span className="block text-4xl font-black tabular-nums text-slate-900 dark:text-white">{formatMmSs(finDelaiMs)}</span>
+                          </p>
+                          <p className="sr-only">Les secours arrivent dans environ {libelleMinutes(minutesRestantes(finDelaiMs))}.</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-400">Restez joignable : gardez votre téléphone allumé et près de vous.</p>
+                        </>
+                      )}
+                      {delaiDepasse && (
+                        <p className="text-sm font-bold text-slate-900 dark:text-white">
+                          Le délai annoncé est dépassé. Si personne n&apos;est arrivé, vous pouvez relancer une alerte.
+                        </p>
+                      )}
+                      {!priseEnCharge && (
+                        <>
+                          <p className="text-sm font-bold text-slate-900 dark:text-white">
+                            Votre alerte a été envoyée aux établissements de santé proches. En attente d&apos;une prise en charge.
+                          </p>
+                          {relanceBloquee && (
+                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                              Vous pourrez relancer une alerte dans environ {libelleMinutes(minutesRestantes(relanceMs))}.
+                            </p>
+                          )}
+                        </>
+                      )}
+                      {(delaiDepasse || !priseEnCharge) && (
+                        <button
+                          onClick={relancer}
+                          disabled={relanceBloquee}
+                          className="w-full py-3 bg-emergency-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emergency-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Relancer une alerte
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* EMERGENCY CARDS */}
                   <div className="space-y-3">

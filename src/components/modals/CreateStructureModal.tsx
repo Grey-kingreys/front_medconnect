@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { X, AlertCircle, Loader2, Send, Mail, ChevronDown } from "lucide-react";
 import { createStructure, StructureType, ApiError } from "@/lib/api_admin";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 export function CreateStructureModal({
   onClose,
@@ -19,6 +20,7 @@ export function CreateStructureModal({
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const { dialogProps, titleId } = useDialogA11y({ isOpen: true, onClose, closeOnEscape: !saving });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,17 +52,19 @@ export function CreateStructureModal({
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
+        aria-hidden="true"
       />
-      <div className="relative w-full max-w-lg bg-[#0f172a]/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800/60 rounded-3xl shadow-2xl shadow-black/30 overflow-hidden animate-slide-up">
+      <div {...dialogProps} className="relative w-full max-w-lg bg-[#0f172a]/95 backdrop-blur-2xl border border-slate-200 dark:border-slate-800/60 rounded-3xl shadow-2xl shadow-black/30 overflow-hidden animate-slide-up">
         <div className="flex items-center justify-between p-6 border-b border-slate-200 dark:border-slate-800/50">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-white">Créer une structure</h2>
+            <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-white">Créer une structure</h2>
             <p className="text-xs text-slate-500 mt-0.5">
               Un email d&apos;invitation sera envoyé automatiquement
             </p>
           </div>
           <button
             onClick={onClose}
+            aria-label="Fermer"
             className="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
           >
             <X className="w-5 h-5" />

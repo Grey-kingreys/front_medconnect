@@ -42,39 +42,31 @@ function LinkedinIcon({ className }: { className?: string }) {
   );
 }
 
+/**
+ * Seuls les liens ayant une destination réelle sont listés : un `href="#"` en
+ * pied de page se comporte comme un lien mort (remonte en haut sans rien faire)
+ * et dégrade autant la confiance que le référencement. Les entrées retirées
+ * (Mises à jour, À propos, Blog, Carrières, Partenariats, Documentation, Centre
+ * d'aide, Communauté, API) seront rétablies quand les pages existeront.
+ */
 const footerLinks = {
   Produit: [
     { label: "Fonctionnalités", href: "#features" },
     { label: "Tarifs", href: "#pricing" },
     { label: "Télécharger", href: "#cta" },
-    { label: "Mises à jour", href: "#" },
-  ],
-  Entreprise: [
-    { label: "À propos", href: "#" },
-    { label: "Blog", href: "#" },
-    { label: "Carrières", href: "#" },
-    { label: "Partenariats", href: "#" },
-  ],
-  Ressources: [
-    { label: "Documentation", href: "#" },
-    { label: "Centre d'aide", href: "#" },
-    { label: "Communauté", href: "#" },
-    { label: "API", href: "#" },
   ],
   Légal: [
-    { label: "Confidentialité", href: "#" },
-    { label: "CGU", href: "#" },
-    { label: "Mentions légales", href: "#" },
-    { label: "RGPD", href: "#" },
+    { label: "Confidentialité", href: "/confidentialite" },
+    { label: "CGU", href: "/cgu" },
+    { label: "Mentions légales", href: "/mentions-legales" },
+    { label: "RGPD", href: "/rgpd" },
   ],
 };
 
-const socialLinks = [
-  { icon: FacebookIcon, href: "https://www.facebook.com/thiernooumar.diallo.9469", label: "Facebook" },
-  { icon: TwitterIcon, href: "#", label: "Twitter" },
-  { icon: InstagramIcon, href: "#", label: "Instagram" },
-  { icon: LinkedinIcon, href: "#", label: "LinkedIn" },
-];
+// TODO(#24) — en attente du porteur : comptes officiels MedConnecte (le lien
+// Facebook pointait vers un profil personnel) et adresse contact@medconnecte.com.
+// Tant qu'ils n'existent pas, aucune icône n'est affichée plutôt que des liens morts.
+const socialLinks: { icon: typeof FacebookIcon; href: string; label: string }[] = [];
 
 export default function Footer() {
   return (
@@ -84,7 +76,7 @@ export default function Footer() {
         <div className="py-16 grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-8 lg:gap-12">
           {/* Brand */}
           <div className="col-span-2">
-            <a href="#" className="flex items-center gap-2.5 mb-4 group">
+            <a href="/" className="flex items-center gap-2.5 mb-4 group">
               <Image
                 src="/images/logo.png"
                 alt="MedConnecte Logo"
@@ -109,11 +101,11 @@ export default function Footer() {
             {/* Contact info */}
             <div className="space-y-2">
               <a
-                href="mailto:soulmamoudou0@gmail.com"
+                href="mailto:contact@medconnecte.com"
                 className="flex items-center gap-2 text-sm text-[var(--muted)] hover:text-primary-500 transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                soulmamoudou0@gmail.com
+                contact@medconnecte.com
               </a>
               <a
                 href="tel:+224624815998"

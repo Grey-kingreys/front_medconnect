@@ -5,7 +5,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import {
   Users, Plus, Search, RefreshCw, CheckCircle2, XCircle,
-  Power, AlertCircle, Loader2, X, ChevronDown, Stethoscope, Pill, Mail, Phone, Trash2,
+  Power, AlertCircle, Loader2, X, ChevronDown, Stethoscope, Pill, Mail, Phone, Trash2, Headset,
 } from "lucide-react";
 import { getMembres, createMembre, toggleMembreActive, Membre, MembreRole, ApiError } from "@/lib/api_structure";
 import { UserModal } from "@/components/modals/UserModal";
@@ -15,6 +15,7 @@ const ROLE_CONFIG: Record<MembreRole, { label: string; color: string; bg: string
   MEDECIN: { label: "Médecin", color: "text-blue-400", bg: "bg-blue-500/10", icon: <Stethoscope className="w-4 h-4" /> },
   PHARMACIEN: { label: "Pharmacien", color: "text-emerald-400", bg: "bg-emerald-500/10", icon: <Pill className="w-4 h-4" /> },
   STRUCTURE_ADMIN: { label: "Admin Structure", color: "text-amber-400", bg: "bg-amber-500/10", icon: <Users className="w-4 h-4" /> },
+  ACCUEIL: { label: "Accueil", color: "text-violet-400", bg: "bg-violet-500/10", icon: <Headset className="w-4 h-4" /> },
 };
 
 
@@ -125,9 +126,9 @@ export default function MembresPage() {
             className="w-full pl-10 pr-4 py-2.5 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 text-sm transition-all" />
         </div>
         <div className="flex gap-2">
-          {(["ALL", "MEDECIN", "PHARMACIEN", "STRUCTURE_ADMIN"] as const).map(r => (
+          {(["ALL", "MEDECIN", "ACCUEIL", "PHARMACIEN", "STRUCTURE_ADMIN"] as const).map(r => (
             <button key={r} onClick={() => setFilterRole(r)} className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${filterRole === r ? "bg-primary-500/20 text-primary-300 border border-primary-500/30" : "text-slate-500 border border-slate-200 dark:border-slate-800/50 hover:text-slate-600 dark:text-slate-300"}`}>
-              {r === "ALL" ? "Tous" : r === "MEDECIN" ? "Médecins" : r === "PHARMACIEN" ? "Pharmaciens" : "Admins"}
+              {r === "ALL" ? "Tous" : ROLE_CONFIG[r].label}
             </button>
           ))}
         </div>

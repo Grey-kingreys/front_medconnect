@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/preserve-manual-memoization, react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
@@ -16,7 +18,8 @@ import {
   Pill,
   ShoppingBag,
   TrendingUp,
-  XCircle
+  XCircle,
+  FileSpreadsheet
 } from "lucide-react";
 import { 
   getMyStock, 
@@ -26,6 +29,7 @@ import {
   updateStockQuantite 
 } from "@/lib/api_pharmacie";
 import StockModal from "@/components/modals/StockModal";
+import ImportStockModal from "@/components/modals/ImportStockModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 
 export default function StockPage() {
@@ -37,6 +41,7 @@ export default function StockPage() {
   
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockMedicament | null>(null);
 
@@ -160,13 +165,22 @@ export default function StockPage() {
           </div>
         </div>
         
-        <button 
-          onClick={openAddModal}
-          className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-          Ajouter un médicament
-        </button>
+        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
+          <button
+            onClick={() => setIsImportOpen(true)}
+            className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl font-bold text-sm hover:border-primary-500 transition-all flex items-center justify-center gap-2"
+          >
+            <FileSpreadsheet className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+            Importer depuis Excel
+          </button>
+          <button
+            onClick={openAddModal}
+            className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
+          >
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+            Ajouter un médicament
+          </button>
+        </div>
       </div>
 
       {/* Stock Table */}
@@ -278,6 +292,16 @@ export default function StockPage() {
           structureId={user.structureId}
           onSuccess={fetchData}
           editItem={selectedStock}
+        />
+      )}
+
+      {/* Import Excel du stock (F1) */}
+      {user?.structureId && (
+        <ImportStockModal
+          isOpen={isImportOpen}
+          onClose={() => setIsImportOpen(false)}
+          structureId={user.structureId}
+          onSuccess={fetchData}
         />
       )}
 

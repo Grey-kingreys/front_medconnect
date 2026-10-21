@@ -1,5 +1,8 @@
 "use client";
 
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useState, useEffect, useCallback, createContext, useContext } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -25,6 +28,20 @@ interface AuthContextType {
   loginUser: (data: LoginResponse | RegisterResponse) => void;
   refreshProfile: () => Promise<void>;
   logout: () => Promise<void>;
+}
+
+// ─── Cookie témoin de session ───────────────────────────────────
+// `mc_connecte=1` ne contient aucun secret : il indique seulement à `src/proxy.ts`
+// qu'une session existe côté client (vérification optimiste, l'API reste juge).
+
+function poserCookieConnecte() {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `mc_connecte=1; path=/; max-age=${30 * 24 * 60 * 60}; SameSite=Lax${secure}`;
+}
+
+function supprimerCookieConnecte() {
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `mc_connecte=; path=/; max-age=0; SameSite=Lax${secure}`;
 }
 
 // ─── Context ────────────────────────────────────────────────────
@@ -78,6 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       };
       setUser(u);
       localStorage.setItem("user", JSON.stringify(u));
+      poserCookieConnecte();
     } catch (err) {
       // Si 404 (User non trouvé) ou 401 après refresh échoué → logout
       if (err instanceof ApiError && (err.status === 404 || err.status === 401)) {
@@ -85,6 +103,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
+        supprimerCookieConnecte();
         router.push("/auth/login");
         return;
       }
@@ -110,12 +129,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
         setUser(u);
         localStorage.setItem("user", JSON.stringify(u));
-      } catch (refreshErr) {
+        poserCookieConnecte();
+      } catch {
         // Session complètement expirée ou compte supprimé
         setUser(null);
         setProfile(null);
         localStorage.removeItem("access_token");
         localStorage.removeItem("user");
+        supprimerCookieConnecte();
       }
     }
   }, [router]);
@@ -123,12 +144,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // ── Connexion : met à jour le state + localStorage immédiatement ──
   const loginUser = useCallback(
     (data: LoginResponse | RegisterResponse) => {
-      // 1. Stocker les tokens
+      // 1. Stocker l'access token (le refresh token vit dans un cookie httpOnly).
       localStorage.setItem("access_token", data.access_token);
-      if (data.refresh_token) {
-        localStorage.setItem("refresh_token", data.refresh_token);
-      }
       localStorage.setItem("user", JSON.stringify(data.user));
+      // Cookie témoin posé avant toute redirection vers /dashboard (garde de src/proxy.ts)
+      poserCookieConnecte();
 
       // 2. Mettre à jour le state React (le contexte se propage partout)
       setUser(data.user);
@@ -145,6 +165,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       await apiLogout();
     } finally {
+      // apiLogout vide le localStorage : retirer aussi le cookie témoin
+      supprimerCookieConnecte();
       setUser(null);
       setProfile(null);
       router.push("/auth/login");
@@ -161,6 +183,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!token || !storedUser) {
           console.log("[Auth] No session found in storage");
+          supprimerCookieConnecte();
           setUser(null);
           setProfile(null);
           return;
@@ -193,6 +216,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setProfile(null);
             localStorage.removeItem("access_token");
             localStorage.removeItem("user");
+            supprimerCookieConnecte();
           }
         }
       } catch (err) {
@@ -219,6 +243,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const refreshRes = await refreshAccessToken();
         localStorage.setItem("access_token", refreshRes.data.access_token);
+        poserCookieConnecte();
         console.log("[Auth] Silent refresh successful");
       } catch (err) {
         console.error("[Auth] Silent refresh failed", err);
@@ -247,7 +272,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Si connecté et sur une page auth, rediriger vers le dashboard
+    // (cookie témoin posé d'abord, sinon src/proxy.ts renverrait ici en boucle
+    // un utilisateur connecté avant l'introduction du cookie)
     if (user && isAuthRoute) {
+      poserCookieConnecte();
       router.push("/dashboard");
     }
   }, [user, loading, pathname, router, mounted]);
@@ -277,4 +305,21 @@ export function useAuth() {
     throw new Error("useAuth doit être utilisé dans un AuthProvider");
   }
   return context;
+}
+
+/**
+ * Traitement unique du succès d'une connexion (formulaire ou compte de démonstration) :
+ * stockage du jeton et de l'utilisateur, cookie témoin, profil chargé en arrière-plan
+ * (via `loginUser`), puis direction le tableau de bord, qui s'adapte au rôle.
+ */
+export function useTerminerConnexion() {
+  const { loginUser } = useAuth();
+  const router = useRouter();
+  return useCallback(
+    (data: LoginResponse) => {
+      loginUser(data);
+      router.push("/dashboard");
+    },
+    [loginUser, router]
+  );
 }

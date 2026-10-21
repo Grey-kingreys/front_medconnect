@@ -5,9 +5,14 @@ import { useAuth } from "@/hooks/useAuth";
 import {
   updateProfile,
   changePassword,
+  setMyAvatar,
+  removeMyAvatar,
   ApiError,
   type UserProfile,
 } from "@/lib/api_auth";
+import FileUpload from "@/components/FileUpload";
+import ImageWithFallback from "@/components/ImageWithFallback";
+import type { StoredFileView } from "@/lib/api_storage";
 import {
   User,
   Mail,
@@ -91,6 +96,36 @@ export default function ProfilePage() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordError, setPasswordError] = useState("");
   const [passwordSuccess, setPasswordSuccess] = useState("");
+
+  // Avatar
+  const [avatarBusy, setAvatarBusy] = useState(false);
+  const [avatarError, setAvatarError] = useState("");
+
+  const handleAvatarUploaded = async (file: StoredFileView) => {
+    setAvatarError("");
+    setAvatarBusy(true);
+    try {
+      await setMyAvatar(file.id);
+      await refreshProfile();
+    } catch (err) {
+      setAvatarError(err instanceof ApiError ? err.message : "Échec de la mise à jour de la photo.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
+
+  const handleAvatarRemove = async () => {
+    setAvatarError("");
+    setAvatarBusy(true);
+    try {
+      await removeMyAvatar();
+      await refreshProfile();
+    } catch (err) {
+      setAvatarError(err instanceof ApiError ? err.message : "Échec de la suppression de la photo.");
+    } finally {
+      setAvatarBusy(false);
+    }
+  };
 
   // Initialize form with profile data
   useEffect(() => {
@@ -275,10 +310,42 @@ export default function ProfilePage() {
 
         <div className="relative flex flex-col sm:flex-row items-center sm:items-start gap-6">
           {/* Avatar */}
-          <div className={`relative flex-shrink-0 w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br ${roleGradient} flex items-center justify-center shadow-2xl`}>
-            <span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{initials}</span>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-secondary-500 rounded-full border-3 border-[#0f172a] flex items-center justify-center">
-              <CheckCircle2 className="w-3 h-3 text-slate-900 dark:text-white" />
+          <div className="flex flex-col items-center gap-3 flex-shrink-0">
+            <div className={`relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-br ${roleGradient} flex items-center justify-center shadow-2xl overflow-hidden`}>
+              <ImageWithFallback
+                src={profile.avatarUrl}
+                alt={`Photo de profil de ${profile.prenom} ${profile.nom}`}
+                className="w-full h-full object-cover"
+                fallback={<span className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{initials}</span>}
+              />
+              <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-secondary-500 rounded-full border-3 border-[#0f172a] flex items-center justify-center">
+                <CheckCircle2 className="w-3 h-3 text-slate-900 dark:text-white" />
+              </div>
+            </div>
+
+            {/* Contrôles photo */}
+            <div className="flex flex-col items-center gap-1">
+              <FileUpload
+                visibility="public"
+                prefix="avatars"
+                accept="image/jpeg,image/png,image/webp"
+                maxSizeMb={5}
+                label={profile.avatarUrl ? "Changer la photo" : "Ajouter une photo"}
+                onUploaded={handleAvatarUploaded}
+                disabled={avatarBusy}
+              />
+              {profile.avatarUrl && (
+                <button
+                  type="button"
+                  onClick={handleAvatarRemove}
+                  disabled={avatarBusy}
+                  className="text-xs text-red-500 hover:underline disabled:opacity-50"
+                >
+                  Supprimer la photo
+                </button>
+              )}
+              {avatarBusy && <span className="text-xs text-slate-400">Mise à jour…</span>}
+              {avatarError && <span role="alert" className="text-xs text-red-500">{avatarError}</span>}
             </div>
           </div>
 

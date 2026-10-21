@@ -23,9 +23,12 @@ import {
   Clock,
   Sparkles,
   AlertCircle,
+  Headset,
+  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { getMyStructure, MyStructure } from "@/lib/api_structure";
+import { getRendezVous } from "@/lib/api_carnet";
 import DashboardCharts from "@/components/DashboardCharts";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -58,6 +61,8 @@ function getWelcomeMessage(role: string): string {
       return "Bienvenue dans votre espace pharmacien. Gérez votre stock et les ordonnances.";
     case "STRUCTURE_ADMIN":
       return "Bienvenue dans votre espace de gestion. Administrez votre structure de santé.";
+    case "ACCUEIL":
+      return "Accueillez les patients : partage de dossier, orientation et rendez-vous.";
     case "ADMIN":
     case "SUPER_ADMIN":
       return "Bienvenue dans le panneau d'administration. Gérez la plateforme MedConnecte.";
@@ -196,6 +201,38 @@ function getQuickActions(role: string): QuickAction[] {
         },
       ];
 
+    case "ACCUEIL":
+      return [
+        {
+          label: "Accueil patient",
+          description: "Enregistrer le partage d'un dossier (code / QR / SMS)",
+          href: "/dashboard/accueil",
+          icon: <Headset className="w-6 h-6" />,
+          gradient: "from-violet-500 to-purple-500",
+        },
+        {
+          label: "Rendez-vous",
+          description: "Prendre et suivre les rendez-vous de la structure",
+          href: "/dashboard/rendez-vous",
+          icon: <Calendar className="w-6 h-6" />,
+          gradient: "from-amber-500 to-orange-500",
+        },
+        {
+          label: "Messagerie",
+          description: "Messages adressés à la structure",
+          href: "/dashboard/chat",
+          icon: <MessageSquare className="w-6 h-6" />,
+          gradient: "from-primary-500 to-cyan-500",
+        },
+        {
+          label: "Patients",
+          description: "Fiches d'orientation des patients de la structure",
+          href: "/dashboard/patients",
+          icon: <Users className="w-6 h-6" />,
+          gradient: "from-secondary-500 to-cyan-500",
+        },
+      ];
+
     case "ADMIN":
     case "SUPER_ADMIN":
       return [
@@ -275,6 +312,12 @@ function getStatsCards(role: string): StatCard[] {
         { label: "Patients Inscrits", value: "—", icon: <Users className="w-5 h-5" />, color: "text-accent-400" },
         { label: "Consultations / mois", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-cyan-400" },
       ];
+    case "ACCUEIL":
+      return [
+        { label: "RDV en attente", value: "—", icon: <Clock className="w-5 h-5" />, color: "text-amber-400" },
+        { label: "RDV aujourd'hui", value: "—", icon: <Calendar className="w-5 h-5" />, color: "text-primary-400" },
+        { label: "RDV à venir", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-secondary-400" },
+      ];
     default:
       return [];
   }
@@ -352,6 +395,9 @@ export default function DashboardPage() {
   const [structureStats, setStructureStats] = useState<{ medecins: number; pharmaciens: number; actifs: number; }>({
     medecins: 0, pharmaciens: 0, actifs: 0
   });
+  const [accueilStats, setAccueilStats] = useState<{ enAttente: number; aujourdhui: number; aVenir: number }>({
+    enAttente: 0, aujourdhui: 0, aVenir: 0
+  });
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
@@ -378,6 +424,21 @@ export default function DashboardPage() {
     }
   }, [user]);
 
+  useEffect(() => {
+    if (user?.role === "ACCUEIL") {
+      getRendezVous().then((res) => {
+        const rv = res.data || [];
+        const today = new Date().toDateString();
+        const now = new Date();
+        setAccueilStats({
+          enAttente: rv.filter(a => a.status === "EN_ATTENTE").length,
+          aujourdhui: rv.filter(a => new Date(a.date).toDateString() === today).length,
+          aVenir: rv.filter(a => new Date(a.date) > now && ["PROGRAMME", "CONFIRME", "EN_ATTENTE"].includes(a.status)).length,
+        });
+      }).catch(console.error);
+    }
+  }, [user]);
+
   if (!mounted || !user) return <LoadingSpinner fullPage message="Vérification de l'accès..." />;
   if (user.role === "SUPER_ADMIN") return <LoadingSpinner fullPage message="Redirection vers l'espace Super Admin..." />;
 
@@ -395,6 +456,19 @@ export default function DashboardPage() {
       return card;
     });
   }
+
+  // Update ACCUEIL stats dynamically (depuis les RDV de la structure)
+  if (user.role === "ACCUEIL") {
+    statsCards = statsCards.map((card) => {
+      if (card.label === "RDV en attente") return { ...card, value: accueilStats.enAttente.toString() };
+      if (card.label === "RDV aujourd'hui") return { ...card, value: accueilStats.aujourdhui.toString() };
+      if (card.label === "RDV à venir") return { ...card, value: accueilStats.aVenir.toString() };
+      return card;
+    });
+  }
+
+  // Les graphiques n'existent que pour certains rôles (DashboardCharts renvoie null sinon).
+  const showCharts = ["PATIENT", "MEDECIN", "PHARMACIEN", "STRUCTURE_ADMIN"].includes(user.role);
 
   const now = new Date();
   const hour = now.getHours();
@@ -477,18 +551,20 @@ export default function DashboardPage() {
       )}
 
       {/* Charts Section */}
-      <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
-            Analyses et Tendances
-          </h2>
-          <div className="flex items-center gap-2 px-3 py-1 bg-primary-500/10 rounded-full">
-            <TrendingUp className="w-3.5 h-3.5 text-primary-500" />
-            <span className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">En direct</span>
+      {showCharts && (
+        <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
+              Analyses et Tendances
+            </h2>
+            <div className="flex items-center gap-2 px-3 py-1 bg-primary-500/10 rounded-full">
+              <TrendingUp className="w-3.5 h-3.5 text-primary-500" />
+              <span className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">En direct</span>
+            </div>
           </div>
-        </div>
-        <DashboardCharts role={user.role} />
-      </section>
+          <DashboardCharts role={user.role} />
+        </section>
+      )}
 
       {/* Quick Actions */}
       <section>

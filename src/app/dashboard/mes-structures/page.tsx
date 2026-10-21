@@ -1,9 +1,13 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect, @typescript-eslint/no-explicit-any, react/no-unescaped-entities */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { Building2, Plus, ShieldAlert, XCircle, Search, MapPin, CheckCircle2, Loader2 } from "lucide-react";
+import { useToast, messageErreurPour } from "@/hooks/useToast";
+import { Building2, Plus, ShieldAlert, XCircle, Search, MapPin, CheckCircle2, Loader2, QrCode } from "lucide-react";
+import { ShareDossierModal } from "@/components/modals/ShareDossierModal";
 import { 
   getAllStructures, 
   getMesAutorisations, 
@@ -16,11 +20,13 @@ import {
 
 export default function MesStructuresPage() {
   const { user } = useAuth();
+  const { notifier } = useToast();
   const [autorisations, setAutorisations] = useState<Autorisation[]>([]);
   const [toutesStructures, setToutesStructures] = useState<MyStructure[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  const [showShare, setShowShare] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -49,7 +55,7 @@ export default function MesStructuresPage() {
       await autoriserStructure(structureId);
       await fetchData();
     } catch (err: any) {
-      alert(err.message || "Erreur lors de l'autorisation");
+      notifier(messageErreurPour(err, "L'établissement n'a pas pu être autorisé à voir votre carnet. Vérifiez votre connexion puis réessayez."), "erreur");
     } finally {
       setActionLoading(null);
     }
@@ -62,7 +68,7 @@ export default function MesStructuresPage() {
       await revoquerStructure(structureId);
       await fetchData();
     } catch (err: any) {
-      alert(err.message || "Erreur lors de la révocation");
+      notifier(messageErreurPour(err, "L'accès de l'établissement n'a pas pu être retiré. Vérifiez votre connexion puis réessayez."), "erreur");
     } finally {
       setActionLoading(null);
     }
@@ -105,7 +111,15 @@ export default function MesStructuresPage() {
             Gérez les hôpitaux et cliniques qui ont le droit de consulter votre dossier médical.
           </p>
         </div>
+        <button
+          onClick={() => setShowShare(true)}
+          className="flex items-center gap-2 px-5 py-3 rounded-xl text-sm font-semibold text-white bg-gradient-to-r from-primary-600 to-cyan-500 hover:shadow-lg hover:shadow-primary-500/25 shrink-0"
+        >
+          <QrCode className="w-4 h-4" /> Partager mon dossier
+        </button>
       </div>
+
+      {showShare && <ShareDossierModal onClose={() => setShowShare(false)} />}
 
       {/* Structures Autorisées */}
       <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-3xl p-8 shadow-xl">

@@ -8,8 +8,11 @@ import {
 } from "lucide-react";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { StatCard } from "@/components/charts/StatCard";
-import { getMyStructure, updateMyStructure, MyStructure, UpdateStructurePayload, ApiError } from "@/lib/api_structure";
+import { getMyStructure, updateMyStructure, setMyLogo, removeMyLogo, MyStructure, UpdateStructurePayload, ApiError } from "@/lib/api_structure";
 import { StructureModal } from "@/components/modals/StructureModal";
+import FileUpload from "@/components/FileUpload";
+import ImageWithFallback from "@/components/ImageWithFallback";
+import type { StoredFileView } from "@/lib/api_storage";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 
@@ -28,6 +31,8 @@ export default function MyStructurePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showEdit, setShowEdit] = useState(false);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState("");
 
   const fetch = useCallback(async () => {
     setLoading(true); setError("");
@@ -35,6 +40,20 @@ export default function MyStructurePage() {
     catch { setError("Impossible de charger les informations de votre structure."); }
     finally { setLoading(false); }
   }, []);
+
+  const handleLogoUploaded = useCallback(async (file: StoredFileView) => {
+    setLogoError(""); setLogoBusy(true);
+    try { await setMyLogo(file.id); await fetch(); }
+    catch (err) { setLogoError(err instanceof ApiError ? err.message : "Échec de la mise à jour du logo."); }
+    finally { setLogoBusy(false); }
+  }, [fetch]);
+
+  const handleLogoRemove = useCallback(async () => {
+    setLogoError(""); setLogoBusy(true);
+    try { await removeMyLogo(); await fetch(); }
+    catch (err) { setLogoError(err instanceof ApiError ? err.message : "Échec de la suppression du logo."); }
+    finally { setLogoBusy(false); }
+  }, [fetch]);
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -57,8 +76,13 @@ export default function MyStructurePage() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-primary-500/8 rounded-full blur-3xl pointer-events-none" />
         <div className="relative flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
           <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg flex-shrink-0`}>
-              <Building2 className="w-7 h-7 text-slate-900 dark:text-white" />
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${gradient} flex items-center justify-center shadow-lg flex-shrink-0 overflow-hidden`}>
+              <ImageWithFallback
+                src={structure.logoUrl}
+                alt={`Logo de ${structure.nom}`}
+                className="w-full h-full object-cover"
+                fallback={<Building2 className="w-7 h-7 text-slate-900 dark:text-white" />}
+              />
             </div>
             <div>
               <div className="flex items-center gap-2 mb-1">
@@ -72,9 +96,29 @@ export default function MyStructurePage() {
             </div>
           </div>
           {user?.role === 'STRUCTURE_ADMIN' && (
-            <button onClick={() => setShowEdit(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-300 border border-slate-700/50 hover:border-primary-500/30 hover:text-slate-900 dark:text-white transition-all">
-              <Edit3 className="w-4 h-4" />Modifier
-            </button>
+            <div className="flex flex-col items-start sm:items-end gap-2">
+              <button onClick={() => setShowEdit(true)} className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm text-slate-600 dark:text-slate-300 border border-slate-700/50 hover:border-primary-500/30 hover:text-slate-900 dark:text-white transition-all">
+                <Edit3 className="w-4 h-4" />Modifier
+              </button>
+              <div className="flex flex-col items-start sm:items-end gap-1">
+                <FileUpload
+                  visibility="public"
+                  prefix="logos"
+                  accept="image/jpeg,image/png,image/webp"
+                  maxSizeMb={5}
+                  label={structure.logoUrl ? "Changer le logo" : "Ajouter un logo"}
+                  onUploaded={handleLogoUploaded}
+                  disabled={logoBusy}
+                />
+                {structure.logoUrl && (
+                  <button type="button" onClick={handleLogoRemove} disabled={logoBusy} className="text-xs text-red-500 hover:underline disabled:opacity-50">
+                    Supprimer le logo
+                  </button>
+                )}
+                {logoBusy && <span className="text-xs text-slate-400">Mise à jour…</span>}
+                {logoError && <span role="alert" className="text-xs text-red-500">{logoError}</span>}
+              </div>
+            </div>
           )}
         </div>
         <div className="relative mt-4 flex flex-wrap gap-4">

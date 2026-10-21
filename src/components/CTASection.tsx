@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Download, Smartphone } from "lucide-react";
 import Image from "next/image";
+import InstallAppButton from "./InstallAppButton";
 
 export default function CTASection() {
   const sectionRef = useRef<HTMLElement>(null);
@@ -66,28 +66,11 @@ export default function CTASection() {
           pour leur santé. Gratuit, sécurisé et disponible hors-ligne.
         </p>
 
-        {/* CTA Buttons */}
+        {/* CTA Buttons.
+            « Voir la démo » est retiré tant qu'aucune démo n'existe : le bouton
+            pointait sur `#` et ne faisait rien. */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-12">
-          <a
-            href="#"
-            id="cta-download"
-            className="group relative inline-flex items-center justify-center gap-3 px-10 py-5 text-lg font-semibold text-white rounded-2xl overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-primary-500/30 hover:-translate-y-1"
-          >
-            <span className="absolute inset-0 bg-gradient-to-r from-primary-600 via-primary-500 to-cyan-500 animate-gradient" />
-            <span className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-primary-500 to-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <Download className="relative w-5 h-5" />
-            <span className="relative">Installer MedConnecte</span>
-            <ArrowRight className="relative w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
-          </a>
-
-          <a
-            href="#"
-            id="cta-demo"
-            className="inline-flex items-center justify-center gap-3 px-10 py-5 text-lg font-medium text-slate-300 border border-slate-600 rounded-2xl hover:bg-white/5 hover:border-slate-400 hover:text-white transition-all duration-300"
-          >
-            <Smartphone className="w-5 h-5" />
-            <span>Voir la démo</span>
-          </a>
+          <InstallAppButton />
         </div>
 
         {/* Trust line */}

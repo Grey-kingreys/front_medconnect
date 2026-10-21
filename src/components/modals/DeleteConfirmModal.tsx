@@ -2,6 +2,7 @@
 
 import { useState, ReactNode } from "react";
 import { Trash2, Loader2, AlertTriangle } from "lucide-react";
+import { useDialogA11y } from "@/hooks/useDialogA11y";
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export function DeleteConfirmModal({
 }: DeleteConfirmModalProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
+  const { dialogProps, titleId } = useDialogA11y({ isOpen, onClose, closeOnEscape: !deleting });
 
   if (!isOpen) return null;
 
@@ -31,16 +33,16 @@ export function DeleteConfirmModal({
     try {
       await onConfirm();
       onClose();
-    } catch (err: any) {
-      setError(err?.message || "Erreur lors de la suppression.");
+    } catch (err: unknown) {
+      setError((err instanceof Error && err.message) || "Erreur lors de la suppression.");
       setDeleting(false);
     }
   };
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-8 animate-slide-up">
+      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div {...dialogProps} className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-8 animate-slide-up">
         <div className="flex flex-col items-center text-center gap-5">
 
           <div className="w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center">
@@ -48,7 +50,7 @@ export function DeleteConfirmModal({
           </div>
 
           <div className="space-y-2">
-            <h3 className="text-xl font-bold text-slate-900 dark:text-white">{title}</h3>
+            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">{title}</h3>
             <div className="text-sm text-slate-500 dark:text-slate-400">
               {description}
             </div>
