@@ -8,212 +8,17 @@ import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  LayoutDashboard,
-  Calendar,
-  FileText,
-  Pill,
-  MapPin,
-  Stethoscope,
-  Building2,
-  Users,
-  Settings,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Menu,
-  X,
-  User,
-  ShieldCheck,
-  ClipboardList,
-  Package,
-  Activity,
-  Bot,
-  Loader2,
-  MessageSquare,
-  Syringe,
-  Headset,
-  QrCode,
-} from "lucide-react";
+import { LogOut, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
+import { lireContexteAcces, EVENEMENT_ACCES_REFUSE } from "@/lib/acces";
+import { estRouteAutorisee, sectionsMenu } from "@/lib/navigation_tableau_de_bord";
+import PageNonDisponible from "@/components/PageNonDisponible";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
 import EmergencyButton from "@/components/EmergencyButton";
 import EmergencyListener from "@/components/EmergencyListener";
 import NotificationBell from "@/components/NotificationBell";
 import ToastProvider from "@/components/Toast";
-
-// ─── Types ──────────────────────────────────────────────────────
-
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-}
-
-interface NavSection {
-  title: string;
-  items: NavItem[];
-}
-
-// Pages pas encore créées : réafficher le lien en retirant la route de cette liste
-const ROUTES_NON_DISPONIBLES = new Set([
-  "/dashboard/stats",
-  "/dashboard/config",
-  "/dashboard/securite",
-]);
-
-// ─── Navigation par rôle ────────────────────────────────────────
-
-function getNavSections(role: string): NavSection[] {
-  const common: NavSection = {
-    title: "Général",
-    items: [
-      { label: "Dashboard", href: "/dashboard", icon: <LayoutDashboard className="w-5 h-5" /> },
-    ],
-  };
-
-  switch (role) {
-    case "PATIENT":
-      return [
-        common,
-        {
-          title: "Mon Carnet",
-          items: [
-            { label: "Carnet de Santé", href: "/dashboard/carnet", icon: <FileText className="w-5 h-5" /> },
-            { label: "Consultations", href: "/dashboard/consultations", icon: <Stethoscope className="w-5 h-5" /> },
-            { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <Pill className="w-5 h-5" /> },
-            { label: "Analyses", href: "/dashboard/analyses", icon: <Activity className="w-5 h-5" /> },
-            { label: "Vaccinations", href: "/dashboard/vaccinations", icon: <Syringe className="w-5 h-5" /> },
-          ],
-        },
-        {
-          title: "Services",
-          items: [
-            { label: "Messagerie", href: "/dashboard/chat", icon: <MessageSquare className="w-5 h-5" /> },
-            { label: "Auto-Diagnostic IA", href: "/dashboard/diagnostic", icon: <Bot className="w-5 h-5" /> },
-            { label: "Trouver un Médecin", href: "/dashboard/map", icon: <MapPin className="w-5 h-5" /> },
-            { label: "Recherche Médicaments", href: "/dashboard/medicaments", icon: <Pill className="w-5 h-5" /> },
-            { label: "Pharmacies", href: "/dashboard/pharmacies", icon: <Building2 className="w-5 h-5" /> },
-            { label: "Mes Structures", href: "/dashboard/mes-structures", icon: <Building2 className="w-5 h-5" /> },
-            { label: "Rendez-vous", href: "/dashboard/rendez-vous", icon: <Calendar className="w-5 h-5" /> },
-          ],
-        },
-      ];
-
-    case "MEDECIN":
-      return [
-        common,
-        {
-          title: "Pratique",
-          items: [
-            { label: "Messagerie", href: "/dashboard/chat", icon: <MessageSquare className="w-5 h-5" /> },
-            { label: "Mes Patients", href: "/dashboard/patients", icon: <Users className="w-5 h-5" /> },
-            { label: "Consultations", href: "/dashboard/consultations", icon: <Stethoscope className="w-5 h-5" /> },
-            { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <Pill className="w-5 h-5" /> },
-            { label: "Analyses", href: "/dashboard/analyses", icon: <Activity className="w-5 h-5" /> },
-            { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
-            { label: "Rendez-vous", href: "/dashboard/rendez-vous", icon: <Calendar className="w-5 h-5" /> },
-          ],
-        },
-        {
-          title: "Structure",
-          items: [
-            { label: "Ma Structure", href: "/dashboard/structure", icon: <Building2 className="w-5 h-5" /> },
-          ],
-        },
-      ];
-
-    case "PHARMACIEN":
-      return [
-        common,
-        {
-          title: "Pharmacie",
-          items: [
-            { label: "Stock Médicaments", href: "/dashboard/stock", icon: <Package className="w-5 h-5" /> },
-            { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
-            { label: "Ordonnances", href: "/dashboard/ordonnances", icon: <ClipboardList className="w-5 h-5" /> },
-          ],
-        },
-        {
-          title: "Structure",
-          items: [
-            { label: "Ma Pharmacie", href: "/dashboard/structure", icon: <Building2 className="w-5 h-5" /> },
-          ],
-        },
-      ];
-
-
-    case "STRUCTURE_ADMIN":
-      return [
-        common,
-        {
-          title: "Ma Structure",
-          items: [
-            { label: "Ma Structure", href: "/dashboard/structure", icon: <Building2 className="w-5 h-5" /> },
-            { label: "Mes Patients", href: "/dashboard/patients", icon: <Users className="w-5 h-5" /> },
-            { label: "Équipe médicale", href: "/dashboard/membres", icon: <Users className="w-5 h-5" /> },
-            { label: "Statistiques", href: "/dashboard/stats", icon: <Activity className="w-5 h-5" /> },
-          ],
-        },
-      ];
-
-    case "ACCUEIL":
-      return [
-        common,
-        {
-          title: "Accueil",
-          items: [
-            { label: "Accueil patient", href: "/dashboard/accueil", icon: <Headset className="w-5 h-5" /> },
-            { label: "Messagerie", href: "/dashboard/chat", icon: <MessageSquare className="w-5 h-5" /> },
-            { label: "Rendez-vous", href: "/dashboard/rendez-vous", icon: <Calendar className="w-5 h-5" /> },
-            { label: "Patients", href: "/dashboard/patients", icon: <Users className="w-5 h-5" /> },
-          ],
-        },
-      ];
-
-    case "ADMIN":
-      return [
-        common,
-        {
-          title: "Administration",
-          items: [
-            { label: "Utilisateurs", href: "/dashboard/utilisateurs", icon: <Users className="w-5 h-5" /> },
-            { label: "Structures", href: "/dashboard/structures", icon: <Building2 className="w-5 h-5" /> },
-            { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
-            { label: "Statistiques", href: "/dashboard/stats", icon: <Activity className="w-5 h-5" /> },
-          ],
-        },
-      ];
-
-    case "SUPER_ADMIN":
-      return [
-        {
-          title: "Général",
-          items: [
-            { label: "Dashboard", href: "/dashboard/super-admin", icon: <LayoutDashboard className="w-5 h-5" /> },
-          ],
-        },
-        {
-          title: "Administration",
-          items: [
-            { label: "Utilisateurs", href: "/dashboard/utilisateurs", icon: <Users className="w-5 h-5" /> },
-            { label: "Structures", href: "/dashboard/structures", icon: <Building2 className="w-5 h-5" /> },
-            { label: "Catalogue Médicaments", href: "/dashboard/catalogue", icon: <Pill className="w-5 h-5" /> },
-          ],
-        },
-        {
-          title: "Super Admin",
-          items: [
-            { label: "Configuration", href: "/dashboard/config", icon: <Settings className="w-5 h-5" /> },
-            { label: "Sécurité", href: "/dashboard/securite", icon: <ShieldCheck className="w-5 h-5" /> },
-          ],
-        },
-      ];
-
-    default:
-      return [common];
-  }
-}
+import { NotificationsProvider } from "@/hooks/useNotifications";
 
 function getRoleLabel(role: string): string {
   const labels: Record<string, string> = {
@@ -254,15 +59,12 @@ function Sidebar({
   mobileOpen: boolean;
   setMobileOpen: (v: boolean) => void;
 }) {
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const pathname = usePathname();
 
   if (!user) return null;
 
-  // Les liens vers des pages pas encore créées sont masqués, une section vide n'est pas affichée
-  const sections = getNavSections(user.role)
-    .map((section) => ({ ...section, items: section.items.filter((item) => !ROUTES_NON_DISPONIBLES.has(item.href)) }))
-    .filter((section) => section.items.length > 0);
+  const sections = sectionsMenu(lireContexteAcces(user, profile));
   const roleLabel = getRoleLabel(user.role);
   const roleGradient = getRoleColor(user.role);
   const initials = `${user.prenom[0] || ""}${user.nom[0] || ""}`.toUpperCase();
@@ -380,25 +182,25 @@ function Sidebar({
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6 scrollbar-thin">
           {sections.map((section) => (
-            <div key={section.title}>
+            <div key={section.id}>
               {!collapsed && (
                 <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">
-                  {section.title}
+                  {section.titre}
                 </p>
               )}
               <div className="space-y-1">
-                {section.items.map((item) => {
+                {section.liens.map((lien) => {
                   // Exact match for root-level items, startsWith for sub-pages
                   const isActive =
-                    item.href === "/dashboard" || item.href === "/dashboard/super-admin"
-                      ? pathname === item.href
-                      : pathname === item.href || pathname.startsWith(item.href + "/");
+                    lien.href === "/dashboard" || lien.href === "/dashboard/super-admin"
+                      ? pathname === lien.href
+                      : pathname === lien.href || pathname.startsWith(lien.href + "/");
                   return (
                     <Link
-                      key={item.href}
-                      href={item.href}
+                      key={lien.href}
+                      href={lien.href}
                       onClick={() => setMobileOpen(false)}
-                      title={collapsed ? item.label : undefined}
+                      title={collapsed ? lien.libelle : undefined}
                       className={`
                         group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium
                         transition-all duration-200
@@ -415,9 +217,9 @@ function Sidebar({
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-gradient-to-b from-primary-400 to-cyan-400" />
                       )}
                       <span className={`flex-shrink-0 transition-colors ${isActive ? "text-primary-400" : "text-slate-500 group-hover:text-slate-900 dark:text-white"}`}>
-                        {item.icon}
+                        <lien.icone className="w-5 h-5" />
                       </span>
-                      {!collapsed && <span>{item.label}</span>}
+                      {!collapsed && <span>{lien.libelle}</span>}
                     </Link>
                   );
                 })}
@@ -460,14 +262,28 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [refusSur, setRefusSur] = useState<string | null>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Le serveur a refusé une lecture faute de droit : la page affichée est remplacée par un message
+  useEffect(() => {
+    const surRefus = () => setRefusSur(window.location.pathname);
+    window.addEventListener(EVENEMENT_ACCES_REFUSE, surRefus);
+    return () => window.removeEventListener(EVENEMENT_ACCES_REFUSE, surRefus);
+  }, []);
+
+  // Remise à zéro à chaque changement d'adresse
+  useEffect(() => {
+    setRefusSur(null);
+  }, [pathname]);
 
   // Loading state (server or client before mount)
   if (!mounted || loading) {
@@ -479,8 +295,14 @@ export default function DashboardLayout({
     return <LoadingSpinner fullPage message="Redirection vers la connexion..." />;
   }
 
+  const contexte = lireContexteAcces(user, profile);
+  const pageNonDisponible =
+    (contexte.mode === "permissions" && !estRouteAutorisee(pathname, contexte)) ||
+    (refusSur === pathname && pathname !== "/dashboard");
+
   return (
     <ToastProvider>
+    <NotificationsProvider key={user.id}>
     <div className="min-h-screen bg-slate-50 dark:bg-[#030712] transition-colors duration-300">
       <Sidebar
         collapsed={collapsed}
@@ -529,12 +351,13 @@ export default function DashboardLayout({
 
         {/* Page content */}
         <main className="p-4 sm:p-6 lg:p-8">
-          {children}
+          {pageNonDisponible ? <PageNonDisponible /> : children}
         </main>
       </div>
       <EmergencyButton />
       <EmergencyListener />
     </div>
+    </NotificationsProvider>
     </ToastProvider>
   );
 }

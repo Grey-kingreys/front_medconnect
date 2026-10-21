@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,20 +13,15 @@ import {
   UserPlus,
   Loader2,
   AlertCircle,
-  Check,
   Calendar,
   Ruler,
   Scale,
 } from "lucide-react";
 import { register, ApiError } from "@/lib/api_auth";
 import { useAuth } from "@/hooks/useAuth";
-
-const passwordRules = [
-  { label: "Au moins 8 caractères", test: (p: string) => p.length >= 8 },
-  { label: "Une lettre majuscule", test: (p: string) => /[A-Z]/.test(p) },
-  { label: "Une lettre minuscule", test: (p: string) => /[a-z]/.test(p) },
-  { label: "Un chiffre", test: (p: string) => /\d/.test(p) },
-];
+import { AIDE_TELEPHONE, messageErreurTelephone, erreurSeulementTelephone } from "@/lib/erreur_telephone";
+import ReglesMotDePasse, { descriptionMotDePasse } from "@/components/ReglesMotDePasse";
+import { motDePasseValide, MSG_REGLES_NON_RESPECTEES, LONGUEUR_MAX_MOT_DE_PASSE } from "@/lib/regles_mot_de_passe";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -45,25 +40,32 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [telephoneError, setTelephoneError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const champMotDePasse = useRef<HTMLInputElement>(null);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError("");
+    if (e.target.name === "telephone" && telephoneError) setTelephoneError("");
+    if (e.target.name === "password") setPasswordError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setTelephoneError("");
+    setPasswordError("");
 
     // Validation côté client
-    if (form.password !== form.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.");
+    if (!motDePasseValide(form.password)) {
+      setPasswordError(MSG_REGLES_NON_RESPECTEES);
+      champMotDePasse.current?.focus();
       return;
     }
 
-    const failedRules = passwordRules.filter((r) => !r.test(form.password));
-    if (failedRules.length > 0) {
-      setError(`Le mot de passe doit contenir : ${failedRules.map((r) => r.label.toLowerCase()).join(", ")}`);
+    if (form.password !== form.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
       return;
     }
 
@@ -86,10 +88,14 @@ export default function RegisterPage() {
       // Rediriger vers le dashboard
       router.push("/dashboard");
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError("Impossible de créer le compte. Vérifiez votre connexion.");
+      const erreurTel = messageErreurTelephone(err);
+      setTelephoneError(erreurTel ?? "");
+      if (!(erreurTel && erreurSeulementTelephone(err))) {
+        if (err instanceof ApiError) {
+          setError(err.message);
+        } else {
+          setError("Impossible de créer le compte. Vérifiez votre connexion.");
+        }
       }
     } finally {
       setLoading(false);
@@ -196,10 +202,16 @@ export default function RegisterPage() {
               type="tel"
               value={form.telephone}
               onChange={handleChange}
-              placeholder="+224 622 123 456"
-              className="w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700/50 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm"
+              placeholder="620 00 00 00"
+              aria-invalid={telephoneError ? true : undefined}
+              aria-describedby={telephoneError ? "telephone-erreur telephone-aide" : "telephone-aide"}
+              className={`w-full pl-10 pr-3 py-3 bg-white dark:bg-slate-900/60 border ${telephoneError ? "border-emergency-500/50" : "border-slate-200 dark:border-slate-700/50"} rounded-xl text-slate-900 dark:text-white placeholder:text-slate-500 focus:outline-none focus:border-primary-500/50 focus:ring-2 focus:ring-primary-500/20 transition-all duration-200 text-sm`}
             />
           </div>
+          {telephoneError && (
+            <p id="telephone-erreur" role="alert" className="mt-1.5 text-xs text-emergency-500">{telephoneError}</p>
+          )}
+          <p id="telephone-aide" className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">{AIDE_TELEPHONE}</p>
         </div>
 
         {/* Date de naissance */}
@@ -276,7 +288,11 @@ export default function RegisterPage() {
               name="password"
               type={showPassword ? "text" : "password"}
               required
-              minLength={8}
+              ref={champMotDePasse}
+              maxLength={LONGUEUR_MAX_MOT_DE_PASSE}
+              autoComplete="new-password"
+              aria-invalid={passwordError ? true : undefined}
+              aria-describedby={descriptionMotDePasse("password", passwordError)}
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
@@ -292,25 +308,7 @@ export default function RegisterPage() {
             </button>
           </div>
 
-          {/* Password strength indicators */}
-          {form.password.length > 0 && (
-            <div className="mt-2.5 grid grid-cols-2 gap-1.5">
-              {passwordRules.map((rule, i) => {
-                const passed = rule.test(form.password);
-                return (
-                  <div
-                    key={i}
-                    className={`flex items-center gap-1.5 text-[11px] transition-colors duration-200 ${
-                      passed ? "text-secondary-400" : "text-slate-600"
-                    }`}
-                  >
-                    <Check className={`w-3 h-3 ${passed ? "opacity-100" : "opacity-30"}`} />
-                    {rule.label}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <ReglesMotDePasse motDePasse={form.password} idChamp="password" erreur={passwordError} />
         </div>
 
         {/* Confirmer mot de passe */}
@@ -325,7 +323,8 @@ export default function RegisterPage() {
               name="confirmPassword"
               type={showPassword ? "text" : "password"}
               required
-              minLength={8}
+              maxLength={LONGUEUR_MAX_MOT_DE_PASSE}
+              autoComplete="new-password"
               value={form.confirmPassword}
               onChange={handleChange}
               placeholder="••••••••"

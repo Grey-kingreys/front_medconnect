@@ -8,13 +8,9 @@ import {
   Search, 
   Pill, 
   MapPin, 
-  Phone, 
-  Clock, 
-  ChevronRight, 
-  Filter, 
+  Phone,
   Loader2,
   Navigation,
-  ExternalLink,
   Navigation2,
   Map as MapIcon,
   LayoutGrid,
@@ -26,6 +22,7 @@ import {
 } from "lucide-react";
 import { StockMedicament, rechercherMedicaments } from "@/lib/api_pharmacie";
 import GlobePicker from "@/components/GlobePicker";
+import { localiserPrecisement, REGLAGES_RAPIDES } from "@/lib/geolocalisation";
 
 function MedicamentsContent() {
   const { user } = useAuth();
@@ -52,22 +49,24 @@ function MedicamentsContent() {
 
   // Get user location on mount
   useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setLocationError(null);
-        },
-        (err) => {
-          console.error("Geolocation error:", err);
-          setLocationError("Accès à la position refusé. Tri par prix activé par défaut.");
-          setSortBy("price");
-        }
+    let actif = true;
+    localiserPrecisement(REGLAGES_RAPIDES).then((r) => {
+      if (!actif) return;
+      if (r.ok) {
+        setUserLocation({ lat: r.position.latitude, lng: r.position.longitude });
+        setLocationError(null);
+        return;
+      }
+      setLocationError(
+        r.cause === "refusee"
+          ? "Accès à la position refusé. Tri par prix activé par défaut."
+          : r.cause === "non_prise_en_charge"
+            ? "Géolocalisation non supportée par votre navigateur."
+            : "Position introuvable pour le moment. Tri par prix activé par défaut."
       );
-    } else {
-      setLocationError("Géolocalisation non supportée par votre navigateur.");
       setSortBy("price");
-    }
+    });
+    return () => { actif = false; };
   }, []);
 
   const handleSearch = useCallback(async (searchQuery: string, pId?: string | null) => {

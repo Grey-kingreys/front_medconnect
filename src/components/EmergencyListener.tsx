@@ -1,19 +1,17 @@
-/* Dette préexistante, backlog points 21 et 22 */
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, react-hooks/immutability, react/no-unescaped-entities */
 "use client";
 // Dette préexistante, backlog points 21 et 22
 /* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/immutability, react-hooks/set-state-in-effect, react/no-unescaped-entities */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
 import { takeChargeSOS } from "@/lib/api_carnet";
 import { ApiError } from "@/lib/api_auth";
+import { gererSessionRevoquee } from "@/lib/deconnexion_forcee";
 import { 
   AlertTriangle, 
   MapPin, 
-  User, 
-  Phone, 
+  User,
   Bell, 
   X, 
   ChevronRight,
@@ -42,7 +40,10 @@ interface EmergencyAlert {
 }
 
 export default function EmergencyListener() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  // Même règle que le serveur : seuls les titulaires de sos:respond reçoivent les alertes SOS
+  const peutRepondreSOS = profile?.permissions?.includes("sos:respond") ?? false;
+  const utilisateurId = user?.id;
   const [socket, setSocket] = useState<Socket | null>(null);
   const [activeAlert, setActiveAlert] = useState<EmergencyAlert | null>(null);
   const [handledBy, setHandledBy] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export default function EmergencyListener() {
 
   // Initialize Socket
   useEffect(() => {
-    if (!user || (user.role !== "MEDECIN" && user.role !== "STRUCTURE_ADMIN" && user.role !== "ADMIN")) {
+    if (!utilisateurId || !peutRepondreSOS) {
       return;
     }
 
@@ -89,12 +90,15 @@ export default function EmergencyListener() {
       transports: ["websocket"]
     });
 
+    newSocket.on("sessionRevoquee", gererSessionRevoquee);
+
     setSocket(newSocket);
 
     return () => {
+      newSocket.off("sessionRevoquee", gererSessionRevoquee);
       newSocket.disconnect();
     };
-  }, [user]);
+  }, [utilisateurId, peutRepondreSOS]);
 
   // Listen for alerts
   useEffect(() => {

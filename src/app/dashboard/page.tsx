@@ -5,49 +5,36 @@ import { useAuth } from "@/hooks/useAuth";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  FileText,
-  Stethoscope,
-  Pill,
-  MapPin,
-  Calendar,
-  Users,
   Building2,
-  Activity,
-  Bot,
-  ClipboardList,
-  Package,
-  ShieldCheck,
   ArrowRight,
-  TrendingUp,
   Heart,
   Clock,
   Sparkles,
-  AlertCircle,
-  Headset,
-  MessageSquare,
 } from "lucide-react";
 import Link from "next/link";
-import { getMyStructure, MyStructure } from "@/lib/api_structure";
-import { getRendezVous } from "@/lib/api_carnet";
+import { ApiError } from "@/lib/api_auth";
+import { lireContexteAcces } from "@/lib/acces";
+import {
+  cartesCompteurs,
+  raccourcis,
+  type CarteCompteur,
+  type Raccourci,
+} from "@/lib/navigation_tableau_de_bord";
+import { sourcesCompteurs, type CleCompteur } from "@/lib/compteurs_tableau_de_bord";
 import DashboardCharts from "@/components/DashboardCharts";
+
+// Graphiques « Analyses et Tendances » : données fictives codées en dur dans DashboardCharts.
+// Masqués tant qu'aucune route du back ne fournit de vraies séries (ne jamais montrer de chiffres inventés).
+const SHOW_CHARTS = false;
 
 // ─── Types ──────────────────────────────────────────────────────
 
-interface QuickAction {
-  label: string;
-  description: string;
-  href: string;
-  icon: React.ReactNode;
-  gradient: string;
-}
-
-interface StatCard {
-  label: string;
-  value: string;
-  change?: string;
-  icon: React.ReactNode;
-  color: string;
-}
+// État d'affichage d'un compteur (absent = en cours de chargement)
+type EtatCompteur =
+  | { statut: "chargement" }
+  | { statut: "pret"; valeur: number }
+  | { statut: "erreur" }
+  | { statut: "masque" };
 
 // ─── Contenu par rôle ───────────────────────────────────────────
 
@@ -71,287 +58,44 @@ function getWelcomeMessage(role: string): string {
   }
 }
 
-function getQuickActions(role: string): QuickAction[] {
-  switch (role) {
-    case "PATIENT":
-      return [
-        {
-          label: "Mon Carnet de Santé",
-          description: "Consultez votre profil médical, allergies, traitements",
-          href: "/dashboard/carnet",
-          icon: <FileText className="w-6 h-6" />,
-          gradient: "from-primary-500 to-cyan-500",
-        },
-        {
-          label: "Auto-Diagnostic IA",
-          description: "Décrivez vos symptômes et obtenez une orientation",
-          href: "/dashboard/diagnostic",
-          icon: <Bot className="w-6 h-6" />,
-          gradient: "from-accent-500 to-primary-500",
-        },
-        {
-          label: "Trouver un Médecin",
-          description: "Localisez les structures de santé proches de vous",
-          href: "/dashboard/map",
-          icon: <MapPin className="w-6 h-6" />,
-          gradient: "from-secondary-500 to-cyan-500",
-        },
-        {
-          label: "Mes Consultations",
-          description: "Historique de vos visites médicales",
-          href: "/dashboard/consultations",
-          icon: <Stethoscope className="w-6 h-6" />,
-          gradient: "from-amber-500 to-orange-500",
-        },
-        {
-          label: "Ordonnances",
-          description: "Vos ordonnances et prescriptions médicales",
-          href: "/dashboard/ordonnances",
-          icon: <ClipboardList className="w-6 h-6" />,
-          gradient: "from-rose-500 to-pink-500",
-        },
-        {
-          label: "Pharmacies",
-          description: "Trouvez les pharmacies et médicaments disponibles",
-          href: "/dashboard/pharmacies",
-          icon: <Pill className="w-6 h-6" />,
-          gradient: "from-emerald-500 to-teal-500",
-        },
-      ];
-
-    case "MEDECIN":
-      return [
-        {
-          label: "Mes Patients",
-          description: "Liste et gestion de vos patients",
-          href: "/dashboard/patients",
-          icon: <Users className="w-6 h-6" />,
-          gradient: "from-primary-500 to-cyan-500",
-        },
-        {
-          label: "Consultations",
-          description: "Gérez vos consultations du jour",
-          href: "/dashboard/consultations",
-          icon: <Stethoscope className="w-6 h-6" />,
-          gradient: "from-secondary-500 to-cyan-500",
-        },
-        {
-          label: "Ordonnances",
-          description: "Créez et consultez les ordonnances",
-          href: "/dashboard/ordonnances",
-          icon: <ClipboardList className="w-6 h-6" />,
-          gradient: "from-accent-500 to-primary-500",
-        },
-        {
-          label: "Rendez-vous",
-          description: "Gérez votre planning de rendez-vous",
-          href: "/dashboard/rendez-vous",
-          icon: <Calendar className="w-6 h-6" />,
-          gradient: "from-amber-500 to-orange-500",
-        },
-      ];
-
-    case "PHARMACIEN":
-      return [
-        {
-          label: "Mon Stock",
-          description: "Gérez votre inventaire de médicaments",
-          href: "/dashboard/stock",
-          icon: <Package className="w-6 h-6" />,
-          gradient: "from-accent-500 to-primary-500",
-        },
-        {
-          label: "Ordonnances",
-          description: "Consultez les ordonnances en attente",
-          href: "/dashboard/ordonnances",
-          icon: <ClipboardList className="w-6 h-6" />,
-          gradient: "from-primary-500 to-cyan-500",
-        },
-        {
-          label: "Ma Pharmacie",
-          description: "Gérez les informations de votre structure",
-          href: "/dashboard/structure",
-          icon: <Building2 className="w-6 h-6" />,
-          gradient: "from-secondary-500 to-cyan-500",
-        },
-      ];
-
-    case "STRUCTURE_ADMIN":
-      return [
-        {
-          label: "Ma Structure",
-          description: "Paramètres et informations de votre structure",
-          href: "/dashboard/structure",
-          icon: <Building2 className="w-6 h-6" />,
-          gradient: "from-primary-500 to-cyan-500",
-        },
-        {
-          label: "Membres",
-          description: "Gérez l'équipe de votre structure",
-          href: "/dashboard/membres",
-          icon: <Users className="w-6 h-6" />,
-          gradient: "from-secondary-500 to-cyan-500",
-        },
-        {
-          label: "Statistiques",
-          description: "Performances et métriques de votre structure",
-          href: "/dashboard/stats",
-          icon: <Activity className="w-6 h-6" />,
-          gradient: "from-accent-500 to-primary-500",
-        },
-      ];
-
-    case "ACCUEIL":
-      return [
-        {
-          label: "Accueil patient",
-          description: "Enregistrer le partage d'un dossier (code / QR / SMS)",
-          href: "/dashboard/accueil",
-          icon: <Headset className="w-6 h-6" />,
-          gradient: "from-violet-500 to-purple-500",
-        },
-        {
-          label: "Rendez-vous",
-          description: "Prendre et suivre les rendez-vous de la structure",
-          href: "/dashboard/rendez-vous",
-          icon: <Calendar className="w-6 h-6" />,
-          gradient: "from-amber-500 to-orange-500",
-        },
-        {
-          label: "Messagerie",
-          description: "Messages adressés à la structure",
-          href: "/dashboard/chat",
-          icon: <MessageSquare className="w-6 h-6" />,
-          gradient: "from-primary-500 to-cyan-500",
-        },
-        {
-          label: "Patients",
-          description: "Fiches d'orientation des patients de la structure",
-          href: "/dashboard/patients",
-          icon: <Users className="w-6 h-6" />,
-          gradient: "from-secondary-500 to-cyan-500",
-        },
-      ];
-
-    case "ADMIN":
-    case "SUPER_ADMIN":
-      return [
-        {
-          label: "Utilisateurs",
-          description: "Gérez tous les utilisateurs de la plateforme",
-          href: "/dashboard/utilisateurs",
-          icon: <Users className="w-6 h-6" />,
-          gradient: "from-primary-500 to-cyan-500",
-        },
-        {
-          label: "Structures",
-          description: "Gérez les hôpitaux, cliniques et pharmacies",
-          href: "/dashboard/structures",
-          icon: <Building2 className="w-6 h-6" />,
-          gradient: "from-secondary-500 to-cyan-500",
-        },
-        {
-          label: "Statistiques",
-          description: "Vue d'ensemble des métriques de la plateforme",
-          href: "/dashboard/stats",
-          icon: <Activity className="w-6 h-6" />,
-          gradient: "from-accent-500 to-primary-500",
-        },
-        ...(role === "SUPER_ADMIN"
-          ? [
-              {
-                label: "Sécurité",
-                description: "Paramètres de sécurité et logs",
-                href: "/dashboard/securite",
-                icon: <ShieldCheck className="w-6 h-6" />,
-                gradient: "from-emergency-500 to-accent-500",
-              },
-            ]
-          : []),
-      ];
-
-    default:
-      return [];
-  }
-}
-
-function getStatsCards(role: string): StatCard[] {
-  switch (role) {
-    case "PATIENT":
-      return [
-        { label: "Consultations", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Ordonnances", value: "—", icon: <ClipboardList className="w-5 h-5" />, color: "text-secondary-400" },
-        { label: "Vaccinations", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-accent-400" },
-        { label: "Diagnostics IA", value: "—", icon: <Bot className="w-5 h-5" />, color: "text-cyan-400" },
-      ];
-    case "MEDECIN":
-      return [
-        { label: "Patients", value: "—", icon: <Users className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Consultations aujourd'hui", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-secondary-400" },
-        { label: "Ordonnances émises", value: "—", icon: <ClipboardList className="w-5 h-5" />, color: "text-accent-400" },
-        { label: "Rendez-vous à venir", value: "—", icon: <Calendar className="w-5 h-5" />, color: "text-amber-400" },
-      ];
-    case "PHARMACIEN":
-      return [
-        { label: "Médicaments en stock", value: "—", icon: <Package className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Ruptures de stock", value: "—", icon: <Pill className="w-5 h-5" />, color: "text-emergency-500" },
-        { label: "Ordonnances traitées", value: "—", icon: <ClipboardList className="w-5 h-5" />, color: "text-secondary-400" },
-      ];
-    case "ADMIN":
-    case "SUPER_ADMIN":
-      return [
-        { label: "Utilisateurs", value: "—", icon: <Users className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Structures", value: "—", icon: <Building2 className="w-5 h-5" />, color: "text-secondary-400" },
-        { label: "Consultations / mois", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-accent-400" },
-        { label: "Croissance", value: "—", change: "+0%", icon: <TrendingUp className="w-5 h-5" />, color: "text-cyan-400" },
-      ];
-    case "STRUCTURE_ADMIN":
-      return [
-        { label: "Médecins", value: "—", icon: <Stethoscope className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "Pharmaciens", value: "—", icon: <Pill className="w-5 h-5" />, color: "text-secondary-400" },
-        { label: "Patients Inscrits", value: "—", icon: <Users className="w-5 h-5" />, color: "text-accent-400" },
-        { label: "Consultations / mois", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-cyan-400" },
-      ];
-    case "ACCUEIL":
-      return [
-        { label: "RDV en attente", value: "—", icon: <Clock className="w-5 h-5" />, color: "text-amber-400" },
-        { label: "RDV aujourd'hui", value: "—", icon: <Calendar className="w-5 h-5" />, color: "text-primary-400" },
-        { label: "RDV à venir", value: "—", icon: <Activity className="w-5 h-5" />, color: "text-secondary-400" },
-      ];
-    default:
-      return [];
-  }
-}
-
 // ─── Components ─────────────────────────────────────────────────
 
-function StatsGrid({ cards }: { cards: StatCard[] }) {
+function StatsGrid({ cards, etats }: { cards: CarteCompteur[]; etats: Partial<Record<CleCompteur, EtatCompteur>> }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      {cards.map((card) => (
+      {cards.map((card) => {
+        const etat: EtatCompteur = etats[card.cle] ?? { statut: "chargement" };
+        return (
         <div
-          key={card.label}
+          key={card.cle}
           className="group relative bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-5 hover:border-slate-300 dark:hover:border-slate-700/50 transition-all duration-300"
         >
           <div className="flex items-start justify-between mb-3">
-            <div className={`p-2 rounded-xl bg-slate-800/50 ${card.color}`}>
-              {card.icon}
+            <div className={`p-2 rounded-xl bg-slate-800/50 ${card.couleur}`}>
+              <card.icone className="w-5 h-5" />
             </div>
-            {card.change && (
-              <span className="text-xs font-medium text-secondary-400 bg-secondary-500/10 px-2 py-0.5 rounded-full">
-                {card.change}
-              </span>
-            )}
           </div>
-          <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{card.value}</p>
-          <p className="text-xs text-slate-500">{card.label}</p>
+          {etat.statut === "pret" && (
+            <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{etat.valeur.toLocaleString("fr-FR")}</p>
+          )}
+          {etat.statut === "erreur" && (
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-1 h-8 flex items-center">Indisponible</p>
+          )}
+          {etat.statut === "chargement" && (
+            <div className="mb-1 h-8 flex items-center">
+              <span aria-hidden="true" className="block h-6 w-12 rounded-md bg-slate-200 dark:bg-slate-700/60 animate-pulse" />
+              <span className="sr-only">Chargement</span>
+            </div>
+          )}
+          <p className="text-xs text-slate-500">{card.libelle}</p>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
 
-function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
+function QuickActionsGrid({ actions }: { actions: Raccourci[] }) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
       {actions.map((action) => (
@@ -361,15 +105,15 @@ function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
           className="group relative bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-2xl p-6 hover:border-slate-300 dark:hover:border-slate-700/50 hover:shadow-lg hover:shadow-primary-500/5 transition-all duration-300 overflow-hidden"
         >
           {/* Background glow on hover */}
-          <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500`} />
+          <div className={`absolute inset-0 bg-gradient-to-br ${action.degrade} opacity-0 group-hover:opacity-[0.03] transition-opacity duration-500`} />
 
           <div className="relative">
-            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${action.gradient} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-              <span className="text-slate-900 dark:text-white">{action.icon}</span>
+            <div className={`w-12 h-12 rounded-2xl bg-gradient-to-br ${action.degrade} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
+              <span className="text-slate-900 dark:text-white"><action.icone className="w-6 h-6" /></span>
             </div>
 
             <h3 className="text-base font-semibold text-slate-900 dark:text-white mb-1.5 group-hover:text-primary-300 transition-colors">
-              {action.label}
+              {action.libelle}
             </h3>
             <p className="text-sm text-slate-500 leading-relaxed mb-3">
               {action.description}
@@ -391,16 +135,12 @@ function QuickActionsGrid({ actions }: { actions: QuickAction[] }) {
 export default function DashboardPage() {
   const { user, profile } = useAuth();
   const router = useRouter();
-  
-  const [structureStats, setStructureStats] = useState<{ medecins: number; pharmaciens: number; actifs: number; }>({
-    medecins: 0, pharmaciens: 0, actifs: 0
-  });
-  const [accueilStats, setAccueilStats] = useState<{ enAttente: number; aujourdhui: number; aVenir: number }>({
-    enAttente: 0, aujourdhui: 0, aVenir: 0
-  });
+
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // Éviter les erreurs d'hydratation
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setMounted(true);
   }, []);
 
@@ -411,64 +151,69 @@ export default function DashboardPage() {
     }
   }, [user, router, mounted]);
 
-  useEffect(() => {
-    if (user?.role === "STRUCTURE_ADMIN") {
-      getMyStructure().then((res) => {
-        const membres = res.data.membres || [];
-        setStructureStats({
-          medecins: membres.filter(m => m.role === "MEDECIN").length,
-          pharmaciens: membres.filter(m => m.role === "PHARMACIEN").length,
-          actifs: membres.filter(m => m.isActive).length,
-        });
-      }).catch(console.error);
-    }
-  }, [user]);
+  const [etatsCompteurs, setEtatsCompteurs] = useState<Partial<Record<CleCompteur, EtatCompteur>>>({});
+  const [essaiCompteurs, setEssaiCompteurs] = useState(0);
+  const utilisateurId = user?.id;
+  const structureId = user?.structureId;
+  const contexte = user ? lireContexteAcces(user, profile) : null;
+  const cartes = contexte ? cartesCompteurs(contexte) : [];
+  const clesCompteurs = cartes.map((c) => c.cle).join(",");
 
+  // Chaque source se charge indépendamment : un échec ne vide pas les autres cartes
   useEffect(() => {
-    if (user?.role === "ACCUEIL") {
-      getRendezVous().then((res) => {
-        const rv = res.data || [];
-        const today = new Date().toDateString();
-        const now = new Date();
-        setAccueilStats({
-          enAttente: rv.filter(a => a.status === "EN_ATTENTE").length,
-          aujourdhui: rv.filter(a => new Date(a.date).toDateString() === today).length,
-          aVenir: rv.filter(a => new Date(a.date) > now && ["PROGRAMME", "CONFIRME", "EN_ATTENTE"].includes(a.status)).length,
+    if (!utilisateurId || !clesCompteurs) return;
+    let actif = true;
+    const appliquer = (cles: CleCompteur[], etatDe: (cle: CleCompteur) => EtatCompteur) =>
+      setEtatsCompteurs((prec) => {
+        const suivant = { ...prec };
+        for (const cle of cles) suivant[cle] = etatDe(cle);
+        return suivant;
+      });
+    for (const source of sourcesCompteurs(clesCompteurs.split(",") as CleCompteur[], { id: utilisateurId, structureId })) {
+      source
+        .charger()
+        .then((valeurs) => {
+          if (!actif) return;
+          appliquer(source.cles, (cle) => {
+            const valeur = valeurs[cle];
+            return typeof valeur === "number" ? { statut: "pret", valeur } : { statut: "erreur" };
+          });
+        })
+        .catch((err: unknown) => {
+          if (!actif) return;
+          // Droit absent (rôle personnalisé) : la carte disparaît au lieu d'afficher une erreur
+          const masque = err instanceof ApiError && err.status === 403;
+          appliquer(source.cles, () => (masque ? { statut: "masque" } : { statut: "erreur" }));
         });
-      }).catch(console.error);
     }
-  }, [user]);
+    return () => {
+      actif = false;
+    };
+  }, [utilisateurId, structureId, clesCompteurs, essaiCompteurs]);
 
-  if (!mounted || !user) return <LoadingSpinner fullPage message="Vérification de l'accès..." />;
+  // Repasse les cartes en erreur en chargement puis relance toutes les sources
+  const reessayerCompteurs = () => {
+    setEtatsCompteurs((prec) => {
+      const suivant = { ...prec };
+      for (const cle of Object.keys(suivant) as CleCompteur[]) {
+        if (suivant[cle]?.statut === "erreur") suivant[cle] = { statut: "chargement" };
+      }
+      return suivant;
+    });
+    setEssaiCompteurs((n) => n + 1);
+  };
+
+  if (!mounted || !user || !contexte) return <LoadingSpinner fullPage message="Vérification de l'accès..." />;
   if (user.role === "SUPER_ADMIN") return <LoadingSpinner fullPage message="Redirection vers l'espace Super Admin..." />;
 
   const welcomeMessage = getWelcomeMessage(user.role);
-  const quickActions = getQuickActions(user.role);
-  let statsCards = getStatsCards(user.role);
+  const quickActions = raccourcis(contexte);
+  const statsCards = cartes.filter((c) => etatsCompteurs[c.cle]?.statut !== "masque");
+  const compteursEnErreur = statsCards.some((c) => etatsCompteurs[c.cle]?.statut === "erreur");
+  const compteursEnChargement = statsCards.some((c) => (etatsCompteurs[c.cle]?.statut ?? "chargement") === "chargement");
 
-  // Update STRUCTURE_ADMIN stats dynamically
-  if (user.role === "STRUCTURE_ADMIN") {
-    statsCards = statsCards.map((card) => {
-      if (card.label === "Médecins") return { ...card, value: structureStats.medecins.toString() };
-      if (card.label === "Pharmaciens") return { ...card, value: structureStats.pharmaciens.toString() };
-      if (card.label === "Patients Inscrits") return { ...card, value: "0" }; // TODO: Connect patients
-      if (card.label === "Consultations / mois") return { ...card, value: "0" }; // TODO: Connect consultations
-      return card;
-    });
-  }
-
-  // Update ACCUEIL stats dynamically (depuis les RDV de la structure)
-  if (user.role === "ACCUEIL") {
-    statsCards = statsCards.map((card) => {
-      if (card.label === "RDV en attente") return { ...card, value: accueilStats.enAttente.toString() };
-      if (card.label === "RDV aujourd'hui") return { ...card, value: accueilStats.aujourdhui.toString() };
-      if (card.label === "RDV à venir") return { ...card, value: accueilStats.aVenir.toString() };
-      return card;
-    });
-  }
-
-  // Les graphiques n'existent que pour certains rôles (DashboardCharts renvoie null sinon).
-  const showCharts = ["PATIENT", "MEDECIN", "PHARMACIEN", "STRUCTURE_ADMIN"].includes(user.role);
+  // Les graphiques n'existent que pour certains rôles (DashboardCharts renvoie null sinon) et restent masqués par SHOW_CHARTS.
+  const showCharts = SHOW_CHARTS && ["PATIENT", "MEDECIN", "PHARMACIEN", "STRUCTURE_ADMIN"].includes(user.role);
 
   const now = new Date();
   const hour = now.getHours();
@@ -542,11 +287,23 @@ export default function DashboardPage() {
 
       {/* Stats */}
       {statsCards.length > 0 && (
-        <section>
+        <section aria-busy={compteursEnChargement}>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
             Aperçu
           </h2>
-          <StatsGrid cards={statsCards} />
+          <StatsGrid cards={statsCards} etats={etatsCompteurs} />
+          {compteursEnErreur && (
+            <div role="status" className="mt-4 flex flex-col sm:flex-row sm:items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+              <p>Certains chiffres n&apos;ont pas pu être chargés. Vérifiez votre connexion puis réessayez.</p>
+              <button
+                type="button"
+                onClick={reessayerCompteurs}
+                className="self-start sm:self-auto px-4 py-2 rounded-xl text-sm font-medium bg-primary-500/10 text-primary-700 dark:text-primary-400 hover:bg-primary-500/20 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              >
+                Réessayer
+              </button>
+            </div>
+          )}
         </section>
       )}
 
@@ -557,22 +314,20 @@ export default function DashboardPage() {
             <h2 className="text-lg font-semibold text-slate-900 dark:text-white" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
               Analyses et Tendances
             </h2>
-            <div className="flex items-center gap-2 px-3 py-1 bg-primary-500/10 rounded-full">
-              <TrendingUp className="w-3.5 h-3.5 text-primary-500" />
-              <span className="text-[10px] font-bold text-primary-500 uppercase tracking-widest">En direct</span>
-            </div>
           </div>
           <DashboardCharts role={user.role} />
         </section>
       )}
 
       {/* Quick Actions */}
-      <section>
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
-          Accès rapide
-        </h2>
-        <QuickActionsGrid actions={quickActions} />
-      </section>
+      {quickActions.length > 0 && (
+        <section>
+          <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
+            Accès rapide
+          </h2>
+          <QuickActionsGrid actions={quickActions} />
+        </section>
+      )}
     </div>
   );
 }

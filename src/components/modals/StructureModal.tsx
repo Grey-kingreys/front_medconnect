@@ -1,11 +1,18 @@
 import { useState } from "react";
-import { X, AlertCircle, Loader2, Save, Send, Mail, ChevronDown } from "lucide-react";
-import { createStructure, StructureType } from "@/lib/api_admin";
-import { updateMyStructure, MyStructure, UpdateStructurePayload } from "@/lib/api_structure";
+import { X, AlertCircle, AlertTriangle, CheckCircle2, Loader2, Save, Send, Mail, ChevronDown } from "lucide-react";
+import {
+  createStructure,
+  invitationNonEnvoyee,
+  resendStructureInvitation,
+  StructureType,
+  type StructureCreee,
+} from "@/lib/api_admin";
+import { updateMyStructure } from "@/lib/api_structure";
 import { ApiError } from "@/lib/api_auth";
 import { MapModal } from "./MapModal";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
-import { MapPin, Navigation } from "lucide-react";
+import { messageErreurPour } from "@/hooks/useToast";
+import { Navigation } from "lucide-react";
 
 type StructureModalMode = "create" | "edit" | "view";
 
@@ -61,8 +68,30 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [structureSansInvitation, setStructureSansInvitation] = useState<StructureCreee | null>(null);
+  const [renvoiEnCours, setRenvoiEnCours] = useState(false);
+  const [renvoiErreur, setRenvoiErreur] = useState("");
+  const [renvoiReussi, setRenvoiReussi] = useState(false);
   // Échap est laissé à la carte quand elle est ouverte par-dessus.
-  const { dialogProps, titleId } = useDialogA11y({ isOpen: true, onClose, closeOnEscape: !saving && !showMap });
+  const { dialogProps, titleId } = useDialogA11y({
+    isOpen: true,
+    onClose,
+    closeOnEscape: !saving && !showMap && !renvoiEnCours,
+  });
+
+  const renvoyerInvitation = async () => {
+    if (!structureSansInvitation) return;
+    setRenvoiEnCours(true);
+    setRenvoiErreur("");
+    try {
+      await resendStructureInvitation(structureSansInvitation.id);
+      setRenvoiReussi(true);
+    } catch (err) {
+      setRenvoiErreur(messageErreurPour(err, "L'invitation n'a pas pu être envoyée. Réessayez dans quelques instants."));
+    } finally {
+      setRenvoiEnCours(false);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,7 +100,7 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
 
     try {
       if (mode === "create") {
-        await createStructure({
+        const res = await createStructure({
           nom: form.nom,
           type: form.type as StructureType,
           email: form.email,
@@ -83,6 +112,12 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
           horaires: JSON.stringify(schedule),
           estDeGarde: form.estDeGarde,
         });
+        if (invitationNonEnvoyee(res)) {
+          // Structure créée mais email non parti : la liste se rafraîchit, la fenêtre reste ouverte
+          onSuccess?.();
+          setStructureSansInvitation(res.data);
+          return;
+        }
       } else {
         await updateMyStructure({
           nom: form.nom,
@@ -119,9 +154,11 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
         <div className="flex-shrink-0 flex items-center justify-between p-5 bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-800">
           <div>
             <h2 id={titleId} className="text-lg font-semibold text-slate-900 dark:text-white">
-              {mode === "create" ? "Créer une structure" : mode === "edit" ? "Modifier la structure" : "Détails de la structure"}
+              {structureSansInvitation
+                ? "Structure créée"
+                : mode === "create" ? "Créer une structure" : mode === "edit" ? "Modifier la structure" : "Détails de la structure"}
             </h2>
-            {mode === "create" && (
+            {mode === "create" && !structureSansInvitation && (
               <p className="text-xs text-slate-500 mt-0.5">Un email d&apos;invitation sera envoyé automatiquement</p>
             )}
           </div>
@@ -129,6 +166,56 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
             <X className="w-5 h-5" />
           </button>
         </div>
+        {structureSansInvitation ? (
+          <div className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 bg-white dark:bg-slate-900">
+            {!renvoiReussi ? (
+              <div role="alert" className="flex items-start gap-3 p-4 rounded-xl border border-amber-600/40 dark:border-amber-400/40 text-sm text-amber-900 dark:text-amber-200">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <div className="space-y-1">
+                  <p className="font-semibold">Structure créée, mais l&apos;email d&apos;invitation n&apos;a pas pu être envoyé.</p>
+                  <p>
+                    La structure <strong>{structureSansInvitation.nom}</strong> est bien enregistrée. Renvoyez l&apos;invitation à{" "}
+                    <strong>{structureSansInvitation.email}</strong> maintenant, ou plus tard depuis la liste des structures.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              <div role="status" className="flex items-start gap-3 p-4 rounded-xl border border-secondary-600/40 dark:border-secondary-400/40 text-sm text-secondary-800 dark:text-secondary-200">
+                <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+                <p className="font-semibold">Invitation envoyée à {structureSansInvitation.email}.</p>
+              </div>
+            )}
+
+            {renvoiErreur && (
+              <div role="alert" className="flex items-center gap-3 p-3 rounded-xl bg-emergency-500/10 border border-emergency-500/20 text-emergency-400 text-sm">
+                <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                <span>{renvoiErreur}</span>
+              </div>
+            )}
+
+            <div className="flex gap-3 pt-3 mt-2 border-t border-slate-100 dark:border-slate-800 flex-shrink-0">
+              {renvoiReussi ? (
+                <button type="button" onClick={onClose} className="w-full px-4 py-3 rounded-xl text-sm font-semibold text-white bg-slate-900 dark:bg-slate-800 hover:opacity-90 transition-all">
+                  Fermer
+                </button>
+              ) : (
+                <>
+                  <button type="button" onClick={onClose} className="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
+                    Fermer
+                  </button>
+                  <button type="button" onClick={renvoyerInvitation} disabled={renvoiEnCours} className="flex-[2] group relative flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-semibold text-white overflow-hidden disabled:opacity-60">
+                    <span className="absolute inset-0 bg-gradient-to-r from-primary-600 to-cyan-500" />
+                    <span className="absolute inset-0 bg-gradient-to-r from-primary-500 to-secondary-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <span className="relative flex items-center gap-2">
+                      {renvoiEnCours ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                      {renvoiEnCours ? "Envoi en cours..." : "Renvoyer l'invitation"}
+                    </span>
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        ) : (
         <form onSubmit={submit} className="p-5 overflow-y-auto custom-scrollbar flex-1 space-y-4 bg-white dark:bg-slate-900">
           {mode !== "view" && error && (
             <div className="flex items-center gap-3 p-3 rounded-xl bg-emergency-500/10 border border-emergency-500/20 text-emergency-400 text-sm">
@@ -315,6 +402,7 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
             )}
           </div>
         </form>
+        )}
       </div>
     </div>
   );
