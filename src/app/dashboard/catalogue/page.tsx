@@ -14,6 +14,7 @@ import {
   XCircle,
   AlertCircle,
   Package,
+  FileSpreadsheet,
 } from "lucide-react";
 import { 
   getCatalogue, 
@@ -23,9 +24,13 @@ import {
   deleteMedicament 
 } from "@/lib/api_pharmacie";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
+import { ImportCatalogueModal } from "@/components/modals/ImportStockModal";
 
 export default function CataloguePage() {
-  const { user } = useAuth();
+  const { profile } = useAuth();
+  // Même règle que le serveur : l'import exige la permission d'ajouter au catalogue
+  const peutImporter = profile?.permissions?.includes("catalogue:write") ?? false;
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [medicaments, setMedicaments] = useState<Medicament[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -99,8 +104,8 @@ export default function CataloguePage() {
       }
       setIsModalOpen(false);
       fetchData();
-    } catch (err: any) {
-      setError(err.message || "Erreur lors de l'enregistrement");
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : "Erreur lors de l'enregistrement");
     } finally {
       setSaving(false);
     }
@@ -123,13 +128,25 @@ export default function CataloguePage() {
           </h1>
           <p className="text-slate-500 text-sm mt-1">Gérez la liste de référence des médicaments pour toutes les pharmacies.</p>
         </div>
-        <button 
-          onClick={openAddModal}
-          className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
-        >
-          <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-          Ajouter au catalogue
-        </button>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          {peutImporter && (
+            <button
+              type="button"
+              onClick={() => setIsImportOpen(true)}
+              className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+            >
+              <FileSpreadsheet className="w-5 h-5" />
+              Importer depuis Excel
+            </button>
+          )}
+          <button
+            onClick={openAddModal}
+            className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
+          >
+            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
+            Ajouter au catalogue
+          </button>
+        </div>
       </div>
 
       {/* Search */}
@@ -310,6 +327,15 @@ export default function CataloguePage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Import Excel du catalogue */}
+      {peutImporter && (
+        <ImportCatalogueModal
+          isOpen={isImportOpen}
+          onClose={() => setIsImportOpen(false)}
+          onSuccess={fetchData}
+        />
       )}
 
       {/* Delete Modal */}

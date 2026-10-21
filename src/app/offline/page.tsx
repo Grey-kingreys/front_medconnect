@@ -15,9 +15,12 @@ export default function OfflinePage() {
         </div>
         
         <div className="space-y-2">
-          <h1 className="text-2xl font-bold font-outfit">Vous êtes hors ligne</h1>
+          <h1 className="text-2xl font-bold font-outfit">Pas de connexion internet</h1>
           <p className="text-slate-600 dark:text-slate-400">
-            Il semble que vous n'ayez pas de connexion internet. Certaines fonctionnalités de MedConnecte restent disponibles hors ligne, comme votre carnet de santé et vos patients déjà consultés.
+            MedConnecte a besoin d&apos;internet pour afficher le carnet de santé et envoyer vos informations. Rien n&apos;a été perdu.
+          </p>
+          <p className="text-slate-600 dark:text-slate-400">
+            Vérifiez vos données mobiles ou votre wifi. Rapprochez-vous d&apos;une zone mieux couverte. Puis appuyez sur « Réessayer ».
           </p>
         </div>
 
@@ -27,7 +30,7 @@ export default function OfflinePage() {
             className="flex items-center justify-center gap-2 w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-all active:scale-95"
           >
             <RefreshCw size={18} />
-            Réessayer la connexion
+            Réessayer
           </button>
           
           <Link 
@@ -40,7 +43,7 @@ export default function OfflinePage() {
         </div>
         
         <p className="text-xs text-slate-500 dark:text-slate-500 pt-4 border-t border-slate-100 dark:border-slate-700">
-          MedConnecte utilise la technologie PWA pour vous accompagner même sans réseau.
+          En cas d&apos;urgence vitale, n&apos;attendez pas le retour d&apos;internet : appelez le 15 (SAMU) ou rendez-vous au centre de santé le plus proche.
         </p>
       </div>
     </div>

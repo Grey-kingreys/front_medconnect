@@ -1,4 +1,19 @@
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { authFetch } from "./api_auth";
+import {
+  analyseSchema,
+  consultationSchema,
+  ordonnanceSchema,
+  rendezVousSchema,
+  vaccinationSchema,
+  validerEnvoi,
+  type AnalyseInput,
+  type ConsultationInput,
+  type OrdonnanceInput,
+  type RendezVousInput,
+  type VaccinationInput,
+} from "./schemas/carnet";
 
 export type GroupeSanguin = "A_POSITIF" | "A_NEGATIF" | "B_POSITIF" | "B_NEGATIF" | "AB_POSITIF" | "AB_NEGATIF" | "O_POSITIF" | "O_NEGATIF" | "INCONNU";
 
@@ -28,6 +43,19 @@ export interface Urgence {
   message?: string;
   status: 'LANCE' | 'PRIS_EN_CHARGE' | 'TERMINE' | 'ANNULE';
   createdAt: string;
+  // Prise en charge (F5)
+  structurePriseEnChargeId?: string | null;
+  priseEnChargeAt?: string | null;
+  delaiArriveeMinutes?: number | null;
+  // Renseignés par GET /carnet-sante/sos/en-cours
+  structurePriseEnCharge?: { id: string; nom: string } | null;
+  finDelaiAt?: string | null;
+  peutRelancerA?: string | null;
+  // Renseignés par POST /carnet-sante/sos : ce qui a réellement été prévenu
+  structuresAlertees?: number;
+  soignantsAlertes?: number;
+  procheAlerte?: boolean;
+  positionTransmise?: boolean;
 }
 
 export interface Consultation {
@@ -142,27 +170,42 @@ export const upsertProfilMedical = (data: Partial<ProfilMedical>) =>
 
 export const getConsultations = () => authFetch<Consultation[]>("/carnet-sante/consultations");
 
-export const createConsultation = (data: any) =>
-  authFetch<Consultation>("/carnet-sante/consultations", {
+export const createConsultation = async (data: ConsultationInput) => {
+  validerEnvoi(consultationSchema, data);
+  return authFetch<Consultation>("/carnet-sante/consultations", {
     method: "POST",
     body: JSON.stringify(data),
   });
+};
 
 export const getOrdonnances = () => authFetch<Ordonnance[]>("/carnet-sante/ordonnances");
 
-export const createOrdonnance = (data: any) =>
-  authFetch<Ordonnance>("/carnet-sante/ordonnances", {
+/** Ligne de médicament d'une ordonnance. `medicamentId` n'est présent que si la ligne est liée au catalogue. */
+export interface LigneMedicament {
+  nom: string;
+  dosage: string;
+  duree: string;
+  instructions?: string;
+  medicamentId?: string;
+}
+
+export const createOrdonnance = async (data: OrdonnanceInput) => {
+  validerEnvoi(ordonnanceSchema, data);
+  return authFetch<Ordonnance>("/carnet-sante/ordonnances", {
     method: "POST",
     body: JSON.stringify(data),
   });
+};
 
 export const getVaccinations = () => authFetch<Vaccination[]>("/carnet-sante/vaccinations");
 
-export const createVaccination = (data: any) =>
-  authFetch<Vaccination>("/carnet-sante/vaccinations", {
+export const createVaccination = async (data: VaccinationInput) => {
+  validerEnvoi(vaccinationSchema, data);
+  return authFetch<Vaccination>("/carnet-sante/vaccinations", {
     method: "POST",
     body: JSON.stringify(data),
   });
+};
 
 export const getAnalyses = () => authFetch<ResultatAnalyse[]>("/carnet-sante/analyses");
 
@@ -174,24 +217,32 @@ export const createUrgence = (data: { latitude?: number; longitude?: number; mes
 
 export const getActiveUrgences = () => authFetch<Urgence[]>("/carnet-sante/sos/actives");
 
-export const takeChargeSOS = (id: string) =>
+export const takeChargeSOS = (id: string, delaiArriveeMinutes: number) =>
   authFetch<Urgence>(`/carnet-sante/sos/${id}/take-charge`, {
     method: "POST",
+    body: JSON.stringify({ delaiArriveeMinutes }),
   });
 
-export const createAnalyse = (data: any) =>
-  authFetch<ResultatAnalyse>("/carnet-sante/analyses", {
+/** Dernière alerte SOS active du patient connecté (null si aucune). */
+export const getMonAlerteEnCours = () => authFetch<Urgence | null>("/carnet-sante/sos/en-cours");
+
+export const createAnalyse = async (data: AnalyseInput) => {
+  validerEnvoi(analyseSchema, data);
+  return authFetch<ResultatAnalyse>("/carnet-sante/analyses", {
     method: "POST",
     body: JSON.stringify(data),
   });
+};
 
 export const getRendezVous = () => authFetch<RendezVous[]>("/carnet-sante/rendez-vous");
 
-export const createRendezVous = (data: any) =>
-  authFetch<RendezVous>("/carnet-sante/rendez-vous", {
+export const createRendezVous = async (data: RendezVousInput) => {
+  validerEnvoi(rendezVousSchema, data);
+  return authFetch<RendezVous>("/carnet-sante/rendez-vous", {
     method: "POST",
     body: JSON.stringify(data),
   });
+};
 
 export const updateRendezVousStatus = (id: string, status: string) =>
   authFetch<RendezVous>(`/carnet-sante/rendez-vous/${id}/status`, {

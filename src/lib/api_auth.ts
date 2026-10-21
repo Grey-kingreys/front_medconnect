@@ -43,6 +43,8 @@ export interface UserProfile {
   structureId?: string;
   /** URL publique de la photo de profil (bucket R2 public), null si aucune. */
   avatarUrl?: string | null;
+  /** Permissions effectives renvoyées par /auth/me (ex. "catalogue:write"). */
+  permissions?: string[];
   structure?: {
     id: string;
     nom: string;
@@ -79,81 +81,140 @@ export interface VerifyTokenResponse {
 
 // ─── Helpers ────────────────────────────────────────────────────
 
+// Résilience réseau (D12) : délai par tentative, nouvelles tentatives sur les lectures seulement
+const DELAI_REQUETE_MS = 20_000;
+const ATTENTES_NOUVELLE_TENTATIVE_MS = [1_000, 3_000];
+const STATUTS_INDISPONIBLES = [502, 503, 504];
+
+const MSG_HORS_CONNEXION = "Vous semblez hors connexion. Vérifiez votre connexion internet puis réessayez.";
+const MSG_DELAI_DEPASSE = "Le service met trop de temps à répondre. Vérifiez votre connexion puis réessayez.";
+const MSG_INDISPONIBLE = "Le service est momentanément indisponible, réessayez dans quelques instants.";
+const MSG_ILLISIBLE = "Un problème est survenu, réessayez dans un instant.";
+
+const attendre = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+// Journalisation concise des échecs finaux : méthode, chemin sans paramètres, statut
+const signalerEchec = (methode: string, endpoint: string, statut: number) =>
+  console.warn(`[API] échec ${methode} ${endpoint.split("?")[0]} statut=${statut}`);
+
+// Le backend NestJS renvoie { message, statusCode } pour les erreurs
+type CorpsReponse = Record<string, unknown>;
+const messageErreur = (body: CorpsReponse): string =>
+  typeof body.message === "string"
+    ? body.message
+    : Array.isArray(body.message) && typeof body.message[0] === "string"
+      ? body.message[0]
+      : "Une erreur est survenue";
+
+/** Réglages internes d'un appel : un seul essai et aucune trace d'échec (appels facultatifs). */
+interface ReglagesAppel {
+  tentativeUnique?: boolean;
+  sansJournal?: boolean;
+}
+
+/**
+ * Envoi commun à apiFetch et authDownload : délai de 20 s par tentative, nouvelles
+ * tentatives (1 s puis 3 s) pour GET et HEAD seulement, sur erreur réseau, délai
+ * dépassé ou 502/503/504. Une annulation par l'appelant est propagée sans nouvel essai.
+ */
+async function envoyer(endpoint: string, options: RequestInit, reglages: ReglagesAppel = {}): Promise<Response> {
+  const methode = (options.method || "GET").toUpperCase();
+  const lecture = methode === "GET" || methode === "HEAD";
+  const signalAppelant = options.signal ?? undefined;
+
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    if (!reglages.sansJournal) signalerEchec(methode, endpoint, 0);
+    throw new ApiError(MSG_HORS_CONNEXION, 0);
+  }
+
+  const tentatives = lecture && !reglages.tentativeUnique ? ATTENTES_NOUVELLE_TENTATIVE_MS.length + 1 : 1;
+  let derniereErreur = new ApiError(MSG_HORS_CONNEXION, 0);
+
+  for (let i = 0; i < tentatives; i++) {
+    if (i > 0) await attendre(ATTENTES_NOUVELLE_TENTATIVE_MS[i - 1]);
+
+    const controleur = new AbortController();
+    let delaiDepasse = false;
+    const minuteur = setTimeout(() => {
+      delaiDepasse = true;
+      controleur.abort();
+    }, DELAI_REQUETE_MS);
+    const relayerAnnulation = () => controleur.abort();
+    signalAppelant?.addEventListener("abort", relayerAnnulation);
+
+    try {
+      if (signalAppelant?.aborted) throw signalAppelant.reason;
+      const res = await fetch(`${API_URL}${endpoint}`, {
+        ...options,
+        credentials: "include",
+        signal: controleur.signal,
+      });
+      if (!STATUTS_INDISPONIBLES.includes(res.status)) return res;
+      derniereErreur = new ApiError(MSG_INDISPONIBLE, res.status);
+    } catch (err) {
+      // Annulation voulue par l'appelant : propagée telle quelle
+      if (signalAppelant?.aborted) throw err;
+      derniereErreur = new ApiError(delaiDepasse ? MSG_DELAI_DEPASSE : MSG_HORS_CONNEXION, 0);
+    } finally {
+      clearTimeout(minuteur);
+      signalAppelant?.removeEventListener("abort", relayerAnnulation);
+    }
+  }
+
+  if (!reglages.sansJournal) signalerEchec(methode, endpoint, derniereErreur.status);
+  throw derniereErreur;
+}
+
 export async function apiFetch<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  reglages: ReglagesAppel = {}
 ): Promise<ApiResponse<T>> {
-  const url = `${API_URL}${endpoint}`;
-  
-  // Log de la requête (utile en production)
-  console.log(`[API Request] ${options.method || "GET"} ${url}`);
-
-  try {
-    const res = await fetch(url, {
+  // Corps FormData : le navigateur fixe lui-même l'en-tête multipart
+  const estFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
+  const res = await envoyer(
+    endpoint,
+    {
       ...options,
-      credentials: "include",
       headers: {
-        "Content-Type": "application/json",
+        ...(estFormData ? {} : { "Content-Type": "application/json" }),
         ...options.headers,
       },
-    });
+    },
+    reglages
+  );
 
+  let body: CorpsReponse = {};
+  try {
     const text = await res.text();
-    let body: any = {};
-    try {
-      body = text ? JSON.parse(text) : {};
-    } catch (e) {
-      console.error(`[API Error] JSON Parsing failed for ${url}:`, e, "Raw response:", text);
-      body = { message: "Erreur de réponse du serveur" };
-    }
-
-    if (!res.ok) {
-      console.error(`[API Error] Status ${res.status} for ${url}:`, body);
-      // Le backend NestJS renvoie { message, statusCode } pour les erreurs
-      const errorMessage =
-        typeof body.message === "string"
-          ? body.message
-          : Array.isArray(body.message)
-            ? body.message[0]
-            : "Une erreur est survenue";
-      throw new ApiError(errorMessage, res.status);
-    }
-
-    console.log(`[API Success] ${url}`, body.message || "");
-    return body as ApiResponse<T>;
-  } catch (err) {
-    // Si ce n'est pas une ApiError (ex: erreur réseau, DNS, CORS)
-    if (!(err instanceof ApiError)) {
-      console.error(`[Network Error] Failed to fetch ${url}:`, err);
-    }
-    throw err;
+    body = text ? JSON.parse(text) : {};
+  } catch {
+    body = { message: MSG_ILLISIBLE };
   }
+
+  if (!res.ok) {
+    // Un 401 est d'abord traité par le rafraîchissement de la connexion (authFetch)
+    if (res.status !== 401 && !reglages.sansJournal) {
+      signalerEchec((options.method || "GET").toUpperCase(), endpoint, res.status);
+    }
+    throw new ApiError(messageErreur(body), res.status, body);
+  }
+
+  return body as unknown as ApiResponse<T>;
 }
 
 let refreshPromise: Promise<ApiResponse<{ access_token: string }>> | null = null;
 
+const lireJeton = () =>
+  typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
+
 /**
- * Fetch authentifié — ajoute automatiquement le Bearer token
- * En cas de 401 (token expiré), tente un refresh automatique et réessaie une fois.
+ * Exécute un appel authentifié ; en cas de 401 (jeton expiré), rafraîchit la connexion
+ * puis réessaie une seule fois. Partagé par authFetch et authDownload.
  */
-export async function authFetch<T>(
-  endpoint: string,
-  options: RequestInit = {}
-): Promise<ApiResponse<T>> {
-  const getToken = () =>
-    typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
-
-  const doFetch = (token: string | null) =>
-    apiFetch<T>(endpoint, {
-      ...options,
-      headers: {
-        ...options.headers,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    });
-
+async function avecRafraichissement<R>(appel: (token: string | null) => Promise<R>): Promise<R> {
   try {
-    return await doFetch(getToken());
+    return await appel(lireJeton());
   } catch (err) {
     // Si 401 → tenter un refresh du token puis réessayer une seule fois
     if (err instanceof ApiError && err.status === 401) {
@@ -178,8 +239,8 @@ export async function authFetch<T>(
         }
 
         // Réessayer la requête originale avec le nouveau token
-        return await doFetch(refreshRes.data.access_token);
-      } catch (refreshErr) {
+        return await appel(refreshRes.data.access_token);
+      } catch {
         // Nettoyer la promesse en cas d'échec
         refreshPromise = null;
         
@@ -188,33 +249,164 @@ export async function authFetch<T>(
           localStorage.removeItem("access_token");
           localStorage.removeItem("refresh_token");
           localStorage.removeItem("user");
+          // Retirer aussi le cookie témoin lu par src/proxy.ts (voir useAuth.tsx)
+          document.cookie = "mc_connecte=; path=/; max-age=0; SameSite=Lax";
         }
-        throw new ApiError("Session expirée. Veuillez vous reconnecter.", 401);
+        throw new ApiError("Vous avez été déconnecté. Reconnectez-vous pour continuer.", 401);
       }
     }
     throw err;
   }
 }
 
+/**
+ * Fetch authentifié : ajoute automatiquement le jeton de connexion.
+ * En cas de 401 (jeton expiré), tente un rafraîchissement et réessaie une fois.
+ */
+export async function authFetch<T>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<ApiResponse<T>> {
+  return avecRafraichissement((token) =>
+    apiFetch<T>(endpoint, {
+      ...options,
+      headers: {
+        ...options.headers,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    })
+  );
+}
+
+/**
+ * Téléchargement authentifié d'un fichier (lecture : même délai, mêmes nouvelles
+ * tentatives et même rafraîchissement de la connexion que authFetch).
+ * Le nom vient de Content-Disposition s'il est lisible, sinon null.
+ */
+export async function authDownload(endpoint: string): Promise<{ blob: Blob; filename: string | null }> {
+  return avecRafraichissement(async (token) => {
+    const res = await envoyer(endpoint, {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+
+    if (!res.ok) {
+      let body: CorpsReponse = {};
+      try {
+        body = JSON.parse(await res.text());
+      } catch {
+        body = {};
+      }
+      if (res.status !== 401) signalerEchec("GET", endpoint, res.status);
+      throw new ApiError(messageErreur(body), res.status, body);
+    }
+
+    let blob: Blob;
+    try {
+      blob = await res.blob();
+    } catch {
+      signalerEchec("GET", endpoint, 0);
+      throw new ApiError(MSG_HORS_CONNEXION, 0);
+    }
+    const disposition = res.headers.get("Content-Disposition");
+    const nom = disposition?.match(/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i)?.[1];
+    return { blob, filename: nom ? decodeURIComponent(nom) : null };
+  });
+}
+
 export class ApiError extends Error {
   status: number;
-  constructor(message: string, status: number) {
+  /** Corps de la réponse d'erreur, pour les écrans qui ont besoin d'un champ supplémentaire */
+  details?: Record<string, unknown>;
+  constructor(message: string, status: number, details?: Record<string, unknown>) {
     super(message);
     this.name = "ApiError";
     this.status = status;
+    this.details = details;
   }
 }
 
 // ─── Auth Functions ─────────────────────────────────────────────
 
 /**
+ * Demande de connexion commune au formulaire et aux comptes de démonstration :
+ * même envoi (POST sans jeton, cookie de rafraîchissement posé par le serveur) et même
+ * réponse. Le succès est ensuite traité par `useTerminerConnexion` (hooks/useAuth).
+ */
+function demanderConnexion(endpoint: string, corps: Record<string, string>) {
+  return apiFetch<LoginResponse>(endpoint, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
+/**
  * Connexion utilisateur
  */
 export async function login(email: string, password: string) {
-  return apiFetch<LoginResponse>("/auth/login", {
-    method: "POST",
-    body: JSON.stringify({ email, password }),
-  });
+  return demanderConnexion("/auth/login", { email, password });
+}
+
+// ─── Mode démonstration ─────────────────────────────────────────
+// Piloté par le serveur (variable DEMO_MODE côté back) : en production la liste
+// répond 404 et rien ne s'affiche.
+
+export type RoleDemo =
+  | "PATIENT"
+  | "MEDECIN"
+  | "PHARMACIEN"
+  | "STRUCTURE_ADMIN"
+  | "ADMIN"
+  | "SUPER_ADMIN"
+  | "ACCUEIL";
+
+export interface CompteDemo {
+  id: string;
+  email: string;
+  nom: string;
+  prenom: string;
+  role: RoleDemo;
+  /** Libellé du rôle, prêt à afficher */
+  roleLibelle: string;
+  structureNom: string | null;
+  /** Courte présentation du compte, prête à afficher */
+  description: string;
+}
+
+const estCompteDemo = (c: unknown): c is CompteDemo => {
+  if (!c || typeof c !== "object") return false;
+  const v = c as Record<string, unknown>;
+  return (
+    typeof v.id === "string" &&
+    typeof v.nom === "string" &&
+    typeof v.prenom === "string" &&
+    typeof v.role === "string" &&
+    typeof v.roleLibelle === "string" &&
+    typeof v.description === "string" &&
+    (v.structureNom === null || v.structureNom === undefined || typeof v.structureNom === "string")
+  );
+};
+
+/**
+ * Liste des comptes de démonstration. Un seul essai, sans trace d'échec : renvoie []
+ * si le mode est désactivé (404), hors connexion ou en cas de toute autre erreur.
+ * Ne lève jamais d'exception.
+ */
+export async function getComptesDemo(): Promise<CompteDemo[]> {
+  try {
+    const res = await apiFetch<unknown>("/auth/demo/comptes", {}, { tentativeUnique: true, sansJournal: true });
+    if (!Array.isArray(res?.data)) return [];
+    return res.data.filter(estCompteDemo).map((c) => ({ ...c, structureNom: c.structureNom ?? null }));
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * Connexion à un compte de démonstration : même réponse et mêmes effets que `login`.
+ */
+export async function connexionDemo(userId: string) {
+  return demanderConnexion("/auth/demo/connexion", { userId });
 }
 
 /**
@@ -360,6 +552,8 @@ export async function logout() {
       localStorage.removeItem("access_token");
       localStorage.removeItem("refresh_token");
       localStorage.removeItem("user");
+      // Retirer aussi le cookie témoin lu par src/proxy.ts (voir useAuth.tsx)
+      document.cookie = "mc_connecte=; path=/; max-age=0; SameSite=Lax";
     }
   }
 }

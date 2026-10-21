@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import ToastProvider from "@/components/Toast";
 
 export default function AuthLayout({
   children,
@@ -7,6 +8,9 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
+    // Notifications à l'écran disponibles sur les pages de connexion (hors de la carte :
+    // son flou d'arrière-plan piégerait l'affichage fixe des notifications)
+    <ToastProvider>
     <div className="relative min-h-screen flex gradient-hero overflow-hidden">
       {/* Background decorations */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
@@ -111,5 +115,6 @@ export default function AuthLayout({
         </div>
       </div>
     </div>
+    </ToastProvider>
   );
 }
