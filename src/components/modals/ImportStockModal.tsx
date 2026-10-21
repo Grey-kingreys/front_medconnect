@@ -11,6 +11,7 @@ import {
   telechargerModeleImportStock,
   type LigneImportCatalogue,
   type LigneImportStock,
+  type ModeImportStock,
   type RapportImport,
 } from "@/lib/api_pharmacie";
 import { messageErreurPour, useToast } from "@/hooks/useToast";
@@ -27,6 +28,17 @@ const formatPrix = (prix?: number) =>
   prix === undefined ? "-" : `${prix.toLocaleString("fr-GN")} GNF`;
 const formatDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString("fr-FR", { timeZone: "UTC" }) : "-";
+
+/** « avant → après » pour une ligne du stock ; rien si le serveur ne fournit pas ces quantités (D04, D07). */
+const renduEvolutionStock = (l: LigneImportStock) => {
+  if (typeof l.quantiteApres !== "number") return null;
+  const avant = typeof l.quantiteAvant === "number" ? l.quantiteAvant : 0;
+  return (
+    <span className="whitespace-nowrap">
+      {avant} <span aria-hidden="true">→</span> <span className="sr-only">devient</span> {l.quantiteApres}
+    </span>
+  );
+};
 
 // ─── Paramétrage d'un import Excel ──────────────────────────────
 
@@ -46,14 +58,25 @@ export interface ColonneApercu<L> {
   secondaire?: boolean;
 }
 
+/** Une option du choix du mode d'import (bouton radio). */
+export interface OptionModeImport<M extends string> {
+  valeur: M;
+  /** « Inventaire : remplacer les quantités » */
+  libelle: string;
+  /** Phrase courte affichée sous le libellé. */
+  explication: string;
+}
+
 /** Ce qui distingue un import d'un autre : textes, colonnes de l'aperçu et appels au serveur. */
-export interface ConfigImportExcel<L extends LigneImportBase> {
+export interface ConfigImportExcel<L extends LigneImportBase, M extends string = string> {
   titre: string;
   /** Nom de la feuille à remplir, cité dans les messages d'erreur. */
   nomFeuille: string;
   /** Consignes de l'étape 1, une par ligne. */
   consignes: ReactNode[];
   colonnes: ColonneApercu<L>[];
+  /** Choix du mode d'import, la première option est celle par défaut ; absent : pas de choix. */
+  modes?: OptionModeImport<M>[];
   textes: {
     /** « 3 médicaments prêts à être importés » */
     prets: (n: number) => string;
@@ -61,28 +84,78 @@ export interface ConfigImportExcel<L extends LigneImportBase> {
     rejetees: (n: number) => string;
     filtreRejetees: string;
     boutonImporter: (n: number) => string;
-    confirmation: (n: number) => string;
+    confirmation: (n: number, mode?: M) => string;
     boutonConfirmer: string;
     termine: (n: number) => string;
     termineRejetees: (n: number) => string;
   };
   telechargerModele: () => Promise<{ blob: Blob; filename: string }>;
-  apercu: (fichier: File) => Promise<{ data: RapportImport<L> }>;
-  importer: (fichier: File) => Promise<{ data: RapportImport<L>; message?: string }>;
+  apercu: (fichier: File, mode?: M) => Promise<{ data: RapportImport<L> }>;
+  importer: (fichier: File, mode?: M) => Promise<{ data: RapportImport<L>; message?: string }>;
   /** Si présent, une notification de succès est affichée après l'import. */
   notifierSucces?: boolean;
 }
 
-interface ImportExcelModalProps<L extends LigneImportBase> {
+interface ImportExcelModalProps<L extends LigneImportBase, M extends string = string> {
   isOpen: boolean;
   onClose: () => void;
   /** Recharge la liste après un import réussi */
   onSuccess: () => void;
-  config: ConfigImportExcel<L>;
+  config: ConfigImportExcel<L, M>;
+}
+
+/** Choix du mode d'import en boutons radio (le choix se voit par la bordure). */
+function ChoixModeImport<M extends string>({
+  options,
+  valeur,
+  onChange,
+  desactive,
+}: {
+  options: OptionModeImport<M>[];
+  valeur: M | undefined;
+  onChange: (mode: M) => void;
+  desactive: boolean;
+}) {
+  const groupeId = useId();
+  return (
+    <fieldset className="space-y-2" disabled={desactive}>
+      <legend className="block text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 ml-1 mb-2">
+        Que contient votre fichier ?
+      </legend>
+      {options.map((option) => {
+        const choisi = option.valeur === valeur;
+        const libelleId = `${groupeId}-${option.valeur}-libelle`;
+        const explicationId = `${groupeId}-${option.valeur}-explication`;
+        return (
+          <label
+            key={option.valeur}
+            className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-colors ${
+              choisi ? "border-primary-600 dark:border-primary-400" : "border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600"
+            } ${desactive ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
+          >
+            <input
+              type="radio"
+              name={groupeId}
+              value={option.valeur}
+              checked={choisi}
+              onChange={() => onChange(option.valeur)}
+              aria-labelledby={libelleId}
+              aria-describedby={explicationId}
+              className="mt-0.5 w-4 h-4 shrink-0 accent-primary-600"
+            />
+            <span>
+              <span id={libelleId} className="block text-sm font-bold text-slate-900 dark:text-white">{option.libelle}</span>
+              <span id={explicationId} className="block text-sm text-slate-700 dark:text-slate-300">{option.explication}</span>
+            </span>
+          </label>
+        );
+      })}
+    </fieldset>
+  );
 }
 
 /** Import depuis un fichier Excel en trois étapes : préparer, vérifier, terminé (F1). */
-export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, onSuccess, config }: ImportExcelModalProps<L>) {
+export function ImportExcelModal<L extends LigneImportBase, M extends string = string>({ isOpen, onClose, onSuccess, config }: ImportExcelModalProps<L, M>) {
   const titreId = useId();
   const champFichierId = useId();
   const dialogueRef = useRef<HTMLDivElement>(null);
@@ -96,6 +169,7 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
   const [chargement, setChargement] = useState<Chargement>(null);
   const [seulementACorriger, setSeulementACorriger] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
+  const [mode, setMode] = useState<M | undefined>(config.modes?.[0]?.valeur);
 
   const { textes, colonnes } = config;
 
@@ -112,6 +186,7 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
     if (chargement) return;
     if (etape === "termine") onSuccess();
     recommencer();
+    setMode(config.modes?.[0]?.valeur);
     onClose();
   };
 
@@ -161,21 +236,31 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
     setFichier(choisi);
   };
 
-  const verifier = async () => {
+  const verifier = async (modeVoulu: M | undefined = mode, modeSiEchec?: M) => {
     if (!fichier) return;
     setErreur(null);
+    setConfirmation(false);
     setChargement("apercu");
     try {
-      const res = await config.apercu(fichier);
+      const res = await config.apercu(fichier, modeVoulu);
       setRapport(res.data);
       setSeulementACorriger(false);
       setConfirmation(false);
       setEtape("verifier");
     } catch (err) {
+      if (modeSiEchec !== undefined) setMode(modeSiEchec);
       setErreur(messageErreurPour(err, "Le fichier n'a pas pu être vérifié. Vérifiez votre connexion puis réessayez."));
     } finally {
       setChargement(null);
     }
+  };
+
+  const changerMode = (nouveau: M) => {
+    if (nouveau === mode) return;
+    const precedent = mode;
+    setMode(nouveau);
+    // À l'étape 2, l'aperçu affiché doit toujours correspondre au mode choisi (D02)
+    if (etape === "verifier") void verifier(nouveau, precedent);
   };
 
   const importer = async () => {
@@ -183,7 +268,7 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
     setErreur(null);
     setChargement("import");
     try {
-      const res = await config.importer(fichier);
+      const res = await config.importer(fichier, mode);
       setRapport(res.data);
       setEtape("termine");
       if (config.notifierSucces) {
@@ -282,9 +367,13 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
                 />
               </div>
 
+              {config.modes && (
+                <ChoixModeImport options={config.modes} valeur={mode} onChange={changerMode} desactive={!!chargement} />
+              )}
+
               <button
                 type="button"
-                onClick={verifier}
+                onClick={() => verifier()}
                 disabled={!fichier || !!chargement}
                 className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
               >
@@ -297,6 +386,17 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
           {/* Étape 2 : vérifier */}
           {etape === "verifier" && rapport && (
             <>
+              {config.modes && (
+                <>
+                  <ChoixModeImport options={config.modes} valeur={mode} onChange={changerMode} desactive={!!chargement} />
+                  {chargement === "apercu" && (
+                    <p role="status" className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                      <Loader2 className="w-4 h-4 animate-spin" /> Nouvelle vérification du fichier avec ce choix...
+                    </p>
+                  )}
+                </>
+              )}
+
               <p className="text-base font-bold text-slate-900 dark:text-white" aria-live="polite">
                 {textes.prets(rapport.acceptees)}
                 {rapport.rejetees > 0 && `, ${textes.rejetees(rapport.rejetees)}`}
@@ -310,7 +410,8 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
                   <button
                     type="button"
                     onClick={recommencer}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90"
+                    disabled={!!chargement}
+                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 disabled:opacity-50"
                   >
                     <ArrowLeft className="w-4 h-4" /> Choisir un autre fichier
                   </button>
@@ -328,6 +429,15 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
                   {textes.filtreRejetees}
                 </label>
               )}
+
+              {(() => {
+                const optionChoisie = config.modes?.find((o) => o.valeur === mode);
+                return optionChoisie ? (
+                  <p className="text-sm text-slate-700 dark:text-slate-300">
+                    Mode choisi : <strong className="text-slate-900 dark:text-white">« {optionChoisie.libelle} »</strong>. {optionChoisie.explication}
+                  </p>
+                ) : null;
+              })()}
 
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
@@ -375,7 +485,7 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
                   {confirmation ? (
                     <div className="space-y-3">
                       <p className="text-sm font-bold text-slate-900 dark:text-white">
-                        {textes.confirmation(rapport.acceptees)}
+                        {textes.confirmation(rapport.acceptees, mode)}
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3">
                         <button
@@ -402,14 +512,16 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
                       <button
                         type="button"
                         onClick={() => setConfirmation(true)}
-                        className="flex-1 py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-colors"
+                        disabled={!!chargement}
+                        className="flex-1 py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-colors disabled:opacity-50"
                       >
                         {textes.boutonImporter(rapport.acceptees)}
                       </button>
                       <button
                         type="button"
                         onClick={recommencer}
-                        className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        disabled={!!chargement}
+                        className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
                       >
                         Choisir un autre fichier
                       </button>
@@ -449,19 +561,24 @@ export function ImportExcelModal<L extends LigneImportBase>({ isOpen, onClose, o
 
 // ─── Import du stock d'une pharmacie ────────────────────────────
 
-/** Paramétrage de l'import du stock : la quantité du fichier remplace celle en stock. */
-export function configImportStock(structureId: string): ConfigImportExcel<LigneImportStock> {
+/** Paramétrage de l'import du stock : la quantité du fichier remplace celle en stock (inventaire) ou s'y ajoute (livraison). */
+export function configImportStock(structureId: string): ConfigImportExcel<LigneImportStock, ModeImportStock> {
   return {
     titre: "Importer depuis Excel",
     nomFeuille: "Stock",
     consignes: [
       "Une ligne par médicament.",
       "Le nom du médicament tel qu'il apparaît dans le catalogue.",
-      "La quantité indiquée remplace celle actuellement en stock.",
+      "Choisissez ensuite si les quantités du fichier remplacent votre stock (inventaire) ou s'y ajoutent (livraison).",
+    ],
+    modes: [
+      { valeur: "remplacer", libelle: "Inventaire : remplacer les quantités", explication: "Les quantités du fichier deviennent votre stock." },
+      { valeur: "ajouter", libelle: "Livraison : ajouter aux quantités", explication: "Les quantités du fichier s'ajoutent à votre stock actuel." },
     ],
     colonnes: [
       { titre: "Médicament reconnu", rendu: (l) => l.medicamentNom },
       { titre: "Quantité", rendu: (l) => l.quantite },
+      { titre: "Stock", rendu: renduEvolutionStock },
       { titre: "Prix", rendu: (l) => formatPrix(l.prixUnitaire), secondaire: true },
       { titre: "Expiration", rendu: (l) => formatDate(l.dateExpiration), secondaire: true },
     ],
@@ -470,16 +587,18 @@ export function configImportStock(structureId: string): ConfigImportExcel<LigneI
       rejetees: (n) => `${pluriel(n, "ligne", "lignes")} à corriger`,
       filtreRejetees: "Afficher seulement les lignes à corriger",
       boutonImporter: (n) => `Importer ${pluriel(n, "médicament", "médicaments")}`,
-      confirmation: (n) =>
-        `Pour ${pluriel(n, "médicament", "médicaments")}, la quantité en stock sera remplacée par celle du fichier. Confirmer ?`,
+      confirmation: (n, mode) =>
+        mode === "ajouter"
+          ? `Pour ${pluriel(n, "médicament", "médicaments")}, la quantité du fichier sera ajoutée à celle en stock. Confirmer ?`
+          : `Pour ${pluriel(n, "médicament", "médicaments")}, la quantité en stock sera remplacée par celle du fichier. Confirmer ?`,
       boutonConfirmer: "Confirmer l'import",
       termine: (n) => `${pluriel(n, "médicament mis à jour", "médicaments mis à jour")} dans votre stock`,
       termineRejetees: (n) =>
         `${pluriel(n, "ligne n'a pas été importée", "lignes n'ont pas été importées")} : corrigez-les dans le fichier puis importez-le à nouveau.`,
     },
     telechargerModele: () => telechargerModeleImportStock(structureId),
-    apercu: (fichier) => apercuImportStock(structureId, fichier),
-    importer: (fichier) => importerStock(structureId, fichier),
+    apercu: (fichier, mode) => apercuImportStock(structureId, fichier, mode),
+    importer: (fichier, mode) => importerStock(structureId, fichier, mode),
   };
 }
 

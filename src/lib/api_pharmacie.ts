@@ -2,9 +2,7 @@
  * MedConnecte Pharmacy & Medication API
  */
 
-import { ApiError, ApiResponse, authFetch, authDownload } from "./api_auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+import { authFetch, authDownload } from "./api_auth";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -126,6 +124,9 @@ export async function removeStockItem(structureId: string, stockId: string) {
 
 // ─── Import Excel du stock (F1) ─────────────────────────────────
 
+/** Mode d'import du stock : l'inventaire remplace les quantités, la livraison les ajoute (D01). */
+export type ModeImportStock = "remplacer" | "ajouter";
+
 /** Résultat de l'analyse d'une ligne du fichier Excel. */
 export interface LigneImportStock {
   /** Numéro de la ligne dans Excel (la ligne 1 contient les titres). */
@@ -141,6 +142,10 @@ export interface LigneImportStock {
   prixUnitaire?: number;
   dateExpiration?: string;
   notes?: string;
+  /** Quantité en stock avant l'import (0 si le médicament n'est pas encore en stock) ; absente sur un ancien serveur. */
+  quantiteAvant?: number | null;
+  /** Quantité en stock après l'import, selon le mode choisi ; absente sur un ancien serveur. */
+  quantiteApres?: number | null;
 }
 
 /** Rapport de l'aperçu (stock ou catalogue) ; `importees` n'est présent qu'après l'import. */
@@ -154,9 +159,10 @@ export interface RapportImport<L> {
 
 export type RapportImportStock = RapportImport<LigneImportStock>;
 
-const corpsImport = (fichier: File) => {
+const corpsImport = (fichier: File, mode?: ModeImportStock) => {
   const formulaire = new FormData();
   formulaire.append("fichier", fichier);
+  if (mode) formulaire.append("mode", mode);
   return formulaire;
 };
 
@@ -166,19 +172,19 @@ export async function telechargerModeleImportStock(structureId: string) {
   return { blob, filename: filename ?? "modele-import-stock.xlsx" };
 }
 
-/** Analyse le fichier sans rien enregistrer. */
-export async function apercuImportStock(structureId: string, fichier: File) {
+/** Analyse le fichier sans rien enregistrer, selon le mode choisi. */
+export async function apercuImportStock(structureId: string, fichier: File, mode: ModeImportStock = "remplacer") {
   return authFetch<RapportImportStock>(`/pharmacie/stock/${structureId}/import/apercu`, {
     method: "POST",
-    body: corpsImport(fichier),
+    body: corpsImport(fichier, mode),
   });
 }
 
-/** Refait l'analyse et enregistre les lignes acceptées (la quantité remplace celle en stock). */
-export async function importerStock(structureId: string, fichier: File) {
+/** Refait l'analyse et enregistre les lignes acceptées : la quantité remplace celle en stock (inventaire) ou s'y ajoute (livraison). */
+export async function importerStock(structureId: string, fichier: File, mode: ModeImportStock = "remplacer") {
   return authFetch<RapportImportStock>(`/pharmacie/stock/${structureId}/import`, {
     method: "POST",
-    body: corpsImport(fichier),
+    body: corpsImport(fichier, mode),
   });
 }
 
