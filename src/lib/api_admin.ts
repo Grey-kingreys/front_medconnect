@@ -49,6 +49,11 @@ export interface CreateStructurePayload {
   estDeGarde?: boolean;
 }
 
+/** Structure renvoyée à la création ; `invitationEnvoyee` absent = ancienne réponse, invitation envoyée. */
+export type StructureCreee = Pick<Structure, "id" | "nom" | "type" | "email" | "isConfigured" | "createdAt"> & {
+  invitationEnvoyee?: boolean;
+};
+
 export interface GlobalStats {
   totalUsers: number;
   totalStructures: number;
@@ -108,10 +113,19 @@ export async function getStructure(id: string) {
 }
 
 export async function createStructure(data: CreateStructurePayload) {
-  return authFetch<Structure>("/super-admin/structures", {
+  return authFetch<StructureCreee>("/super-admin/structures", {
     method: "POST",
     body: JSON.stringify(data),
   });
+}
+
+/**
+ * Vrai seulement si le serveur dit explicitement que l'email d'invitation n'est pas parti
+ * (`invitationEnvoyee: false` dans `data` ou à la racine). Champ absent = invitation envoyée.
+ */
+export function invitationNonEnvoyee(res: ApiResponse<StructureCreee>): boolean {
+  const racine = res as ApiResponse<StructureCreee> & { invitationEnvoyee?: boolean };
+  return res.data?.invitationEnvoyee === false || racine.invitationEnvoyee === false;
 }
 
 export async function toggleStructureActive(id: string) {

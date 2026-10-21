@@ -2,7 +2,7 @@
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
-import { useAuth } from "@/hooks/useAuth";
+import { messageErreurPour } from "@/hooks/useToast";
 import {
   Building2,
   Plus,
@@ -16,8 +16,6 @@ import {
   Power,
   AlertCircle,
   Loader2,
-  X,
-  ChevronDown,
   MapPin,
   Phone,
   Map as MapIcon,
@@ -26,12 +24,10 @@ import {
 } from "lucide-react";
 import {
   getStructures,
-  createStructure,
   toggleStructureActive,
   resendStructureInvitation,
   Structure,
   StructureType,
-  ApiError,
 } from "@/lib/api_admin";
 import { StructureModal } from "@/components/modals/StructureModal";
 import { StructureDeleteModal } from "@/components/modals/StructureDeleteModal";
@@ -56,7 +52,6 @@ const TYPE_COLORS: Record<StructureType, { bg: string; text: string; dot: string
 // ─── Structures Page ─────────────────────────────────────────────
 
 export default function StructuresPage() {
-  const { user } = useAuth();
   const [structures, setStructures] = useState<Structure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -89,6 +84,7 @@ export default function StructuresPage() {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- chargement initial de la liste, dette préexistante
     fetchData();
   }, [fetchData]);
 
@@ -110,8 +106,8 @@ export default function StructuresPage() {
     try {
       await resendStructureInvitation(s.id);
       showToast(`Invitation renvoyée à ${s.email}`);
-    } catch {
-      showToast("Erreur lors de l'envoi", false);
+    } catch (err) {
+      showToast(messageErreurPour(err, "L'invitation n'a pas pu être envoyée. Réessayez dans quelques instants."), false);
     } finally {
       setActionLoading(null);
     }

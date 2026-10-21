@@ -114,6 +114,16 @@ interface ReglagesAppel {
   sansJournal?: boolean;
 }
 
+/** Vrai si le corps d'une réponse 502/503/504 vient du serveur applicatif (objet JSON avec un `code` texte). */
+async function estReponseApplicative(res: Response): Promise<boolean> {
+  try {
+    const corps: unknown = await res.clone().json();
+    return typeof corps === "object" && corps !== null && typeof (corps as CorpsReponse).code === "string";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Envoi commun à apiFetch et authDownload : délai de 20 s par tentative, nouvelles
  * tentatives (1 s puis 3 s) pour GET et HEAD seulement, sur erreur réseau, délai
@@ -152,6 +162,9 @@ async function envoyer(endpoint: string, options: RequestInit, reglages: Reglage
         signal: controleur.signal,
       });
       if (!STATUTS_INDISPONIBLES.includes(res.status)) return res;
+      // Réponse rédigée par le serveur (corps JSON avec un code) : rendue telle quelle,
+      // sans nouvel essai, pour que son message parvienne à l'utilisateur (D02)
+      if (await estReponseApplicative(res)) return res;
       derniereErreur = new ApiError(MSG_INDISPONIBLE, res.status);
     } catch (err) {
       // Annulation voulue par l'appelant : propagée telle quelle

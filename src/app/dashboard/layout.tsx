@@ -23,17 +23,14 @@ import {
   ChevronRight,
   Menu,
   X,
-  User,
   ShieldCheck,
   ClipboardList,
   Package,
   Activity,
   Bot,
-  Loader2,
   MessageSquare,
   Syringe,
   Headset,
-  QrCode,
 } from "lucide-react";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { PWAInstallButton } from "@/components/PWAInstallButton";
@@ -41,6 +38,7 @@ import EmergencyButton from "@/components/EmergencyButton";
 import EmergencyListener from "@/components/EmergencyListener";
 import NotificationBell from "@/components/NotificationBell";
 import ToastProvider from "@/components/Toast";
+import { NotificationsProvider } from "@/hooks/useNotifications";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -481,6 +479,7 @@ export default function DashboardLayout({
 
   return (
     <ToastProvider>
+    <NotificationsProvider key={user.id}>
     <div className="min-h-screen bg-slate-50 dark:bg-[#030712] transition-colors duration-300">
       <Sidebar
         collapsed={collapsed}
@@ -535,6 +534,7 @@ export default function DashboardLayout({
       <EmergencyButton />
       <EmergencyListener />
     </div>
+    </NotificationsProvider>
     </ToastProvider>
   );
 }

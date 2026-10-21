@@ -3,25 +3,26 @@
 Index du run orchestré en cours. 150 lignes max. Protocole : docs/ORCHESTRATOR.md, section 9.
 Reprise : lire ce fichier, puis seulement le fichier de la prochaine tâche.
 
-Run: 2026-10-21-lot3 | Branche: orch/lot3-front | Parallélisme: 5 (1 seul sur l'arbre principal, les autres en worktree) | Audience: mixte par surface (non-dev partout sauf /debug)
-Détails: docs/plans/runs/2026-10-21-lot3/ (tasks/, rapports/, decisions.md)
+Run: 2026-10-21-lot4 | Branche: orch/lot4-front | Parallélisme: 5 (1 seul sur l'arbre principal, les autres en worktree) | Audience: mixte par surface (non-dev partout sauf /debug)
+Détails: docs/plans/runs/2026-10-21-lot4/ (tasks/, rapports/, decisions.md). Run précédent à archiver : docs/plans/runs/2026-10-21-lot3/ (F7 = 39fa4b1)
 
 ## À faire et en cours
 
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
-| F7 | Géolocalisation précise : utilitaire partagé, précision du SOS, numéro d'urgence configuré, clé d'idempotence (tasks/F7-geolocalisation-precise.md) | spécifié | à faire | 0 |
+| F8 | Structure créée sans invitation (avertissement, renvoi, 503 lisible) et un seul sondage des notifications, suspendu onglet caché (tasks/F8-invitation-et-sondage-notifications.md) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
 
 ## Questions parquées
 
-- Noms des champs de position du SOS (`precision`, `horodatagePosition`, `source` = `navigateur`) et en-tête `Idempotency-Key` : à confirmer avec B6 (orch/lot3-back) avant l'intégration (D02)
+- (lot3) Noms des champs de position du SOS et en-tête `Idempotency-Key` : à confirmer avec B6 (orch/lot3-back) avant l'intégration (lot3 D02)
+- Emplacement exact de `invitationEnvoyee` (data ou racine) et forme du 503 EMAIL_INDISPONIBLE : à confirmer avec orch/lot4-back ; le front accepte les deux (D01, D02)
 
 ## Dernières décisions (5 max, historique complet dans decisions.md)
 
-- D01 utilitaire unique src/lib/geolocalisation.ts, jamais d'exception, réglages SOS (50 m, 10 s) et rapides
-- D02 champs envoyés au SOS : precision, horodatagePosition, source « navigateur » (à aligner sur B6)
-- D04 attente de la position bornée à 10 s depuis l'appui ; annulation pendant l'attente abandonne l'envoi
-- D05 clé d'idempotence : nouvelle à chaque appui et à chaque relance volontaire, gardée sur « Réessayer l'envoi »
-- D07 numéro d'urgence lu dans GET /app/config, « 15 » en repli, « (SAMU) » retiré
+- D01 invitation non envoyée = `invitationEnvoyee === false` (data ou racine), absent = envoyée
+- D02 502/503/504 avec `code` dans le corps : réponse du serveur rendue telle quelle, sans nouvel essai
+- D03 création sans invitation : fenêtre gardée ouverte, écran de résultat avec renvoi
+- D06 un seul sondage : NotificationsProvider dans le layout, cloches abonnées à l'état partagé
+- D07 sondage 30 s suspendu onglet caché, reprise immédiate, pas de requêtes en parallèle
