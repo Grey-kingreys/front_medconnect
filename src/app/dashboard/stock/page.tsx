@@ -14,7 +14,6 @@ import {
   ArrowDownRight, 
   Trash2,
   Edit,
-  Loader2,
   Pill,
   ShoppingBag,
   TrendingUp,
@@ -61,6 +60,16 @@ export default function StockPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Accès rapide « Importer le stock » du tableau de bord : ouvre directement la fenêtre d'import
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("importer") !== "1") return;
+    setIsImportOpen(true);
+    params.delete("importer");
+    const reste = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${reste ? `?${reste}` : ""}`);
+  }, []);
 
   const filteredStocks = stockInfo?.stocks.filter(s => {
     const matchesSearch = s.medicament.nom.toLowerCase().includes(search.toLowerCase()) || 

@@ -11,6 +11,7 @@ import {
   Calendar,
   ClipboardList,
   Clock,
+  FileSpreadsheet,
   FileText,
   Headset,
   LayoutDashboard,
@@ -490,6 +491,41 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
   },
 ];
 
+/** Raccourci de l'accueil sans entrée de menu, placé juste après l'entrée `apres`. Invisible sur un ancien serveur. */
+interface RaccourciSupplementaire {
+  id: string;
+  apres: string;
+  href: string;
+  icone: IconeComposant;
+  libelle: TexteSelonType;
+  description: TexteSelonType;
+  degrade: string;
+  acces: RegleAcces;
+}
+
+const RACCOURCIS_SUPPLEMENTAIRES: readonly RaccourciSupplementaire[] = [
+  {
+    id: "importer-stock",
+    apres: "stock",
+    href: "/dashboard/stock?importer=1",
+    icone: FileSpreadsheet,
+    libelle: { defaut: "Importer le stock" },
+    description: { defaut: "Mettez à jour votre stock depuis un fichier Excel" },
+    degrade: "from-secondary-500 to-cyan-500",
+    acces: perm(["stock:read", "stock:write"], { typesStructure: P }),
+  },
+  {
+    id: "catalogue-pharmacie",
+    apres: "stock",
+    href: "/dashboard/catalogue",
+    icone: Pill,
+    libelle: { defaut: "Catalogue des médicaments" },
+    description: { defaut: "Cherchez un médicament et ajoutez-le à votre stock" },
+    degrade: "from-amber-500 to-orange-500",
+    acces: perm(["catalogue:write", "catalogue:manage", "stock:read", "stock:write"], { typesStructure: P }),
+  },
+];
+
 const CARTES: readonly DefinitionCarte[] = [
   { cle: "patientConsultations", libelle: "Consultations", icone: Stethoscope, couleur: "text-primary-400", acces: patient, rolesRepli: PATIENT },
   { cle: "patientOrdonnances", libelle: "Ordonnances", icone: ClipboardList, couleur: "text-secondary-400", acces: patient, rolesRepli: PATIENT },
@@ -553,19 +589,34 @@ export function sectionsMenu(ctx: ContexteAcces): SectionMenu[] {
 export function raccourcis(ctx: ContexteAcces): Raccourci[] {
   const dejaVus = new Set<string>();
   const resultat: Raccourci[] = [];
+  const ajouter = (r: Raccourci) => {
+    if (dejaVus.has(r.href)) return;
+    dejaVus.add(r.href);
+    resultat.push(r);
+  };
   for (const entree of ENTREES) {
     const raccourci = entree.raccourci;
-    if (!raccourci || !estVisible(entree.acces, raccourci.rolesRepli, ctx)) continue;
-    if (dejaVus.has(entree.href)) continue;
-    dejaVus.add(entree.href);
-    resultat.push({
-      id: entree.id,
-      libelle: texte(raccourci.libelle ?? entree.libelle, ctx),
-      description: texte(raccourci.description, ctx),
-      href: entree.href,
-      icone: entree.icone,
-      degrade: raccourci.degrade,
-    });
+    if (raccourci && estVisible(entree.acces, raccourci.rolesRepli, ctx)) {
+      ajouter({
+        id: entree.id,
+        libelle: texte(raccourci.libelle ?? entree.libelle, ctx),
+        description: texte(raccourci.description, ctx),
+        href: entree.href,
+        icone: entree.icone,
+        degrade: raccourci.degrade,
+      });
+    }
+    for (const sup of RACCOURCIS_SUPPLEMENTAIRES) {
+      if (sup.apres !== entree.id || !estVisible(sup.acces, [], ctx)) continue;
+      ajouter({
+        id: sup.id,
+        libelle: texte(sup.libelle, ctx),
+        description: texte(sup.description, ctx),
+        href: sup.href,
+        icone: sup.icone,
+        degrade: sup.degrade,
+      });
+    }
   }
   return resultat;
 }
