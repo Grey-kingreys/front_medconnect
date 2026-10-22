@@ -34,6 +34,8 @@ export interface ApercuPharmacieProps {
   peutVendre?: boolean;
   /** Le registre ouvre Ventes du jour à ce profil. */
   peutVoirVentes?: boolean;
+  /** Titre de la section ; par défaut « Aperçu de votre pharmacie ». */
+  titre?: string;
   /** Date de référence, pour les tests ; par défaut l'instant du calcul. */
   maintenant?: Date;
 }
@@ -49,7 +51,7 @@ type EtatEquipe =
   | { statut: "erreur" }
   | { statut: "masque" };
 
-const pluriel = (n: number, singulier: string, plurielTexte: string) => `${n} ${n > 1 ? plurielTexte : singulier}`;
+export const pluriel = (n: number, singulier: string, plurielTexte: string) => `${n} ${n > 1 ? plurielTexte : singulier}`;
 
 const nombre = (n: number) => n.toLocaleString("fr-FR");
 
@@ -62,7 +64,7 @@ const ICONES_RAISON: Record<RaisonSurveillance, { icone: ComponentType<{ classNa
 
 const CLASSES_BLOC = "bg-white dark:bg-[#0f172a]/80 border border-slate-200 dark:border-slate-800/50 rounded-2xl p-5";
 
-function Carte({
+export function Carte({
   libelle,
   icone,
   couleur,
@@ -94,11 +96,11 @@ function Carte({
   );
 }
 
-function Valeur({ children }: { children: ReactNode }) {
+export function Valeur({ children }: { children: ReactNode }) {
   return <p className="text-2xl font-bold text-slate-900 dark:text-white mb-1">{children}</p>;
 }
 
-function Chargement() {
+export function Chargement() {
   return (
     <div className="mb-1 h-8 flex items-center">
       <span aria-hidden="true" className="block h-6 w-12 rounded-md bg-slate-200 dark:bg-slate-700/60 animate-pulse" />
@@ -122,6 +124,7 @@ export default function ApercuPharmacie({
   peutVoirEquipe,
   peutVendre = false,
   peutVoirVentes = false,
+  titre = "Aperçu de votre pharmacie",
   maintenant,
 }: ApercuPharmacieProps) {
   const titreId = useId();
@@ -207,7 +210,7 @@ export default function ApercuPharmacie({
       className="text-lg font-semibold text-slate-900 dark:text-white"
       style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
     >
-      Aperçu de votre pharmacie
+      {titre}
     </h2>
   );
 

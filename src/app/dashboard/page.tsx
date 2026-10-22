@@ -18,12 +18,15 @@ import {
   cartesCompteurs,
   estRouteAutorisee,
   raccourcis,
+  vuePharmacie,
   type CarteCompteur,
   type Raccourci,
 } from "@/lib/navigation_tableau_de_bord";
 import { sourcesCompteurs, type CleCompteur } from "@/lib/compteurs_tableau_de_bord";
 import DashboardCharts from "@/components/DashboardCharts";
 import ApercuPharmacie from "@/components/dashboard/ApercuPharmacie";
+import PilotagePharmacie, { liensPilotage, type DroitsPilotage } from "@/components/dashboard/PilotagePharmacie";
+import ComptoirPharmacie, { liensComptoir, type DroitsComptoir } from "@/components/dashboard/ComptoirPharmacie";
 
 // Graphiques « Analyses et Tendances » : données fictives codées en dur dans DashboardCharts.
 // Masqués tant qu'aucune route du back ne fournit de vraies séries (ne jamais montrer de chiffres inventés).
@@ -160,6 +163,7 @@ export default function DashboardPage() {
   const contexte = user ? lireContexteAcces(user, profile) : null;
   // Pharmacie : l'aperçu dédié remplace les cartes génériques (pas de chiffres en double)
   const estPharmacie = contexte?.typeStructure === "PHARMACIE";
+  const vue = contexte ? vuePharmacie(contexte) : null;
   const cartes = contexte && !estPharmacie ? cartesCompteurs(contexte) : [];
   const clesCompteurs = cartes.map((c) => c.cle).join(",");
 
@@ -210,8 +214,33 @@ export default function DashboardPage() {
   if (!mounted || !user || !contexte) return <LoadingSpinner fullPage message="Vérification de l'accès..." />;
   if (user.role === "SUPER_ADMIN") return <LoadingSpinner fullPage message="Redirection vers l'espace Super Admin..." />;
 
-  const welcomeMessage = getWelcomeMessage(user.role);
-  const quickActions = raccourcis(contexte);
+  const droitsPilotage: DroitsPilotage = {
+    peutModifier: contexte.permissions.has("structure:write") && estRouteAutorisee("/dashboard/structure", contexte),
+    peutVoirEquipe: estRouteAutorisee("/dashboard/membres", contexte),
+    peutVoirVentes: estRouteAutorisee("/dashboard/ventes", contexte),
+    peutAnnuler: contexte.permissions.has("vente:annuler"),
+    peutVoirStock: estRouteAutorisee("/dashboard/stock", contexte),
+  };
+  const droitsComptoir: DroitsComptoir = {
+    peutVendre: estRouteAutorisee("/dashboard/vente", contexte),
+    peutVoirVentes: estRouteAutorisee("/dashboard/ventes", contexte),
+    peutVoirOrdonnances: estRouteAutorisee("/dashboard/ordonnances", contexte),
+    peutVoirStock: estRouteAutorisee("/dashboard/stock", contexte),
+    peutVoirEquipe: estRouteAutorisee("/dashboard/membres", contexte),
+  };
+  const hrefsDeLaVue =
+    vue === "pilotage"
+      ? liensPilotage(droitsPilotage).map((l) => l.href)
+      : vue === "comptoir"
+        ? liensComptoir(droitsComptoir).map((l) => l.href)
+        : [];
+  const quickActions = raccourcis(contexte).filter((a) => !hrefsDeLaVue.includes(a.href));
+  const welcomeMessage =
+    vue === "pilotage"
+      ? "Suivez l'activité de votre pharmacie : ventes du jour, équipe et stock."
+      : vue === "comptoir"
+        ? "Enregistrez vos ventes et gardez un œil sur les ruptures de stock."
+        : getWelcomeMessage(user.role);
   const statsCards = cartes.filter((c) => etatsCompteurs[c.cle]?.statut !== "masque");
   const compteursEnErreur = statsCards.some((c) => etatsCompteurs[c.cle]?.statut === "erreur");
   const compteursEnChargement = statsCards.some((c) => (etatsCompteurs[c.cle]?.statut ?? "chargement") === "chargement");
@@ -289,7 +318,11 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {estPharmacie && (
+      {vue === "pilotage" && <PilotagePharmacie structureId={user.structureId} droits={droitsPilotage} />}
+      {vue === "comptoir" && (
+        <ComptoirPharmacie structureId={user.structureId} utilisateurId={user.id} droits={droitsComptoir} />
+      )}
+      {vue === null && estPharmacie && (
         <ApercuPharmacie
           structureId={user.structureId}
           peutVoirStock={estRouteAutorisee("/dashboard/stock", contexte)}
@@ -337,7 +370,7 @@ export default function DashboardPage() {
       {quickActions.length > 0 && (
         <section>
           <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4" style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}>
-            Accès rapide
+            {vue !== null ? "Autres accès" : "Accès rapide"}
           </h2>
           <QuickActionsGrid actions={quickActions} />
         </section>

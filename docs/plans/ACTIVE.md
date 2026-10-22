@@ -11,6 +11,7 @@ Détails: docs/plans/runs/2026-10-22-lot9/ (tasks/, rapports/, decisions.md). Co
 | ID | Tâche | Tier | Statut | Tent. |
 |----|-------|------|--------|-------|
 | F14 | Page « Ma pharmacie » modifiable sur place par blocs, lecture seule pour le pharmacien, plus de médecins pour une pharmacie (tasks/F14-ma-pharmacie-edition-directe.md) | spécifié | à faire | 0 |
+| F15 | Accueil d'une pharmacie différencié par permissions : « pilotage » (ventes du jour, équipe, stock) pour l'administrateur, « comptoir » (Nouvelle vente, mes ventes, stock) pour le pharmacien (tasks/F15-accueil-pharmacie-pilotage-comptoir.md) | spécifié | à faire | 0 |
 
 ## Faites (preuve = commit)
 
@@ -27,8 +28,8 @@ Détails: docs/plans/runs/2026-10-22-lot9/ (tasks/, rapports/, decisions.md). Co
 
 ## Dernières décisions (5 max, historique complet dans decisions.md)
 
-- D02 `PATCH /structures/my` accepte l'envoi partiel, un champ absent n'est pas effacé
-- D03 `estOuvertManuel` : null = selon les horaires, true = ouverte, false = fermée
-- D04 ouverture en choix à trois positions, « De garde » en interrupteur, enregistrement immédiat
-- D05 affichage décidé sur `structure:write` et `membre:manage`, rôle seulement en mode repli
-- D08 lecture des horaires déplacée de StructureModal vers `src/lib/horaires_structure.ts`
+- D16 vue d'accueil pharmacie par `vuePharmacie(ctx)` : `structure:write` ou `vente:annuler` = pilotage, sinon comptoir, repli inchangé
+- D17 annulées comptées sur la première page des ventes (50), mention si `totalPages > 1`
+- D18 « Mes ventes du jour » = ventes de la première page dont `vendeur.id` = l'utilisateur, validées seulement dans le montant
+- D20 ventes, équipe et stock chargés indépendamment ; 403 = bloc masqué
+- D22 menu : aucune entrée retirée, seule la description du raccourci « Ma pharmacie » change

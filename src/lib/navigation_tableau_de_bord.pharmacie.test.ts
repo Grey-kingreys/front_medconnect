@@ -2,7 +2,13 @@ import { describe, expect, it } from "vitest";
 import { lireContexteAcces } from "./acces";
 import type { StructureType } from "./api_admin";
 import type { UserProfile } from "./api_auth";
-import { estRouteAutorisee, raccourcis, sectionsMenu, type SectionMenu } from "./navigation_tableau_de_bord";
+import {
+  estRouteAutorisee,
+  raccourcis,
+  sectionsMenu,
+  vuePharmacie,
+  type SectionMenu,
+} from "./navigation_tableau_de_bord";
 
 const profil = (role: string, structureType: StructureType | null | undefined, permissions: string[] | undefined): UserProfile => ({
   id: "u1",
@@ -108,5 +114,54 @@ describe("raccourcis de la pharmacie", () => {
   it("ne crée aucune entrée de menu avec une adresse paramétrée", () => {
     const menu = hrefs(sectionsMenu(contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN)));
     expect(menu.filter((h) => h.includes("?"))).toEqual([]);
+  });
+});
+
+describe("vue d'accueil et menu de la pharmacie (démo)", () => {
+  const PERMISSIONS_PHARMACIEN_DEMO = [
+    "catalogue:write", "chat:structure", "membre:read", "stock:read", "stock:write", "structure:read", "vente:read", "vente:write",
+  ];
+  const PERMISSIONS_ADMIN_DEMO = [
+    "membre:manage", "membre:read", "role:manage", "stock:read", "stock:write", "structure:read", "structure:write",
+    "vente:annuler", "vente:read", "vente:write",
+  ];
+  const pharmacien = () => contexte("PHARMACIEN", "PHARMACIE", PERMISSIONS_PHARMACIEN_DEMO);
+  const admin = () => contexte("STRUCTURE_ADMIN", "PHARMACIE", PERMISSIONS_ADMIN_DEMO);
+
+  it("choisit la vue d'après les permissions", () => {
+    expect(vuePharmacie(admin())).toBe("pilotage");
+    expect(vuePharmacie(pharmacien())).toBe("comptoir");
+    expect(vuePharmacie(contexte("PHARMACIEN", "PHARMACIE", [...PERMISSIONS_PHARMACIEN_DEMO, "vente:annuler"]))).toBe("pilotage");
+    expect(vuePharmacie(contexte("MEDECIN", "HOPITAL", ["structure:read", "structure:write"]))).toBeNull();
+    expect(vuePharmacie(enRepli("PHARMACIEN"))).toBeNull();
+    expect(vuePharmacie(enRepli("STRUCTURE_ADMIN"))).toBeNull();
+  });
+
+  it("garde Ma pharmacie en tête de la section Établissement", () => {
+    for (const ctx of [admin(), pharmacien()]) {
+      const section = sectionsMenu(ctx).find((s) => s.id === "etablissement");
+      expect(section?.liens[0].libelle).toBe("Ma pharmacie");
+      expect(section?.liens[0].href).toBe("/dashboard/structure");
+    }
+  });
+
+  it("ne retire aucune page à ceux qui y ont droit", () => {
+    const adresses = [
+      "/dashboard/vente", "/dashboard/ventes", "/dashboard/ordonnances", "/dashboard/stock",
+      "/dashboard/catalogue", "/dashboard/structure", "/dashboard/membres",
+    ];
+    for (const ctx of [admin(), pharmacien()]) {
+      const menu = hrefs(sectionsMenu(ctx));
+      for (const adresse of adresses) {
+        expect(estRouteAutorisee(adresse, ctx)).toBe(true);
+        expect(menu).toContain(adresse);
+      }
+    }
+    expect(hrefs(sectionsMenu(pharmacien()))).toContain("/dashboard/chat");
+  });
+
+  it("décrit Ma pharmacie sans promettre une modification", () => {
+    const r = raccourcis(admin()).find((x) => x.href === "/dashboard/structure");
+    expect(r?.description).toBe("Informations, horaires et garde de votre pharmacie");
   });
 });
