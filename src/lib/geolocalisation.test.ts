@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  libelleDistancePrecision,
   libellePrecisionSos,
   localiserPrecisement,
+  REGLAGES_PRECIS,
   REGLAGES_RAPIDES,
   REGLAGES_SOS,
   type PositionMesuree,
@@ -120,7 +122,31 @@ describe("localiserPrecisement", () => {
     succes(mesure(10));
     const r: ResultatPosition = await promesse;
     expect(r.ok && r.position.horodatagePosition).toBe("2026-10-21T10:00:00.000Z");
-    expect(r.ok && r.position.source).toBe("navigateur");
+    expect(r.ok && r.position.source).toBe("inconnue");
+  });
+});
+
+describe("libelleDistancePrecision", () => {
+  it("parle en mètres sous 1 km, en kilomètres au delà", () => {
+    expect(libelleDistancePrecision(27)).toBe("environ 30 m");
+    expect(libelleDistancePrecision(4)).toBe("environ 10 m");
+    expect(libelleDistancePrecision(2480)).toBe("environ 2,5 km");
+  });
+});
+
+describe("REGLAGES_PRECIS", () => {
+  it("ignore une première mesure grossière et attend une mesure à 30 m", async () => {
+    let resolu = false;
+    const promesse = localiserPrecisement(REGLAGES_PRECIS).then((r) => {
+      resolu = true;
+      return r;
+    });
+    succes(mesure(3000));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(resolu).toBe(false);
+    succes(mesure(25));
+    const r = await promesse;
+    expect(r.ok && r.position.precision).toBe(25);
   });
 });
 
@@ -130,7 +156,7 @@ describe("libellePrecisionSos", () => {
     longitude: -13.7,
     precision,
     horodatagePosition: "2026-10-21T10:00:00.000Z",
-    source: "navigateur",
+    source: "inconnue",
   });
 
   it("arrondit la précision à la dizaine, 10 m au minimum", () => {

@@ -53,7 +53,7 @@ describe("createUrgence", () => {
         longitude: -13.7,
         precision: 25,
         horodatagePosition: "2026-10-21T10:00:00.000Z",
-        source: "navigateur",
+        source: "inconnue",
         message: "SOS",
       },
       "cle-1"
@@ -62,7 +62,7 @@ describe("createUrgence", () => {
     expect(endpoint).toBe("/carnet-sante/sos");
     expect(options?.method).toBe("POST");
     const corps = JSON.parse(options?.body as string);
-    expect(corps).toMatchObject({ precision: 25, horodatagePosition: "2026-10-21T10:00:00.000Z", source: "navigateur" });
+    expect(corps).toMatchObject({ precision: 25, horodatagePosition: "2026-10-21T10:00:00.000Z", source: "inconnue" });
     expect(options?.headers).toMatchObject({ "Idempotency-Key": "cle-1" });
   });
 });

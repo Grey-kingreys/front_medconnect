@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
 import { getConversations, getMessages, Conversation, Message } from "@/lib/api_chat";
 import { gererSessionRevoquee } from "@/lib/deconnexion_forcee";
-import { localiserPrecisement, REGLAGES_RAPIDES } from "@/lib/geolocalisation";
+import { localiserPrecisement, REGLAGES_PRECIS } from "@/lib/geolocalisation";
 import {
   Send, MapPin, Loader2, User as UserIcon, Building2, Search, ArrowLeft
 } from "lucide-react";
@@ -132,7 +132,7 @@ export default function ChatPage() {
     if (!activeConv || !socket) return;
     
     setLocationLoading(true);
-    localiserPrecisement(REGLAGES_RAPIDES).then((r) => {
+    localiserPrecisement(REGLAGES_PRECIS).then((r) => {
       setLocationLoading(false);
       if (r.ok) {
         socket.emit("sendMessage", {

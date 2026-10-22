@@ -3,8 +3,11 @@
  * durée bornée. Ne lève jamais d'exception.
  */
 
-/** Le navigateur ne dit pas si la position vient du GPS, du wifi ou de l'adresse IP. */
-export type SourcePosition = "navigateur";
+/**
+ * Le navigateur ne dit pas si la position vient du GPS, du wifi ou de l'adresse IP :
+ * « inconnue », valeur de l'énumération SourcePositionUrgence du back (gps, reseau, inconnue).
+ */
+export type SourcePosition = "inconnue";
 
 export interface PositionMesuree {
   latitude: number;
@@ -35,6 +38,9 @@ export const REGLAGES_SOS: ReglagesLocalisation = { precisionVisee: 50, dureeMax
 /** Hors SOS : première mesure reçue, au plus 10 s si rien n'arrive. */
 export const REGLAGES_RAPIDES: ReglagesLocalisation = { precisionVisee: Number.POSITIVE_INFINITY, dureeMaxMs: 10_000 };
 
+/** « Me localiser » et partage de position : arrêt dès 30 m, jamais plus de 10 s. */
+export const REGLAGES_PRECIS: ReglagesLocalisation = { precisionVisee: 30, dureeMaxMs: 10_000 };
+
 /** Au delà, la position est dite approximative au patient. */
 export const PRECISION_MAX_FIABLE_M = 500;
 
@@ -46,7 +52,7 @@ const versPositionMesuree = (pos: GeolocationPosition): PositionMesuree => ({
   longitude: pos.coords.longitude,
   precision: pos.coords.accuracy,
   horodatagePosition: new Date(pos.timestamp).toISOString(),
-  source: "navigateur",
+  source: "inconnue",
 });
 
 export function localiserPrecisement(
@@ -94,6 +100,13 @@ export function localiserPrecisement(
     // Rappel synchrone éventuel : le suivi n'était pas encore enregistré dans terminer
     if (termine) geo.clearWatch(idSuivi);
   });
+}
+
+/** Précision lisible : « environ 30 m », « environ 2,5 km ». */
+export function libelleDistancePrecision(metres: number): string {
+  if (metres < 1000) return `environ ${Math.max(10, Math.round(metres / 10) * 10)} m`;
+  const km = Math.round(metres / 100) / 10;
+  return `environ ${km.toLocaleString("fr-FR")} km`;
 }
 
 /** Phrase montrée au patient sur la précision de la position envoyée avec le SOS. */
