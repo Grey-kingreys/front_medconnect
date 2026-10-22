@@ -10,6 +10,7 @@ import {
   telechargerModeleImportCatalogue,
   telechargerModeleImportStock,
   type LigneImportCatalogue,
+  type ColonnesLuesImport,
   type LigneImportStock,
   type ModeImportStock,
   type RapportImport,
@@ -402,6 +403,8 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 {rapport.rejetees > 0 && `, ${textes.rejetees(rapport.rejetees)}`}
               </p>
 
+              {rapport.colonnes && <ColonnesComprises colonnes={rapport.colonnes} />}
+
               {rapport.acceptees === 0 ? (
                 <div className="space-y-3">
                   <p className="text-sm text-slate-700 dark:text-slate-300">
@@ -664,3 +667,37 @@ interface ImportCatalogueModalProps {
 export function ImportCatalogueModal({ isOpen, onClose, onSuccess }: ImportCatalogueModalProps) {
   return <ImportExcelModal isOpen={isOpen} onClose={onClose} onSuccess={onSuccess} config={CONFIG_IMPORT_CATALOGUE} />;
 }
+
+/** Colonnes comprises par le serveur : une colonne ignorée n'est pas importée, il faut le voir avant de valider. */
+function ColonnesComprises({ colonnes }: { colonnes: ColonnesLuesImport }) {
+  return (
+    <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+      <p>
+        <span className="font-bold text-slate-900 dark:text-white">Colonnes lues : </span>
+        {colonnes.reconnues.map((c, i) => (
+          <span key={`${c.titre}-${i}`}>
+            {i > 0 && ", "}
+            {normaliser(c.titre) === normaliser(c.colonne) ? (
+              c.colonne
+            ) : (
+              <>
+                « {c.titre} » comme <strong className="text-slate-900 dark:text-white">{c.colonne}</strong>
+              </>
+            )}
+          </span>
+        ))}
+        {colonnes.ligneTitres > 1 && ` (titres trouvés en ligne ${colonnes.ligneTitres})`}.
+      </p>
+      {colonnes.ignorees.length > 0 && (
+        <p className="px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200">
+          {colonnes.ignorees.length === 1 ? "Colonne non importée : " : "Colonnes non importées : "}
+          {colonnes.ignorees.map((t) => `« ${t} »`).join(", ")}. Si l&apos;une d&apos;elles doit l&apos;être, donnez-lui le titre utilisé dans le modèle, puis choisissez le fichier à nouveau.
+        </p>
+      )}
+    </div>
+  );
+}
+
+/** Comparaison de titres sans casse, accents ni ponctuation (« Quantité » et « QUANTITE »). */
+const normaliser = (texte: string) =>
+  texte.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]/g, "");

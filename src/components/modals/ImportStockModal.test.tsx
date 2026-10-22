@@ -131,6 +131,45 @@ describe("ImportStockModal en mode catalogue", () => {
     expect(mockedImporter).not.toHaveBeenCalled();
   });
 
+  it("montre les colonnes lues, la ligne des titres et les colonnes non importées", async () => {
+    mockedApercu.mockResolvedValue({
+      data: {
+        ...RAPPORT,
+        colonnes: {
+          ligneTitres: 3,
+          reconnues: [
+            { titre: "Désignation", colonne: "Nom" },
+            { titre: "CATÉGORIE", colonne: "Catégorie" },
+          ],
+          ignorees: ["Laboratoire", "Prix"],
+        },
+      },
+      message: "",
+      success: true,
+    });
+    render(<ImportCatalogueModal isOpen onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+    choisirFichier();
+    fireEvent.click(screen.getByRole("button", { name: /Vérifier le fichier/ }));
+
+    const lues = await screen.findByText(/Colonnes lues/);
+    expect(lues.parentElement).toHaveTextContent(
+      "Colonnes lues : « Désignation » comme Nom, Catégorie (titres trouvés en ligne 3)."
+    );
+    expect(screen.getByText(/Colonnes non importées : « Laboratoire », « Prix »/)).toBeInTheDocument();
+  });
+
+  it("n'affiche rien sur les colonnes avec un ancien serveur", async () => {
+    mockedApercu.mockResolvedValue({ data: RAPPORT, message: "", success: true });
+    render(<ImportCatalogueModal isOpen onClose={vi.fn()} onSuccess={vi.fn()} />);
+
+    choisirFichier();
+    fireEvent.click(screen.getByRole("button", { name: /Vérifier le fichier/ }));
+
+    await screen.findByText("1 médicament prêt à être ajouté au catalogue, 1 ligne écartée");
+    expect(screen.queryByText(/Colonnes lues/)).not.toBeInTheDocument();
+  });
+
   it("demande confirmation, importe, notifie le succès puis rafraîchit la liste à la fermeture", async () => {
     mockedApercu.mockResolvedValue({ data: RAPPORT, message: "", success: true });
     mockedImporter.mockResolvedValue({

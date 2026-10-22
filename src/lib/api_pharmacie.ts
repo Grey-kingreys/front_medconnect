@@ -148,6 +148,16 @@ export interface LigneImportStock {
   quantiteApres?: number | null;
 }
 
+/** Colonnes du fichier telles que le serveur les a comprises. */
+export interface ColonnesLuesImport {
+  /** Numéro de la ligne des titres dans Excel (1 le plus souvent). */
+  ligneTitres: number;
+  /** Titre du fichier et colonne de la plateforme correspondante (« Qté » lue comme « Quantité »). */
+  reconnues: { titre: string; colonne: string }[];
+  /** Titres non reconnus ou en double : leur contenu n'est pas importé. */
+  ignorees: string[];
+}
+
 /** Rapport de l'aperçu (stock ou catalogue) ; `importees` n'est présent qu'après l'import. */
 export interface RapportImport<L> {
   totalLignes: number;
@@ -155,6 +165,8 @@ export interface RapportImport<L> {
   rejetees: number;
   importees?: number;
   lignes: L[];
+  /** Absent sur un ancien serveur. */
+  colonnes?: ColonnesLuesImport;
 }
 
 export type RapportImportStock = RapportImport<LigneImportStock>;
