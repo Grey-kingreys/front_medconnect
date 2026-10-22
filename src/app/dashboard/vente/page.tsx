@@ -386,8 +386,8 @@ export default function NouvelleVentePage() {
     );
   } else {
     corps = (
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <section className={`${CARTE} lg:col-span-3 space-y-4`} aria-label="Recherche de médicaments">
+      <div className="grid grid-cols-1 lg:grid-cols-5 lg:grid-rows-[minmax(0,1fr)] gap-6 lg:flex-1 lg:min-h-0">
+        <section className={`${CARTE} lg:col-span-3 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain`} aria-label="Recherche de médicaments">
           <div>
             <label htmlFor="recherche-vente" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
               Rechercher un médicament
@@ -462,7 +462,7 @@ export default function NouvelleVentePage() {
           )}
         </section>
 
-        <div className="lg:col-span-2 lg:sticky lg:top-6 self-start space-y-4 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+        <div className="lg:col-span-2 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           {info && (
             <div
               role="status"
@@ -679,8 +679,8 @@ export default function NouvelleVentePage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
-      {enTete}
+    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in lg:h-[calc(100dvh-4rem)] lg:flex lg:flex-col lg:space-y-0 lg:gap-6">
+      <div className="lg:shrink-0">{enTete}</div>
       {corps}
       <ConfirmationVente
         isOpen={confirmation}
