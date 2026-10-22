@@ -483,7 +483,7 @@ function BlocHoraires({
               const nomJour = jour.toLowerCase();
               const plage = plages[jour];
               return (
-                <li key={jour} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4">
+                <li key={jour} className="flex flex-wrap items-center gap-x-4 gap-y-2">
                   <span className="sm:w-24 text-sm font-medium text-slate-900 dark:text-white">{jour}</span>
                   <label className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
                     <input
@@ -495,7 +495,7 @@ function BlocHoraires({
                     />
                     Fermé
                   </label>
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
                     <label htmlFor={`${id}-${jour}-o`} className="text-xs text-slate-500 dark:text-slate-400">
                       Ouverture
                     </label>
@@ -506,7 +506,7 @@ function BlocHoraires({
                       value={plage.ouverture}
                       disabled={plage.ferme}
                       onChange={(e) => changer(jour, { ouverture: e.target.value })}
-                      className={`${CHAMP} sm:w-32 disabled:opacity-50`}
+                      className={`${CHAMP.replace("w-full ", "")} w-32 disabled:opacity-50`}
                     />
                     <label htmlFor={`${id}-${jour}-f`} className="text-xs text-slate-500 dark:text-slate-400">
                       Fermeture
@@ -518,7 +518,7 @@ function BlocHoraires({
                       value={plage.fermeture}
                       disabled={plage.ferme}
                       onChange={(e) => changer(jour, { fermeture: e.target.value })}
-                      className={`${CHAMP} sm:w-32 disabled:opacity-50`}
+                      className={`${CHAMP.replace("w-full ", "")} w-32 disabled:opacity-50`}
                     />
                   </div>
                 </li>

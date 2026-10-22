@@ -312,7 +312,7 @@ export default function DashboardPage() {
           <div className="relative mt-4 flex items-center gap-2 text-xs text-slate-500">
             <Building2 className="w-3.5 h-3.5 text-secondary-400" />
             <span>
-              {profile.structure.nom} — {profile.structure.type.toLowerCase()}
+              {profile.structure.nom} · {profile.structure.type.toLowerCase()}
             </span>
           </div>
         )}
