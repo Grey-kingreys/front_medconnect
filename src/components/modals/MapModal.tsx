@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, Save, Search, Filter, MapPin, Navigation, Info, Hospital, Pill, Building2, Target } from "lucide-react";
 import GlobePicker from "../GlobePicker";
 import { Structure } from "@/lib/api_admin";
@@ -50,7 +51,9 @@ export function MapModal({
     return matchesSearch && matchesType;
   });
 
-  return (
+  // Rendu sous <body> : dans une autre fenêtre animée (transform), « fixed » resterait
+  // coincé dans cette fenêtre au lieu d'occuper tout l'écran
+  return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center animate-in fade-in duration-300">
       {/* Background with heavy blur */}
       <div className="absolute inset-0 bg-slate-950/40 backdrop-blur-xl" onClick={onClose} aria-hidden="true" />
@@ -196,6 +199,7 @@ export function MapModal({
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

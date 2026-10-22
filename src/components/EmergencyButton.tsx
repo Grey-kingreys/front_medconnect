@@ -28,6 +28,8 @@ import { getNumeroUrgenceMedicale, NUMERO_URGENCE_PAR_DEFAUT } from "@/lib/api_c
 
 // Relecture de l'alerte en attente de prise en charge (D14)
 const INTERVALLE_RELECTURE_MS = 20_000;
+// Après le compte à rebours, attente maximale d'une meilleure position avant l'envoi
+const ATTENTE_MAX_APRES_DECOMPTE_MS = 2_000;
 
 // Compte à rebours affiché en mm:ss
 const formatMmSs = (ms: number) => {
@@ -46,6 +48,8 @@ export default function EmergencyButton() {
   const [rechercheEnCours, setRechercheEnCours] = useState(false);
   const [numeroUrgence, setNumeroUrgence] = useState(NUMERO_URGENCE_PAR_DEFAUT);
   const rechercheRef = useRef<Promise<ResultatPosition> | null>(null);
+  // Meilleure mesure reçue jusqu'ici, envoyée si la recherche n'est pas finie à temps
+  const meilleureRef = useRef<PositionMesuree | null>(null);
   // Incrémenté à chaque nouvelle recherche et à la fermeture : résultats périmés ignorés, envoi en attente abandonné
   const numeroRecherche = useRef(0);
   const cleRef = useRef("");
@@ -174,9 +178,12 @@ export default function EmergencyButton() {
   const demarrerRecherche = () => {
     const n = ++numeroRecherche.current;
     setPosition(null);
+    meilleureRef.current = null;
     setRechercheEnCours(true);
     const recherche = localiserPrecisement(REGLAGES_SOS, (p) => {
-      if (numeroRecherche.current === n) setPosition(p);
+      if (numeroRecherche.current !== n) return;
+      meilleureRef.current = p;
+      setPosition(p);
     });
     rechercheRef.current = recherche;
     recherche.then((r) => {
@@ -188,11 +195,20 @@ export default function EmergencyButton() {
 
   const handleSendSOS = async () => {
     const n = numeroRecherche.current;
-    // La recherche se termine au plus tard 10 s après l'appui (REGLAGES_SOS) : attente bornée
-    const resultat = rechercheRef.current ? await rechercheRef.current : null;
+    // Recherche encore en cours à la fin du décompte : 2 s de plus au plus, puis envoi
+    // de la meilleure mesure déjà reçue (l'alerte ne doit pas attendre les 10 s du GPS)
+    const resultat = rechercheRef.current
+      ? await Promise.race([
+          rechercheRef.current,
+          new Promise<null>((fin) => setTimeout(() => fin(null), ATTENTE_MAX_APRES_DECOMPTE_MS)),
+        ])
+      : null;
     // Fenêtre fermée ou alerte annulée pendant l'attente : rien n'est envoyé
     if (numeroRecherche.current !== n) return;
-    await sendRequest(resultat?.ok ? resultat.position : null);
+    // Mesures arrivées après l'envoi ignorées : l'écran affiche la position envoyée
+    numeroRecherche.current++;
+    setRechercheEnCours(false);
+    await sendRequest(resultat?.ok ? resultat.position : meilleureRef.current);
   };
 
   const sendRequest = async (pos: PositionMesuree | null) => {
