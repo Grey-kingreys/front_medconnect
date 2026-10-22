@@ -16,12 +16,14 @@ import { ApiError } from "@/lib/api_auth";
 import { lireContexteAcces } from "@/lib/acces";
 import {
   cartesCompteurs,
+  estRouteAutorisee,
   raccourcis,
   type CarteCompteur,
   type Raccourci,
 } from "@/lib/navigation_tableau_de_bord";
 import { sourcesCompteurs, type CleCompteur } from "@/lib/compteurs_tableau_de_bord";
 import DashboardCharts from "@/components/DashboardCharts";
+import ApercuPharmacie from "@/components/dashboard/ApercuPharmacie";
 
 // Graphiques « Analyses et Tendances » : données fictives codées en dur dans DashboardCharts.
 // Masqués tant qu'aucune route du back ne fournit de vraies séries (ne jamais montrer de chiffres inventés).
@@ -156,7 +158,9 @@ export default function DashboardPage() {
   const utilisateurId = user?.id;
   const structureId = user?.structureId;
   const contexte = user ? lireContexteAcces(user, profile) : null;
-  const cartes = contexte ? cartesCompteurs(contexte) : [];
+  // Pharmacie : l'aperçu dédié remplace les cartes génériques (pas de chiffres en double)
+  const estPharmacie = contexte?.typeStructure === "PHARMACIE";
+  const cartes = contexte && !estPharmacie ? cartesCompteurs(contexte) : [];
   const clesCompteurs = cartes.map((c) => c.cle).join(",");
 
   // Chaque source se charge indépendamment : un échec ne vide pas les autres cartes
@@ -284,6 +288,14 @@ export default function DashboardPage() {
           </div>
         )}
       </div>
+
+      {estPharmacie && (
+        <ApercuPharmacie
+          structureId={user.structureId}
+          peutVoirStock={estRouteAutorisee("/dashboard/stock", contexte)}
+          peutVoirEquipe={estRouteAutorisee("/dashboard/membres", contexte)}
+        />
+      )}
 
       {/* Stats */}
       {statsCards.length > 0 && (

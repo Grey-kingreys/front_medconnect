@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, type AuthUser, type UserProfile } from "@/lib/api_auth";
 import { getConsultations, getRendezVous } from "@/lib/api_carnet";
 import { getMyPatients } from "@/lib/api_patients";
+import { getMyStock } from "@/lib/api_pharmacie";
 import { getMyStructure } from "@/lib/api_structure";
 import DashboardPage from "./page";
 
@@ -20,6 +21,7 @@ const { graphiquesRendus } = vi.hoisted(() => ({ graphiquesRendus: vi.fn() }));
 vi.mock("@/components/DashboardCharts", () => ({ default: graphiquesRendus }));
 vi.mock("@/lib/api_carnet", () => ({ getConsultations: vi.fn(), getRendezVous: vi.fn() }));
 vi.mock("@/lib/api_patients", () => ({ getMyPatients: vi.fn() }));
+vi.mock("@/lib/api_pharmacie", () => ({ getMyStock: vi.fn() }));
 
 // Réponse d'API simulée (le type exact n'importe pas pour ces tests)
 const reponse = (data: unknown) => ({ data, message: "ok", success: true }) as never;
@@ -129,12 +131,56 @@ describe("Aperçu du tableau de bord", () => {
     };
     vi.mocked(getMyStructure).mockResolvedValue(reponse({ membres: [{ role: "PHARMACIEN" }, { role: "PHARMACIEN" }] }));
     render(<DashboardPage />);
-    expect(await within(carteDe("Pharmaciens")).findByText("2")).toBeTruthy();
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "Membres de l'équipe" })).getByText("2")).toBeTruthy());
+    expect(screen.getByText(/^Le stock de la pharmacie n'est pas ouvert à votre profil/)).toBeTruthy();
+    expect(screen.getByText("Aperçu de votre pharmacie")).toBeTruthy();
+    expect(screen.queryByText("Pharmaciens")).toBeNull();
     expect(screen.queryByText("Patients de la structure")).toBeNull();
     expect(screen.queryByText("Médecins")).toBeNull();
     const acces = screen.getByText("Accès rapide").parentElement as HTMLElement;
     expect(within(acces).getByText("Ma pharmacie")).toBeTruthy();
     expect(within(acces).getByText("Équipe de la pharmacie")).toBeTruthy();
+    expect(getMyStock).not.toHaveBeenCalled();
     expect(getMyPatients).not.toHaveBeenCalled();
+  });
+
+  it("montre au pharmacien l'aperçu de son stock et ses accès rapides", async () => {
+    etat.utilisateur = { id: "p1", email: "pharmacien@exemple.com", nom: "Bah", prenom: "Ali", role: "PHARMACIEN", structureId: "s3" };
+    etat.profil = {
+      id: "p1",
+      email: "pharmacien@exemple.com",
+      nom: "Bah",
+      prenom: "Ali",
+      role: "PHARMACIEN",
+      isActive: true,
+      permissions: ["stock:read", "stock:write", "catalogue:write", "chat:structure", "structure:read", "membre:read"],
+      structureType: "PHARMACIE",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    const medicament = (id: string, nom: string) => ({ id, nom, categorie: "Antalgique", ordonnanceRequise: false, formes: [] });
+    vi.mocked(getMyStock).mockResolvedValue(
+      reponse({
+        stocks: [
+          { id: "a", medicamentId: "ma", structureId: "s3", quantite: 12, prixUnitaire: 1000, disponible: true, medicament: medicament("ma", "Doliprane") },
+          { id: "b", medicamentId: "mb", structureId: "s3", quantite: 0, prixUnitaire: null, disponible: false, medicament: medicament("mb", "Amoxicilline") },
+        ],
+        alertes: { stockBas: [], rupture: [] },
+      }),
+    );
+    vi.mocked(getMyStructure).mockResolvedValue(reponse({ membres: [{ role: "PHARMACIEN" }] }));
+    render(<DashboardPage />);
+    await waitFor(() =>
+      expect(within(screen.getByRole("group", { name: "Médicaments disponibles" })).getByText("1")).toBeTruthy(),
+    );
+    expect(within(screen.getByRole("group", { name: "En rupture de stock" })).getByText("1")).toBeTruthy();
+    expect(getMyStock).toHaveBeenCalledTimes(1);
+    expect(getMyStock).toHaveBeenCalledWith("s3");
+    expect(screen.queryByText("Médicaments en stock")).toBeNull();
+    expect(screen.queryByText("Ruptures de stock")).toBeNull();
+    const acces = screen.getByText("Accès rapide").parentElement as HTMLElement;
+    expect(within(acces).getByText("Mon Stock")).toBeTruthy();
+    expect(within(acces).getByText("Importer le stock")).toBeTruthy();
+    expect(within(acces).getByText("Catalogue des médicaments")).toBeTruthy();
   });
 });
