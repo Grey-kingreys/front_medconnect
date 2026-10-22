@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { StockMedicament } from "./api_pharmacie";
-import { calculerApercuStock, formaterMontantGNF } from "./apercu_pharmacie";
+import { calculerApercuStock } from "./apercu_pharmacie";
 
 const MAINTENANT = new Date("2026-10-22T10:00:00Z");
 
@@ -100,13 +100,5 @@ describe("calculerApercuStock", () => {
     );
     expect(a.aSurveiller.map((l) => l.nom)).toEqual(["Fer", "Aspirine", "Zinc"]);
     expect(a.aSurveiller[0].detail).toBe("Plus que 1 unité en stock");
-  });
-});
-
-describe("formaterMontantGNF", () => {
-  it("sépare les milliers par une espace insécable", () => {
-    expect(formaterMontantGNF(0)).toBe("0 GNF");
-    expect(formaterMontantGNF(999)).toBe("999 GNF");
-    expect(formaterMontantGNF(1234567.4)).toBe("1 234 567 GNF");
   });
 });

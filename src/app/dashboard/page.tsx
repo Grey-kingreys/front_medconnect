@@ -294,6 +294,8 @@ export default function DashboardPage() {
           structureId={user.structureId}
           peutVoirStock={estRouteAutorisee("/dashboard/stock", contexte)}
           peutVoirEquipe={estRouteAutorisee("/dashboard/membres", contexte)}
+          peutVendre={estRouteAutorisee("/dashboard/vente", contexte)}
+          peutVoirVentes={estRouteAutorisee("/dashboard/ventes", contexte)}
         />
       )}
 

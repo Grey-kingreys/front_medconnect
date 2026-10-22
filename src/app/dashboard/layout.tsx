@@ -74,7 +74,7 @@ function Sidebar({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden print:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -82,7 +82,7 @@ function Sidebar({
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full z-50 flex flex-col
+          fixed top-0 left-0 h-full z-50 flex flex-col print:hidden
           bg-white dark:bg-[#0a0f1e]/95 backdrop-blur-2xl border-r border-slate-200 dark:border-slate-800/50
           transition-all duration-300 ease-in-out overflow-visible
           ${collapsed ? "w-[72px]" : "w-[280px]"}
@@ -303,7 +303,7 @@ export default function DashboardLayout({
   return (
     <ToastProvider>
     <NotificationsProvider key={user.id}>
-    <div className="min-h-screen bg-slate-50 dark:bg-[#030712] transition-colors duration-300">
+    <div className="min-h-screen bg-slate-50 dark:bg-[#030712] transition-colors duration-300 print:min-h-0 print:bg-white">
       <Sidebar
         collapsed={collapsed}
         setCollapsed={setCollapsed}
@@ -314,12 +314,12 @@ export default function DashboardLayout({
       {/* Main content */}
       <div
         className={`
-          transition-all duration-300
+          transition-all duration-300 print:ml-0
           ${collapsed ? "lg:ml-[72px]" : "lg:ml-[280px]"}
         `}
       >
         {/* Top bar mobile */}
-        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between p-4 bg-white/80 dark:bg-[#030712]/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/50">
+        <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between p-4 print:hidden bg-white/80 dark:bg-[#030712]/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800/50">
           <button
             onClick={() => setMobileOpen(true)}
             className="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
@@ -350,12 +350,14 @@ export default function DashboardLayout({
         </header>
 
         {/* Page content */}
-        <main className="p-4 sm:p-6 lg:p-8">
+        <main className="p-4 sm:p-6 lg:p-8 print:p-0">
           {pageNonDisponible ? <PageNonDisponible /> : children}
         </main>
       </div>
-      <EmergencyButton />
-      <EmergencyListener />
+      <div className="print:hidden">
+        <EmergencyButton />
+        <EmergencyListener />
+      </div>
     </div>
     </NotificationsProvider>
     </ToastProvider>

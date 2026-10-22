@@ -10,7 +10,9 @@ import { nouvelleCleIdempotence } from "@/lib/api_carnet";
 import { getMyStock, type StockMedicament } from "@/lib/api_pharmacie";
 import { codeErreurVente, creerVente, lignesErreurVente, type Vente } from "@/lib/api_ventes";
 import { MSG_TELEPHONE_INVALIDE, AIDE_TELEPHONE } from "@/lib/erreur_telephone";
+import { lireContexteAcces } from "@/lib/acces";
 import { formaterGNF } from "@/lib/format_gnf";
+import { estRouteAutorisee } from "@/lib/navigation_tableau_de_bord";
 import { ConfirmationVente } from "./ConfirmationVente";
 import {
   LIBELLES_RAISON,
@@ -26,7 +28,9 @@ import {
   lirePanierStocke,
   medicamentsSurOrdonnance,
   messageCorrections,
+  panierPlein,
   prixArrondi,
+  quantiteMaxLigne,
   raisonNonVendable,
   rechercherDansStock,
   reconcilierPanier,
@@ -52,7 +56,8 @@ const STATUTS_RESEAU = [0, 502, 503, 504];
 type CibleFocus = "telephone" | "ordonnance";
 
 export default function NouvelleVentePage() {
-  const { user, loading } = useAuth();
+  const { user, loading, profile } = useAuth();
+  const peutVoirVentes = user ? estRouteAutorisee("/dashboard/ventes", lireContexteAcces(user, profile ?? null)) : false;
   const structureId = user?.structureId;
   const userId = user?.id;
   const cleStock = structureId && userId ? cleStockagePanier(structureId, userId) : null;
@@ -227,6 +232,12 @@ export default function NouvelleVentePage() {
       setBandeau(
         `Certains médicaments ont dépassé leur date de péremption et ont été retirés du panier${suiteNoms()}.`,
       );
+    } else if (code === "STOCK_INTROUVABLE") {
+      enregistrerEtAppliquer(retirerLignes(panier, lignesErreur.map((l) => l.stockId)));
+      setEssai((n) => n + 1);
+      setBandeau(
+        `Certains médicaments ne sont plus dans le stock de la pharmacie et ont été retirés du panier${suiteNoms()}. Vérifiez le panier puis validez à nouveau.`,
+      );
     } else if (code === "PRIX_MANQUANT") {
       enregistrerEtAppliquer(retirerLignes(panier, lignesErreur.map((l) => l.stockId)));
       setEssai((n) => n + 1);
@@ -305,6 +316,11 @@ export default function NouvelleVentePage() {
           >
             Vente enregistrée
           </h2>
+          {succes.rejeu === true && (
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              Cette vente était déjà enregistrée : elle n&apos;a pas été comptée deux fois.
+            </p>
+          )}
           <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
             <p>Numéro : {succes.numero}</p>
             <p className="font-bold text-slate-900 dark:text-white">Total : {formaterGNF(succes.total)}</p>
@@ -320,6 +336,14 @@ export default function NouvelleVentePage() {
             >
               Nouvelle vente
             </button>
+            {peutVoirVentes && (
+              <Link
+                href="/dashboard/ventes"
+                className={`px-4 py-3 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors ${FOCUS}`}
+              >
+                Voir les ventes du jour
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -411,8 +435,10 @@ export default function NouvelleVentePage() {
                       <span className="inline-flex self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300">
                         {LIBELLES_RAISON[raison]}
                       </span>
-                    ) : dansPanier >= s.quantite ? (
+                    ) : dansPanier >= quantiteMaxLigne(s) ? (
                       <span className="text-sm text-slate-600 dark:text-slate-400">Tout le stock est dans le panier</span>
+                    ) : dansPanier === 0 && panierPlein(panier) ? (
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Panier complet</span>
                     ) : (
                       <button
                         type="button"
@@ -520,7 +546,7 @@ export default function NouvelleVentePage() {
                         <button
                           type="button"
                           onClick={() => setPanier(changerQuantite(panier, s, 1))}
-                          disabled={ligne.quantite >= s.quantite}
+                          disabled={ligne.quantite >= quantiteMaxLigne(s)}
                           aria-label={`Augmenter la quantité de ${nom}`}
                           className={BOUTON_ICONE}
                         >
@@ -540,6 +566,11 @@ export default function NouvelleVentePage() {
                   );
                 })}
               </ul>
+            )}
+            {panierPlein(panier) && (
+              <p role="status" className="text-sm text-slate-700 dark:text-slate-300">
+                Le panier contient 50 médicaments différents, le maximum pour une vente. Validez cette vente puis commencez-en une nouvelle.
+              </p>
             )}
 
             <div aria-live="polite" className="flex items-center justify-between text-slate-900 dark:text-white">

@@ -38,6 +38,9 @@ export interface CorrectionPanier {
   apres: number;
 }
 export const NOMBRE_MAX_RESULTATS = 50;
+/** Limites imposées par le back : 50 lignes par vente, 10000 unités par ligne. */
+export const MAX_LIGNES_PANIER = 50;
+export const QUANTITE_MAX_LIGNE = 10000;
 export const LONGUEUR_MAX_NOM_CLIENT = 100;
 export const FORMAT_TELEPHONE_CLIENT = /^\+?[0-9 ]{8,20}$/;
 
@@ -59,6 +62,15 @@ export function raisonNonVendable(stock: StockMedicament, maintenant: Date): Rai
   if (stock.quantite <= 0) return "rupture";
   if (stock.prixUnitaire === undefined || stock.prixUnitaire === null || stock.prixUnitaire <= 0) return "sans-prix";
   return null;
+}
+
+/** Quantité maximale vendable sur une ligne : le stock, dans la limite d'une vente. */
+export function quantiteMaxLigne(stock: StockMedicament): number {
+  return Math.max(0, Math.min(stock.quantite, QUANTITE_MAX_LIGNE));
+}
+
+export function panierPlein(panier: PanierVente): boolean {
+  return panier.lignes.length >= MAX_LIGNES_PANIER;
 }
 
 export function prixArrondi(stock: StockMedicament): number {
@@ -97,12 +109,13 @@ export function ajouterAuPanier(
   if (raisonNonVendable(stock, maintenant) !== null) return panier;
   const existante = panier.lignes.find((l) => l.stockId === stock.id);
   if (existante) {
-    if (existante.quantite >= stock.quantite) return panier;
+    if (existante.quantite >= quantiteMaxLigne(stock)) return panier;
     return {
       ...panier,
       lignes: panier.lignes.map((l) => (l.stockId === stock.id ? { ...l, quantite: l.quantite + 1 } : l)),
     };
   }
+  if (panierPlein(panier)) return panier;
   return {
     ...panier,
     cleIdempotence: panier.lignes.length === 0 ? nouvelleCle() : panier.cleIdempotence,
@@ -115,7 +128,7 @@ export function changerQuantite(panier: PanierVente, stock: StockMedicament, del
   return {
     ...panier,
     lignes: panier.lignes.map((l) =>
-      l.stockId === stock.id ? { ...l, quantite: Math.min(Math.max(l.quantite + delta, 1), stock.quantite) } : l,
+      l.stockId === stock.id ? { ...l, quantite: Math.min(Math.max(l.quantite + delta, 1), quantiteMaxLigne(stock)) } : l,
     ),
   };
 }
@@ -142,9 +155,9 @@ export function reconcilierPanier(
       corrections.push({ nom: NOM_PAR_DEFAUT, avant: ligne.quantite, apres: 0 });
     } else if (raisonNonVendable(stock, maintenant) !== null) {
       corrections.push({ nom: stock.medicament.nom, avant: ligne.quantite, apres: 0 });
-    } else if (ligne.quantite > stock.quantite) {
-      corrections.push({ nom: stock.medicament.nom, avant: ligne.quantite, apres: stock.quantite });
-      lignes.push({ ...ligne, quantite: stock.quantite });
+    } else if (ligne.quantite > quantiteMaxLigne(stock)) {
+      corrections.push({ nom: stock.medicament.nom, avant: ligne.quantite, apres: quantiteMaxLigne(stock) });
+      lignes.push({ ...ligne, quantite: quantiteMaxLigne(stock) });
     } else {
       lignes.push(ligne);
     }
@@ -237,6 +250,7 @@ export function lirePanierStocke(cle: string): PanierVente {
       if (typeof quantite !== "number" || !Number.isInteger(quantite) || quantite < 1) continue;
       lignes.push({ stockId, quantite });
     }
+    lignes.splice(MAX_LIGNES_PANIER);
     return {
       cleIdempotence: typeof valeur.cleIdempotence === "string" ? valeur.cleIdempotence : null,
       lignes,

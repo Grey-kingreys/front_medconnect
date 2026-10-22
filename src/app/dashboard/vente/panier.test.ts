@@ -2,7 +2,10 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import type { StockMedicament } from "@/lib/api_pharmacie";
 import {
   PANIER_VIDE,
+  MAX_LIGNES_PANIER,
   NOMBRE_MAX_RESULTATS,
+  panierPlein,
+  quantiteMaxLigne,
   ajouterAuPanier,
   appliquerStockInsuffisant,
   changerQuantite,
@@ -121,6 +124,35 @@ describe("changerQuantite", () => {
     expect(changerQuantite(p, s, 5).lignes[0].quantite).toBe(3);
     expect(changerQuantite(p, s, -5).lignes[0].quantite).toBe(1);
     expect(changerQuantite(p, s, 1).lignes[0].quantite).toBe(3);
+  });
+});
+
+describe("limites d'une vente", () => {
+  const panierDe = (n: number) =>
+    panier({ cleIdempotence: "k", lignes: Array.from({ length: n }, (_, i) => ({ stockId: `s${i}`, quantite: 1 })) });
+
+  it("refuse un 51e médicament en renvoyant le même panier", () => {
+    const plein = panierDe(50);
+    expect(ajouterAuPanier(plein, stock("nouveau"), cle, MAINTENANT)).toBe(plein);
+  });
+
+  it("accepte encore une quantité en plus sur une ligne d'un panier plein", () => {
+    const plein = panierDe(50);
+    const suite = ajouterAuPanier(plein, stock("s0"), cle, MAINTENANT);
+    expect(suite.lignes[0].quantite).toBe(2);
+  });
+
+  it("dit si le panier est plein", () => {
+    expect(panierPlein(panierDe(49))).toBe(false);
+    expect(panierPlein(panierDe(50))).toBe(true);
+  });
+
+  it("borne la quantité d'une ligne à 10000", () => {
+    const gros = stock("g", { quantite: 20000 });
+    expect(quantiteMaxLigne(gros)).toBe(10000);
+    expect(quantiteMaxLigne(stock("p", { quantite: 3 }))).toBe(3);
+    const p = panier({ lignes: [{ stockId: "g", quantite: 9999 }] });
+    expect(changerQuantite(p, gros, 5).lignes[0].quantite).toBe(10000);
   });
 });
 
@@ -283,6 +315,14 @@ describe("stockage du panier", () => {
       throw new Error("indisponible");
     });
     expect(lirePanierStocke(cleP)).toEqual(PANIER_VIDE);
+  });
+
+  it("garde les 50 premières lignes d'un panier de 60", () => {
+    const lignes = Array.from({ length: 60 }, (_, i) => ({ stockId: `s${i}`, quantite: 1 }));
+    localStorage.setItem(cleP, JSON.stringify({ version: 1, lignes }));
+    const relu = lirePanierStocke(cleP);
+    expect(relu.lignes).toHaveLength(MAX_LIGNES_PANIER);
+    expect(relu.lignes[49].stockId).toBe("s49");
   });
 
   it("ignore les éléments invalides", () => {
