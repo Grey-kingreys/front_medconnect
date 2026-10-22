@@ -37,7 +37,10 @@ export type CodePermission =
   | "chat:structure"
   | "user:admin"
   | "platform:structures"
-  | "platform:admin";
+  | "platform:admin"
+  | "vente:read"
+  | "vente:write"
+  | "vente:annuler";
 
 export interface ContexteAcces {
   mode: "permissions" | "repli";

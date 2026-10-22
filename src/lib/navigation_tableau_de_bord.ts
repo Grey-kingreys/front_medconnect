@@ -18,6 +18,7 @@ import {
   MessageSquare,
   Package,
   Pill,
+  ShoppingCart,
   Stethoscope,
   Syringe,
   Users,
@@ -352,6 +353,20 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
       description: { defaut: "Créez et consultez les ordonnances" },
       degrade: "from-accent-500 to-primary-500",
       rolesRepli: ["MEDECIN"],
+    },
+  },
+  {
+    id: "vente",
+    section: "activite",
+    href: "/dashboard/vente",
+    icone: ShoppingCart,
+    libelle: { defaut: "Nouvelle vente" },
+    acces: perm(["vente:write"], { typesStructure: P }),
+    rolesRepli: [],
+    raccourci: {
+      description: { defaut: "Enregistrez la vente de médicaments de votre stock" },
+      degrade: "from-emerald-500 to-teal-500",
+      rolesRepli: [],
     },
   },
   {
