@@ -1,6 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, authFetch } from "./api_auth";
-import { codeErreurVente, creerVente, lignesErreurVente } from "./api_ventes";
+import {
+  annulerVente,
+  codeErreurVente,
+  creerVente,
+  getVente,
+  lignesErreurVente,
+  listerVentes,
+} from "./api_ventes";
 
 vi.mock("./api_auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./api_auth")>()),
@@ -28,9 +35,46 @@ describe("creerVente", () => {
   });
 });
 
+describe("listerVentes", () => {
+  it("n'ajoute pas de paramètres sans option", async () => {
+    mockedAuthFetch.mockResolvedValue({ data: {}, message: "ok", success: true });
+    await listerVentes("ph/1");
+    expect(mockedAuthFetch).toHaveBeenCalledWith("/pharmacie/ph%2F1/ventes");
+  });
+
+  it("ajoute la date puis la page", async () => {
+    mockedAuthFetch.mockResolvedValue({ data: {}, message: "ok", success: true });
+    await listerVentes("ph1", { page: 2, date: "2026-10-22" });
+    expect(mockedAuthFetch).toHaveBeenCalledWith("/pharmacie/ph1/ventes?date=2026-10-22&page=2");
+  });
+});
+
+describe("getVente", () => {
+  it("lit la vente à la route encodée", async () => {
+    mockedAuthFetch.mockResolvedValue({ data: {}, message: "ok", success: true });
+    await getVente("ph/1", "v/1");
+    expect(mockedAuthFetch).toHaveBeenCalledWith("/pharmacie/ph%2F1/ventes/v%2F1");
+  });
+});
+
+describe("annulerVente", () => {
+  it("envoie le motif en POST", async () => {
+    mockedAuthFetch.mockResolvedValue({ data: {}, message: "ok", success: true });
+    await annulerVente("ph1", "v1", "Erreur de quantité");
+    expect(mockedAuthFetch).toHaveBeenCalledWith("/pharmacie/ph1/ventes/v1/annuler", {
+      method: "POST",
+      body: JSON.stringify({ motif: "Erreur de quantité" }),
+    });
+  });
+});
+
 describe("codeErreurVente", () => {
   it("reconnaît un code connu", () => {
     expect(codeErreurVente(new ApiError("x", 409, { code: "STOCK_INSUFFISANT" }))).toBe("STOCK_INSUFFISANT");
+  });
+
+  it.each(["STOCK_INTROUVABLE", "VENTE_DEJA_ANNULEE", "ANNULATION_HORS_DELAI"])("reconnaît %s", (code) => {
+    expect(codeErreurVente(new ApiError("x", 409, { code }))).toBe(code);
   });
 
   it("ignore un code inconnu", () => {
@@ -47,22 +91,19 @@ describe("codeErreurVente", () => {
 describe("lignesErreurVente", () => {
   const ligne = { stockId: "s1", nom: "Paracétamol", disponible: 2 };
 
-  it.each([
-    ["details.details", { details: [ligne] }],
-    ["details.donnees.details", { donnees: { details: [ligne] } }],
-    ["details.donnees.lignes", { donnees: { lignes: [ligne] } }],
-    ["details.lignes", { lignes: [ligne] }],
-  ])("lit les lignes dans %s", (_nom, details) => {
-    expect(lignesErreurVente(new ApiError("x", 409, details))).toEqual([ligne]);
+  it("lit les lignes dans details à la racine du corps", () => {
+    expect(lignesErreurVente(new ApiError("x", 409, { details: [ligne] }))).toEqual([ligne]);
   });
 
-  it("prend le premier emplacement dans l'ordre de priorité", () => {
-    const err = new ApiError("x", 409, {
-      lignes: [{ stockId: "s4" }],
-      donnees: { lignes: [{ stockId: "s3" }], details: [{ stockId: "s2" }] },
-      details: [{ stockId: "s1" }],
-    });
-    expect(lignesErreurVente(err)).toEqual([{ stockId: "s1" }]);
+  it("recopie la quantité demandée", () => {
+    const err = new ApiError("x", 409, { details: [{ stockId: "s1", disponible: 2, demande: 5 }] });
+    expect(lignesErreurVente(err)).toEqual([{ stockId: "s1", disponible: 2, demande: 5 }]);
+  });
+
+  it("ignore les anciens emplacements", () => {
+    expect(lignesErreurVente(new ApiError("x", 409, { donnees: { details: [ligne] } }))).toEqual([]);
+    expect(lignesErreurVente(new ApiError("x", 409, { donnees: { lignes: [ligne] } }))).toEqual([]);
+    expect(lignesErreurVente(new ApiError("x", 409, { lignes: [ligne] }))).toEqual([]);
   });
 
   it("ignore les éléments invalides et les champs mal typés", () => {

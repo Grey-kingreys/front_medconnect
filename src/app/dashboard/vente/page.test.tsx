@@ -52,9 +52,9 @@ const reponseStock = (stocks: StockMedicament[]) => ({
 
 const VENTE: Vente = {
   id: "v1",
-  structureId: "p1",
   numero: "V-2026-0001",
-  vendeurId: "u1",
+  vendeur: { id: "u1", nom: "Mariama Diallo" },
+  pharmacie: { id: "p1", nom: "Pharmacie du Centre", adresse: null, ville: "Conakry", telephone: null, logoUrl: null },
   clientNom: null,
   clientTelephone: null,
   ordonnanceVerifiee: false,
@@ -67,7 +67,7 @@ const VENTE: Vente = {
   lignes: [],
 };
 
-const TERMES_INTERDITS = /\b(ID|UUID|null|undefined|NaN|serveur|session|idempotence|localStorage|STOCK_INSUFFISANT|VALIDEE)\b/;
+const TERMES_INTERDITS = /\b(ID|UUID|null|undefined|NaN|serveur|session|idempotence|localStorage|STOCK_INSUFFISANT|STOCK_INTROUVABLE|VALIDEE)\b/;
 
 const verifierTermes = () => {
   const contenu = document.body.textContent ?? "";
@@ -220,6 +220,38 @@ describe("Nouvelle vente", () => {
     await waitFor(() => expect(getMyStock).toHaveBeenCalledTimes(2));
     const ligne = screen.getByRole("button", { name: "Retirer Paracétamol du panier" }).closest("li") as HTMLElement;
     expect(ligne.textContent).toContain(`${formaterGNF(1500)} × 1`);
+    verifierTermes();
+  });
+
+  it("retire du panier un médicament introuvable dans le stock", async () => {
+    creerVente.mockRejectedValue(
+      new ApiError("Introuvable.", 404, { code: "STOCK_INTROUVABLE", details: [{ stockId: "s1" }] }),
+    );
+    render(<NouvelleVentePage />);
+    await screen.findByText("Paracétamol");
+    ajouter("Paracétamol");
+
+    await confirmerLaVente();
+
+    const alerte = await screen.findByRole("alert");
+    expect(alerte).toHaveTextContent("ne sont plus dans le stock de la pharmacie");
+    expect(alerte).toHaveTextContent("Paracétamol");
+    await waitFor(() => expect(getMyStock).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("button", { name: "Retirer Paracétamol du panier" })).toBeNull();
+    verifierTermes();
+  });
+
+  it("signale une vente déjà enregistrée au rejeu", async () => {
+    creerVente.mockResolvedValue({ data: { ...VENTE, rejeu: true }, message: "ok", success: true });
+    render(<NouvelleVentePage />);
+    await screen.findByText("Paracétamol");
+    ajouter("Paracétamol");
+
+    await confirmerLaVente();
+
+    expect(
+      await screen.findByText("Cette vente était déjà enregistrée : elle n'a pas été comptée deux fois."),
+    ).toBeInTheDocument();
     verifierTermes();
   });
 

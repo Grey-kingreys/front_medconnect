@@ -144,6 +144,28 @@ describe("Aperçu du tableau de bord", () => {
     expect(getMyPatients).not.toHaveBeenCalled();
   });
 
+  it("montre les liens de vente au pharmacien qui a les droits de vente", async () => {
+    etat.utilisateur = { id: "p2", email: "vendeur@exemple.com", nom: "Bah", prenom: "Ali", role: "PHARMACIEN", structureId: "s3" };
+    etat.profil = {
+      id: "p2",
+      email: "vendeur@exemple.com",
+      nom: "Bah",
+      prenom: "Ali",
+      role: "PHARMACIEN",
+      isActive: true,
+      permissions: ["stock:read", "stock:write", "vente:read", "vente:write", "structure:read", "membre:read"],
+      structureType: "PHARMACIE",
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    };
+    vi.mocked(getMyStock).mockResolvedValue(reponse({ stocks: [], alertes: { stockBas: [], rupture: [] } }));
+    vi.mocked(getMyStructure).mockResolvedValue(reponse({ membres: [] }));
+    render(<DashboardPage />);
+    const apercu = (await screen.findByText("Aperçu de votre pharmacie")).closest("section") as HTMLElement;
+    expect(within(apercu).getByRole("link", { name: "Nouvelle vente" })).toHaveAttribute("href", "/dashboard/vente");
+    expect(within(apercu).getByRole("link", { name: "Ventes du jour" })).toHaveAttribute("href", "/dashboard/ventes");
+  });
+
   it("montre au pharmacien l'aperçu de son stock et ses accès rapides", async () => {
     etat.utilisateur = { id: "p1", email: "pharmacien@exemple.com", nom: "Bah", prenom: "Ali", role: "PHARMACIEN", structureId: "s3" };
     etat.profil = {

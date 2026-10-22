@@ -167,6 +167,21 @@ describe("Aperçu de la pharmacie", () => {
     expect(await attendre("Membres de l'équipe", "2")).toBeTruthy();
   });
 
+  it("affiche les liens de vente quand le profil y a droit, même sans accès au stock", async () => {
+    vi.mocked(getMyStock).mockResolvedValue(stockDe(reference()));
+    afficher({ peutVendre: true, peutVoirVentes: true, peutVoirStock: false });
+    expect(screen.getByRole("link", { name: "Nouvelle vente" })).toHaveAttribute("href", "/dashboard/vente");
+    expect(screen.getByRole("link", { name: "Ventes du jour" })).toHaveAttribute("href", "/dashboard/ventes");
+  });
+
+  it("n'affiche aucun lien de vente par défaut", async () => {
+    vi.mocked(getMyStock).mockResolvedValue(stockDe(reference()));
+    afficher();
+    await attendre("Médicaments disponibles", "4");
+    expect(screen.queryByRole("link", { name: "Nouvelle vente" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Ventes du jour" })).toBeNull();
+  });
+
   it("n'emploie aucun terme technique", async () => {
     vi.mocked(getMyStock).mockResolvedValue(stockDe(reference()));
     const pret = afficher();

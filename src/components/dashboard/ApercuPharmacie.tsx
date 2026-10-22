@@ -2,13 +2,24 @@
 
 import { useEffect, useId, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
-import { Package, XCircle, AlertTriangle, CalendarClock, Ban, Wallet, Users, ArrowRight } from "lucide-react";
+import {
+  Package,
+  XCircle,
+  AlertTriangle,
+  CalendarClock,
+  Ban,
+  Wallet,
+  Users,
+  ArrowRight,
+  ShoppingCart,
+  Receipt,
+} from "lucide-react";
 import { getMyStock } from "@/lib/api_pharmacie";
 import { getMyStructure } from "@/lib/api_structure";
 import { ApiError } from "@/lib/api_auth";
+import { formaterGNF } from "@/lib/format_gnf";
 import {
   calculerApercuStock,
-  formaterMontantGNF,
   type ApercuStock,
   type RaisonSurveillance,
 } from "@/lib/apercu_pharmacie";
@@ -19,6 +30,10 @@ export interface ApercuPharmacieProps {
   peutVoirStock: boolean;
   /** Le registre ouvre la page Équipe à ce profil (D09). */
   peutVoirEquipe: boolean;
+  /** Le registre ouvre Nouvelle vente à ce profil. */
+  peutVendre?: boolean;
+  /** Le registre ouvre Ventes du jour à ce profil. */
+  peutVoirVentes?: boolean;
   /** Date de référence, pour les tests ; par défaut l'instant du calcul. */
   maintenant?: Date;
 }
@@ -101,7 +116,14 @@ const LIBELLES_STOCK = {
   valeur: "Valeur indicative du stock",
 } as const;
 
-export default function ApercuPharmacie({ structureId, peutVoirStock, peutVoirEquipe, maintenant }: ApercuPharmacieProps) {
+export default function ApercuPharmacie({
+  structureId,
+  peutVoirStock,
+  peutVoirEquipe,
+  peutVendre = false,
+  peutVoirVentes = false,
+  maintenant,
+}: ApercuPharmacieProps) {
   const titreId = useId();
   const [etatStock, setEtatStock] = useState<EtatStock>({ statut: "chargement" });
   const [essaiStock, setEssaiStock] = useState(0);
@@ -276,7 +298,7 @@ export default function ApercuPharmacie({ structureId, peutVoirStock, peutVoirEq
                 : "Quantité × prix, hors médicaments périmés."
             }
           >
-            <Valeur>{formaterMontantGNF(a.valeur)}</Valeur>
+            <Valeur>{formaterGNF(a.valeur)}</Valeur>
           </Carte>
           {carteEquipe}
         </>
@@ -370,6 +392,28 @@ export default function ApercuPharmacie({ structureId, peutVoirStock, peutVoirEq
   return (
     <section aria-labelledby={titreId} aria-busy={occupe} className="space-y-4">
       {entete}
+      {(peutVendre || peutVoirVentes) && (
+        <div className="flex flex-wrap gap-3">
+          {peutVendre && (
+            <Link
+              href="/dashboard/vente"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-primary-600 text-white hover:bg-primary-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              <ShoppingCart className="w-4 h-4" aria-hidden="true" />
+              Nouvelle vente
+            </Link>
+          )}
+          {peutVoirVentes && (
+            <Link
+              href="/dashboard/ventes"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:border-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+            >
+              <Receipt className="w-4 h-4" aria-hidden="true" />
+              Ventes du jour
+            </Link>
+          )}
+        </div>
+      )}
       {cartes && <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">{cartes}</div>}
       {suite}
     </section>

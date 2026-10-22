@@ -60,12 +60,6 @@ function prixValide(prix: unknown): prix is number {
   return typeof prix === "number" && Number.isFinite(prix) && prix > 0;
 }
 
-export function formaterMontantGNF(montant: number): string {
-  const entier = Math.round(montant);
-  const chiffres = String(Math.abs(entier)).replace(/\B(?=(\d{3})+(?!\d))/g, " ");
-  return `${entier < 0 ? "-" : ""}${chiffres} GNF`;
-}
-
 interface LigneListable extends LigneASurveiller {
   /** Clés de tri internes : jours restants et quantité. */
   jours: number;

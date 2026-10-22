@@ -19,6 +19,7 @@ import {
   MessageSquare,
   Package,
   Pill,
+  Receipt,
   ShoppingCart,
   Stethoscope,
   Syringe,
@@ -367,6 +368,20 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
     raccourci: {
       description: { defaut: "Enregistrez la vente de médicaments de votre stock" },
       degrade: "from-emerald-500 to-teal-500",
+      rolesRepli: [],
+    },
+  },
+  {
+    id: "ventes",
+    section: "activite",
+    href: "/dashboard/ventes",
+    icone: Receipt,
+    libelle: { defaut: "Ventes du jour" },
+    acces: perm(["vente:read"], { typesStructure: P }),
+    rolesRepli: [],
+    raccourci: {
+      description: { defaut: "Retrouvez les ventes, réimprimez un reçu" },
+      degrade: "from-primary-500 to-cyan-500",
       rolesRepli: [],
     },
   },

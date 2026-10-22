@@ -84,6 +84,27 @@ describe("raccourcis de la pharmacie", () => {
     expect(liens).not.toContain(CATALOGUE);
   });
 
+  it("place Ventes du jour juste après Nouvelle vente, dans le menu et les raccourcis", () => {
+    const ctx = contexte("PHARMACIEN", "PHARMACIE", ["vente:read", "vente:write"]);
+    const section = sectionsMenu(ctx).find((s) => s.liens.some((l) => l.href === "/dashboard/vente"));
+    const liens = section?.liens.map((l) => l.libelle) ?? [];
+    expect(liens[liens.indexOf("Nouvelle vente") + 1]).toBe("Ventes du jour");
+    expect(hrefs(sectionsMenu(ctx))).toContain("/dashboard/ventes");
+    const r = raccourcis(ctx);
+    expect(r.find((x) => x.href === "/dashboard/ventes")?.libelle).toBe("Ventes du jour");
+    expect(estRouteAutorisee("/dashboard/ventes", ctx)).toBe(true);
+  });
+
+  it("n'ouvre pas Ventes du jour en hôpital, sans droit de lecture ni en repli", () => {
+    const hopital = contexte("PHARMACIEN", "HOPITAL", ["vente:read", "vente:write"]);
+    expect(hrefs(sectionsMenu(hopital))).not.toContain("/dashboard/ventes");
+    expect(estRouteAutorisee("/dashboard/ventes", hopital)).toBe(false);
+    expect(estRouteAutorisee("/dashboard/ventes", contexte("PHARMACIEN", "PHARMACIE", ["vente:write"]))).toBe(false);
+    const repli = enRepli("PHARMACIEN");
+    expect(hrefs(sectionsMenu(repli))).not.toContain("/dashboard/ventes");
+    expect(raccourcis(repli).map((x) => x.href)).not.toContain("/dashboard/ventes");
+  });
+
   it("ne crée aucune entrée de menu avec une adresse paramétrée", () => {
     const menu = hrefs(sectionsMenu(contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN)));
     expect(menu.filter((h) => h.includes("?"))).toEqual([]);
