@@ -462,7 +462,7 @@ export default function NouvelleVentePage() {
           )}
         </section>
 
-        <div className="lg:col-span-2 lg:sticky lg:top-6 self-start space-y-4">
+        <div className="lg:col-span-2 lg:sticky lg:top-6 self-start space-y-4 lg:max-h-[calc(100dvh-3rem)] lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
           {info && (
             <div
               role="status"
