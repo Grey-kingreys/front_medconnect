@@ -167,3 +167,35 @@ describe("repli sur les rôles (ancien serveur)", () => {
     }
   });
 });
+
+describe("nouvelle vente", () => {
+  const droits = ["stock:read", "stock:write", "vente:write"];
+
+  it("le pharmacien avec le droit de vente voit l'entrée avant les ordonnances, avec son raccourci", () => {
+    const ctx = contexte("PHARMACIEN", "PHARMACIE", droits);
+    const liens = hrefs(sectionsMenu(ctx));
+    expect(liens).toContain("/dashboard/vente");
+    expect(liens.indexOf("/dashboard/vente")).toBeLessThan(liens.indexOf("/dashboard/ordonnances"));
+    expect(libelles(sectionsMenu(ctx))).toContain("Nouvelle vente");
+    expect(raccourcis(ctx).map((r) => r.href)).toContain("/dashboard/vente");
+    expect(estRouteAutorisee("/dashboard/vente", ctx)).toBe(true);
+  });
+
+  it("les mêmes droits dans un hôpital n'ouvrent pas la page", () => {
+    const ctx = contexte("PHARMACIEN", "HOPITAL", droits);
+    expect(hrefs(sectionsMenu(ctx))).not.toContain("/dashboard/vente");
+    expect(estRouteAutorisee("/dashboard/vente", ctx)).toBe(false);
+  });
+
+  it("sans le droit de vente, la page est refusée", () => {
+    const ctx = contexte("PHARMACIEN", "PHARMACIE", ["stock:read", "stock:write"]);
+    expect(hrefs(sectionsMenu(ctx))).not.toContain("/dashboard/vente");
+    expect(estRouteAutorisee("/dashboard/vente", ctx)).toBe(false);
+  });
+
+  it("sur un ancien serveur, le pharmacien n'a pas l'entrée", () => {
+    const ctx = enRepli("PHARMACIEN");
+    expect(hrefs(sectionsMenu(ctx))).not.toContain("/dashboard/vente");
+    expect(raccourcis(ctx).map((r) => r.href)).not.toContain("/dashboard/vente");
+  });
+});
