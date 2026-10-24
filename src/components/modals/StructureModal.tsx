@@ -12,6 +12,7 @@ import { ApiError } from "@/lib/api_auth";
 import { MapModal } from "./MapModal";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
+import { lireHoraires } from "@/lib/horaires_structure";
 import { Navigation } from "lucide-react";
 
 type StructureModalMode = "create" | "edit" | "view";
@@ -42,26 +43,7 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
   });
 
   // Parse JSON horaires or fallback to default
-  const getInitialSchedule = () => {
-    try {
-      const parsed = JSON.parse(structure?.horaires || "{}");
-      return {
-        Lundi: parsed.Lundi || "08:00-18:00",
-        Mardi: parsed.Mardi || "08:00-18:00",
-        Mercredi: parsed.Mercredi || "08:00-18:00",
-        Jeudi: parsed.Jeudi || "08:00-18:00",
-        Vendredi: parsed.Vendredi || "08:00-18:00",
-        Samedi: parsed.Samedi || "08:00-12:00",
-        Dimanche: parsed.Dimanche || "Fermé",
-      };
-    } catch {
-      return {
-        Lundi: "08:00-18:00", Mardi: "08:00-18:00", Mercredi: "08:00-18:00",
-        Jeudi: "08:00-18:00", Vendredi: "08:00-18:00", Samedi: "08:00-12:00",
-        Dimanche: "Fermé",
-      };
-    }
-  };
+  const getInitialSchedule = () => lireHoraires(structure?.horaires);
 
   const [schedule, setSchedule] = useState<Record<string, string>>(getInitialSchedule());
   const [showMap, setShowMap] = useState(false);

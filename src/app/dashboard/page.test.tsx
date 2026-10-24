@@ -5,6 +5,7 @@ import { getConsultations, getRendezVous } from "@/lib/api_carnet";
 import { getMyPatients } from "@/lib/api_patients";
 import { getMyStock } from "@/lib/api_pharmacie";
 import { getMyStructure } from "@/lib/api_structure";
+import { listerVentes } from "@/lib/api_ventes";
 import DashboardPage from "./page";
 
 const medecin = { id: "m1", email: "medecin@exemple.com", nom: "Camara", prenom: "Awa", role: "MEDECIN", structureId: "s1" };
@@ -22,9 +23,13 @@ vi.mock("@/components/DashboardCharts", () => ({ default: graphiquesRendus }));
 vi.mock("@/lib/api_carnet", () => ({ getConsultations: vi.fn(), getRendezVous: vi.fn() }));
 vi.mock("@/lib/api_patients", () => ({ getMyPatients: vi.fn() }));
 vi.mock("@/lib/api_pharmacie", () => ({ getMyStock: vi.fn() }));
+vi.mock("@/lib/api_ventes", () => ({ listerVentes: vi.fn() }));
 
 // Réponse d'API simulée (le type exact n'importe pas pour ces tests)
 const reponse = (data: unknown) => ({ data, message: "ok", success: true }) as never;
+
+const journeeVide = () =>
+  reponse({ date: "2026-10-22", totalJour: 0, nombre: 0, page: 1, parPage: 50, totalPages: 1, ventes: [] });
 
 const MESSAGE_ERREUR = "Certains chiffres n'ont pas pu être chargés. Vérifiez votre connexion puis réessayez.";
 
@@ -129,19 +134,23 @@ describe("Aperçu du tableau de bord", () => {
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
     };
-    vi.mocked(getMyStructure).mockResolvedValue(reponse({ membres: [{ role: "PHARMACIEN" }, { role: "PHARMACIEN" }] }));
+    vi.mocked(getMyStructure).mockResolvedValue(
+      reponse({ membres: [{ role: "PHARMACIEN", isActive: true }, { role: "PHARMACIEN", isActive: true }] }),
+    );
     render(<DashboardPage />);
-    await waitFor(() => expect(within(screen.getByRole("group", { name: "Membres de l'équipe" })).getByText("2")).toBeTruthy());
+    await waitFor(() => expect(within(screen.getByRole("group", { name: "Membres actifs" })).getByText("2")).toBeTruthy());
     expect(screen.getByText(/^Le stock de la pharmacie n'est pas ouvert à votre profil/)).toBeTruthy();
-    expect(screen.getByText("Aperçu de votre pharmacie")).toBeTruthy();
+    expect(screen.getByText("Votre stock")).toBeTruthy();
     expect(screen.queryByText("Pharmaciens")).toBeNull();
     expect(screen.queryByText("Patients de la structure")).toBeNull();
     expect(screen.queryByText("Médecins")).toBeNull();
-    const acces = screen.getByText("Accès rapide").parentElement as HTMLElement;
-    expect(within(acces).getByText("Ma pharmacie")).toBeTruthy();
-    expect(within(acces).getByText("Équipe de la pharmacie")).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Modifier ma pharmacie" })).toBeTruthy();
+    expect(screen.getByRole("link", { name: "Équipe" })).toBeTruthy();
+    expect(screen.queryByText("Accès rapide")).toBeNull();
+    expect(screen.queryByText("Autres accès")).toBeNull();
     expect(getMyStock).not.toHaveBeenCalled();
     expect(getMyPatients).not.toHaveBeenCalled();
+    expect(listerVentes).not.toHaveBeenCalled();
   });
 
   it("montre les liens de vente au pharmacien qui a les droits de vente", async () => {
@@ -160,10 +169,11 @@ describe("Aperçu du tableau de bord", () => {
     };
     vi.mocked(getMyStock).mockResolvedValue(reponse({ stocks: [], alertes: { stockBas: [], rupture: [] } }));
     vi.mocked(getMyStructure).mockResolvedValue(reponse({ membres: [] }));
+    vi.mocked(listerVentes).mockResolvedValue(journeeVide());
     render(<DashboardPage />);
-    const apercu = (await screen.findByText("Aperçu de votre pharmacie")).closest("section") as HTMLElement;
-    expect(within(apercu).getByRole("link", { name: "Nouvelle vente" })).toHaveAttribute("href", "/dashboard/vente");
-    expect(within(apercu).getByRole("link", { name: "Ventes du jour" })).toHaveAttribute("href", "/dashboard/ventes");
+    const comptoir = (await screen.findByText("Au comptoir")).closest("section") as HTMLElement;
+    expect(within(comptoir).getByRole("link", { name: "Nouvelle vente" })).toHaveAttribute("href", "/dashboard/vente");
+    expect(within(comptoir).getByRole("link", { name: /Voir toutes les ventes du jour/ })).toHaveAttribute("href", "/dashboard/ventes");
   });
 
   it("montre au pharmacien l'aperçu de son stock et ses accès rapides", async () => {
@@ -200,9 +210,70 @@ describe("Aperçu du tableau de bord", () => {
     expect(getMyStock).toHaveBeenCalledWith("s3");
     expect(screen.queryByText("Médicaments en stock")).toBeNull();
     expect(screen.queryByText("Ruptures de stock")).toBeNull();
-    const acces = screen.getByText("Accès rapide").parentElement as HTMLElement;
+    const acces = screen.getByText("Autres accès").parentElement as HTMLElement;
     expect(within(acces).getByText("Mon Stock")).toBeTruthy();
     expect(within(acces).getByText("Importer le stock")).toBeTruthy();
     expect(within(acces).getByText("Catalogue des médicaments")).toBeTruthy();
+  });
+
+  describe("pharmacie de démonstration", () => {
+    const profilDemo = (role: string, id: string, permissions: string[]) => {
+      etat.utilisateur = { id, email: `${id}@demo.exemple.com`, nom: "Demo", prenom: "Compte", role, structureId: "s9" };
+      etat.profil = {
+        id,
+        email: `${id}@demo.exemple.com`,
+        nom: "Demo",
+        prenom: "Compte",
+        role,
+        isActive: true,
+        permissions,
+        structureType: "PHARMACIE",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      };
+      vi.mocked(getMyStock).mockResolvedValue(reponse({ stocks: [], alertes: { stockBas: [], rupture: [] } }));
+      vi.mocked(getMyStructure).mockResolvedValue(reponse({ membres: [{ isActive: true }] }));
+    };
+    const ADMIN_DEMO = [
+      "membre:manage", "membre:read", "role:manage", "stock:read", "stock:write", "structure:read", "structure:write",
+      "vente:annuler", "vente:read", "vente:write",
+    ];
+    const PHARMACIEN_DEMO = [
+      "catalogue:write", "chat:structure", "membre:read", "stock:read", "stock:write", "structure:read", "vente:read", "vente:write",
+    ];
+
+    it("donne la vue de pilotage à l'administrateur", async () => {
+      profilDemo("STRUCTURE_ADMIN", "a9", ADMIN_DEMO);
+      vi.mocked(listerVentes).mockResolvedValue(journeeVide());
+      render(<DashboardPage />);
+      expect(await screen.findByText("Pilotage de la pharmacie")).toBeTruthy();
+      expect(screen.queryByText("Au comptoir")).toBeNull();
+      expect(screen.getByText("Suivez l'activité de votre pharmacie : ventes du jour, équipe et stock.")).toBeTruthy();
+      const acces = screen.getByText("Autres accès").parentElement as HTMLElement;
+      expect(within(acces).queryByText("Ma pharmacie")).toBeNull();
+      expect(within(acces).queryByText("Équipe de la pharmacie")).toBeNull();
+      expect(within(acces).queryByText("Ventes du jour")).toBeNull();
+      expect(within(acces).getByText("Nouvelle vente")).toBeTruthy();
+    });
+
+    it("donne la vue du comptoir au pharmacien", async () => {
+      profilDemo("PHARMACIEN", "p9", PHARMACIEN_DEMO);
+      vi.mocked(listerVentes).mockResolvedValue(journeeVide());
+      render(<DashboardPage />);
+      expect(await screen.findByText("Au comptoir")).toBeTruthy();
+      expect(screen.queryByText("Pilotage de la pharmacie")).toBeNull();
+      expect(screen.getByText("Enregistrez vos ventes et gardez un œil sur les ruptures de stock.")).toBeTruthy();
+      const acces = screen.getByText("Autres accès").parentElement as HTMLElement;
+      expect(within(acces).getByText("Ma pharmacie")).toBeTruthy();
+      expect(within(acces).getByText("Messagerie")).toBeTruthy();
+    });
+
+    it("garde le stock affiché quand les ventes ne chargent pas", async () => {
+      profilDemo("STRUCTURE_ADMIN", "a9", ADMIN_DEMO);
+      vi.mocked(listerVentes).mockRejectedValue(new Error("Hors connexion"));
+      render(<DashboardPage />);
+      expect((await screen.findByRole("alert")).textContent).toContain("Les ventes du jour n'ont pas pu être chargées.");
+      expect(screen.getByText("Votre stock")).toBeTruthy();
+    });
   });
 });

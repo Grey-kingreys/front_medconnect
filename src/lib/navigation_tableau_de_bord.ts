@@ -459,7 +459,7 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
     raccourci: {
       description: {
         defaut: "Paramètres et informations de votre structure",
-        PHARMACIE: "Gérez les informations de votre pharmacie",
+        PHARMACIE: "Informations, horaires et garde de votre pharmacie",
       },
       degrade: "from-primary-500 to-cyan-500",
       rolesRepli: ["PHARMACIEN", "STRUCTURE_ADMIN"],
@@ -595,6 +595,14 @@ function texte(t: TexteSelonType, ctx: ContexteAcces): string {
 }
 
 // ─── Fonctions exportées ────────────────────────────────────────
+
+export type VuePharmacie = "pilotage" | "comptoir";
+
+/** Vue d'accueil d'une pharmacie, décidée sur les permissions (D16). null = accueil habituel. */
+export function vuePharmacie(ctx: ContexteAcces): VuePharmacie | null {
+  if (ctx.mode === "repli" || ctx.typeStructure !== "PHARMACIE") return null;
+  return ctx.permissions.has("structure:write") || ctx.permissions.has("vente:annuler") ? "pilotage" : "comptoir";
+}
 
 export function sectionsMenu(ctx: ContexteAcces): SectionMenu[] {
   const dejaVus = new Set<string>();
