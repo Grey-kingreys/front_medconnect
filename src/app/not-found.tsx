@@ -134,7 +134,7 @@ function ECGMonitor() {
                     : "text-emergency-500"
                   }`}
               >
-                {phase === "beating" ? "72" : "—"}
+                {phase === "beating" ? "72" : "-"}
               </p>
             </div>
             <div className="text-center">
@@ -147,7 +147,7 @@ function ECGMonitor() {
                     : "text-emergency-500"
                   }`}
               >
-                {phase === "beating" ? "98%" : "—"}
+                {phase === "beating" ? "98%" : "-"}
               </p>
             </div>
           </div>
@@ -256,7 +256,7 @@ export default function NotFound() {
         {/* ECG Monitor */}
         <ECGMonitor />
 
-        {/* 404 Number — appears after flatline */}
+        {/* 404 Number : appears after flatline */}
         <div
           className={`text-center mt-12 transition-all duration-1000 ${showContent ? "opacity-100" : "opacity-0"
             }`}
@@ -302,7 +302,7 @@ export default function NotFound() {
           </div>
         </div>
 
-        {/* Content — rises after 404 */}
+        {/* Content : rises after 404 */}
         <div
           className={`text-center mt-6 space-y-6 transition-all duration-700 ${showContent ? "opacity-100" : "opacity-0"
             }`}

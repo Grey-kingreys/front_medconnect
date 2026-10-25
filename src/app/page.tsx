@@ -9,8 +9,8 @@ import CTASection from "@/components/CTASection";
 import Footer from "@/components/Footer";
 
 // Feature flags pour la landing page
-const SHOW_STATS = false; // Stats actuellement fictives — à basculer vers vrai compteur backend
-const SHOW_TESTIMONIALS = false; // Témoignages fictifs hors-Guinée — à remplacer par vrais utilisateurs
+const SHOW_STATS = false; // Stats actuellement fictives : à basculer vers vrai compteur backend
+const SHOW_TESTIMONIALS = false; // Témoignages fictifs hors-Guinée : à remplacer par vrais utilisateurs
 
 export default function Home() {
   return (

@@ -1,4 +1,4 @@
-// Composant StructuredData — Données structurées JSON-LD
+// Composant StructuredData : Données structurées JSON-LD
 // À importer dans le layout.tsx ou dans la page d'accueil
 
 export default function StructuredData() {
@@ -61,7 +61,7 @@ export default function StructuredData() {
     "@type": "MedicalWebPage",
     "@id": `${baseUrl}/#webpage`,
     url: baseUrl,
-    name: "MedConnecte — Plateforme de Santé Numérique en Guinée",
+    name: "MedConnecte : Plateforme de Santé Numérique en Guinée",
     description:
       "Carnet de santé numérique, diagnostic IA, pharmacie en ligne, urgences 24/7. Géolocalisez hôpitaux et cliniques à Conakry, Labé, Kindia.",
     inLanguage: "fr-GN",

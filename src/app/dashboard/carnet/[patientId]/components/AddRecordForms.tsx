@@ -355,7 +355,7 @@ export default function AddRecordForms({ patientId, onSuccess }: AddRecordFormsP
           />
         </div>
         <div className="space-y-2">
-          <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Document joint (Optionnel — PDF, image, DICOM)</label>
+          <label className="text-xs font-black text-slate-500 uppercase tracking-widest ml-1">Document joint (Optionnel : PDF, image, DICOM)</label>
           {documentFileId ? (
             <div className="flex items-center justify-between p-3 bg-rose-500/10 border border-rose-500/20 rounded-2xl text-sm">
               <span className="flex items-center gap-2 text-rose-600 font-bold"><CheckCircle2 className="w-4 h-4" /> {documentName || "Document joint"}</span>

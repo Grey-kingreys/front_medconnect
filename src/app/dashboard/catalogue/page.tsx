@@ -200,7 +200,7 @@ export default function CataloguePage() {
                         <p className="font-bold text-slate-900 dark:text-white">{m.nom}</p>
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-sm text-slate-500 italic">{m.nomGenerique || "—"}</td>
+                    <td className="px-8 py-5 text-sm text-slate-500 italic">{m.nomGenerique || "Non renseigné"}</td>
                     <td className="px-8 py-5">
                       <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest border border-slate-200 dark:border-slate-700">
                         {m.categorie}

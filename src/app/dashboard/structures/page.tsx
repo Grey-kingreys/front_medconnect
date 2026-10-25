@@ -363,7 +363,7 @@ export default function StructuresPage() {
                               </span>
                             </div>
                           ) : (
-                            <span className="text-xs text-slate-700">—</span>
+                            <span className="text-xs text-slate-700">-</span>
                           )}
                         </td>
 

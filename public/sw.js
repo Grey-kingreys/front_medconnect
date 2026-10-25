@@ -1,5 +1,5 @@
 /*
- * Service worker MINIMAL — installabilité uniquement, aucun cache.
+ * Service worker MINIMAL : installabilité uniquement, aucun cache.
  *
  * Chrome/Edge n'émettent `beforeinstallprompt` (donc n'autorisent l'ajout à
  * l'écran d'accueil) que si la page contrôle un service worker déclarant un

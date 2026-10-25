@@ -68,7 +68,7 @@ const footerLinks = {
   ],
 };
 
-// TODO(#24) — en attente du porteur : comptes officiels MedConnecte (le lien
+// TODO(#24) : en attente du porteur : comptes officiels MedConnecte (le lien
 // Facebook pointait vers un profil personnel) et adresse contact@medconnecte.com.
 // Tant qu'ils n'existent pas, aucune icône n'est affichée plutôt que des liens morts.
 const socialLinks: { icon: typeof FacebookIcon; href: string; label: string }[] = [];

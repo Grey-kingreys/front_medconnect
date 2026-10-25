@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, react/no-unescaped-entities */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
@@ -196,7 +198,7 @@ export default function VaccinationsPage() {
                   </div>
                   <div className="p-4 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                     <p className="text-[10px] font-bold text-slate-500 uppercase mb-1">Lot</p>
-                    <p className="text-sm font-bold text-slate-900 dark:text-white font-mono uppercase">{selectedVaccination.lotNumero || "—"}</p>
+                    <p className="text-sm font-bold text-slate-900 dark:text-white font-mono uppercase">{selectedVaccination.lotNumero || "Non renseigné"}</p>
                   </div>
                 </div>
 

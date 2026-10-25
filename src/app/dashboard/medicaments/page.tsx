@@ -233,7 +233,7 @@ function MedicamentsContent() {
                     </div>
                     <div className="text-right">
                       <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Distance</p>
-                      <p className="text-lg font-black text-slate-900 dark:text-white">{selectedStock.distanceKm?.toFixed(1) || "—"} km</p>
+                      <p className="text-lg font-black text-slate-900 dark:text-white">{selectedStock.distanceKm?.toFixed(1) || "-"} km</p>
                     </div>
                   </div>
 
@@ -299,7 +299,7 @@ function MedicamentsContent() {
                       </div>
                       <div className="text-right">
                          <span className="text-[10px] font-black text-primary-500 bg-primary-500/10 px-2 py-1 rounded-md">
-                           {s.distanceKm?.toFixed(1) || "—"} km
+                           {s.distanceKm?.toFixed(1) || "-"} km
                          </span>
                       </div>
                     </div>

@@ -396,7 +396,7 @@ export default function ProfilePage() {
             </h2>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{profile.email}</p>
             <div className="mt-2 flex flex-wrap items-center justify-center sm:justify-start gap-2 text-sm text-slate-500 dark:text-slate-400">
-              {/* Âge calculé dynamiquement depuis la date de naissance — jamais la date brute */}
+              {/* Âge calculé dynamiquement depuis la date de naissance : jamais la date brute */}
               {profile.dateNaissance
                 ? <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> {calculateAge(profile.dateNaissance)} ans</span>
                 : <span className="flex items-center gap-1 italic opacity-60"><Activity className="w-3 h-3" /> Âge non renseigné</span>
@@ -422,7 +422,7 @@ export default function ProfilePage() {
               <div className="mt-3 flex items-center gap-2 justify-center sm:justify-start text-sm text-slate-500">
                 <Building2 className="w-4 h-4 text-secondary-400" />
                 <span>
-                  {profile.structure.nom} — {profile.structure.type.toLowerCase()}
+                  {profile.structure.nom} ({profile.structure.type.toLowerCase()})
                 </span>
               </div>
             )}

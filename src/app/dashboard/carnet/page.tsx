@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect, react/no-unescaped-entities */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
@@ -234,7 +236,7 @@ export default function CarnetPage() {
               {user?.prenom} {user?.nom}
             </h1>
             <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-white/80 text-sm">
-              {/* Âge calculé dynamiquement — jamais la date brute */}
+              {/* Âge calculé dynamiquement : jamais la date brute */}
               <span className="flex items-center gap-2">
                 <Activity className="w-4 h-4" />
                 {(form.dateNaissance || user?.dateNaissance) ? `${calculateAge(form.dateNaissance || (user?.dateNaissance as any))} ans` : "Âge non renseigné"}
@@ -253,7 +255,7 @@ export default function CarnetPage() {
               <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-400" />
                 <span className="text-sm font-bold text-white">
-                  {(form.poids || user?.poids) || "—"} kg / {(form.taille || user?.taille) || "—"} cm
+                  {(form.poids || user?.poids) || "-"} kg / {(form.taille || user?.taille) || "-"} cm
                 </span>
               </div>
             </div>
@@ -544,7 +546,7 @@ export default function CarnetPage() {
                       {Array.isArray(o.medicaments) ? o.medicaments.map((m: any, idx: number) => (
                         <p key={idx} className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
                           <span className="w-1.5 h-1.5 rounded-full bg-secondary-400" />
-                          <strong>{m.nom}</strong> — {m.dosage}
+                          <strong>{m.nom}</strong> : {m.dosage}
                         </p>
                       )) : <p className="text-xs text-slate-500 italic">Format invalide</p>}
                     </div>

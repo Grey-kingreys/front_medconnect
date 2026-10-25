@@ -1,5 +1,5 @@
 /**
- * MedConnecte — Stockage objets (Cloudflare R2).
+ * MedConnecte : Stockage objets (Cloudflare R2).
  *
  * Flux d'upload : presign (API) → PUT DIRECT sur R2 → confirm (API).
  * Le PUT vers R2 est le SEUL appel réseau qui ne passe pas par `authFetch`
@@ -73,7 +73,7 @@ export function deleteStoredFile(id: string) {
 
 /**
  * Téléverse le fichier directement sur R2 via l'URL présignée. XHR (et non fetch)
- * pour exposer la progression — utile sur connexions instables. Le header
+ * pour exposer la progression, utile sur connexions instables. Le header
  * Content-Type DOIT correspondre à celui signé lors du presign.
  */
 export function putToR2(

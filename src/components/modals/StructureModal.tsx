@@ -262,13 +262,13 @@ export function StructureModal({ mode, structure, onClose, onSuccess }: Structur
               <div className="space-y-1">
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider ml-1">Latitude</span>
                 <div className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-600 dark:text-slate-400 font-mono">
-                  {form.latitude?.toFixed(6) || "—"}
+                  {form.latitude?.toFixed(6) || "-"}
                 </div>
               </div>
               <div className="space-y-1">
                 <span className="text-[10px] text-slate-500 uppercase font-bold tracking-wider ml-1">Longitude</span>
                 <div className="px-3 py-2 bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-600 dark:text-slate-400 font-mono">
-                  {form.longitude?.toFixed(6) || "—"}
+                  {form.longitude?.toFixed(6) || "-"}
                 </div>
               </div>
             </div>
