@@ -18,7 +18,7 @@ export async function generateMetadata(): Promise<Metadata> {
       "télémédecine Guinée",
     ],
     openGraph: {
-      title: "Diagnostic Médical IA — MedConnecte Guinée",
+      title: "Diagnostic Médical IA : MedConnecte Guinée",
       description:
         "Analysez vos symptômes avec notre IA médicale avancée. Diagnostic préliminaire instantané et orientation vers les spécialistes.",
       url: `${baseUrl}/dashboard/diagnostic`,
@@ -28,14 +28,14 @@ export async function generateMetadata(): Promise<Metadata> {
           url: "/og-diagnostic-ia.png",
           width: 1200,
           height: 630,
-          alt: "Diagnostic Médical par IA — MedConnecte",
+          alt: "Diagnostic Médical par IA : MedConnecte",
         },
       ],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: "Diagnostic Médical IA — MedConnecte Guinée",
+      title: "Diagnostic Médical IA : MedConnecte Guinée",
       description:
         "Analysez vos symptômes avec notre IA médicale. Diagnostic instantané et orientation.",
       images: ["/og-diagnostic-ia.png"],

@@ -1,6 +1,5 @@
-// Dette préexistante, backlog points 21 et 22
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { authFetch } from "./api_auth";
+import type { PositionMesuree } from "./geolocalisation";
 import {
   analyseSchema,
   consultationSchema,
@@ -84,7 +83,7 @@ export interface Ordonnance {
   notes: string | null;
   dateEmission: string;
   dateExpiration: string | null;
-  /** Ordonnance scannée (StoredFile privé) — lecture via /storage/:id/read-url. */
+  /** Ordonnance scannée (StoredFile privé) : lecture via /storage/:id/read-url. */
   scanFileId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -109,9 +108,9 @@ export interface ResultatAnalyse {
   typeAnalyse: string;
   laboratoire: string | null;
   resultats: string;
-  /** @deprecated ancienne URL brute — remplacée par documentFileId. */
+  /** @deprecated ancienne URL brute, remplacée par documentFileId. */
   fichierUrl: string | null;
-  /** Document d'analyse (StoredFile privé) — lecture via /storage/:id/read-url. */
+  /** Document d'analyse (StoredFile privé) : lecture via /storage/:id/read-url. */
   documentFileId: string | null;
   dateAnalyse: string;
   notes: string | null;
@@ -209,11 +208,28 @@ export const createVaccination = async (data: VaccinationInput) => {
 
 export const getAnalyses = () => authFetch<ResultatAnalyse[]>("/carnet-sante/analyses");
 
-export const createUrgence = (data: { latitude?: number; longitude?: number; message?: string }) =>
+/** Champs de position acceptés par POST /carnet-sante/sos (contrat B6, rétrocompatible). */
+export type PositionSos = PositionMesuree;
+
+export const createUrgence = (data: Partial<PositionSos> & { message?: string }, cleIdempotence: string) =>
   authFetch<Urgence>("/carnet-sante/sos", {
     method: "POST",
     body: JSON.stringify(data),
+    headers: { "Idempotency-Key": cleIdempotence },
   });
+
+/**
+ * Clé d'idempotence d'une alerte SOS (UUID v4). crypto.randomUUID n'existe qu'en HTTPS :
+ * sinon UUID v4 construit avec crypto.getRandomValues.
+ */
+export function nouvelleCleIdempotence(): string {
+  if (typeof crypto.randomUUID === "function") return crypto.randomUUID();
+  const octets = crypto.getRandomValues(new Uint8Array(16));
+  octets[6] = (octets[6] & 0x0f) | 0x40;
+  octets[8] = (octets[8] & 0x3f) | 0x80;
+  const hex = Array.from(octets, (o) => o.toString(16).padStart(2, "0")).join("");
+  return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
 
 export const getActiveUrgences = () => authFetch<Urgence[]>("/carnet-sante/sos/actives");
 

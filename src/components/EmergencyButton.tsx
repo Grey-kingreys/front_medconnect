@@ -1,8 +1,8 @@
 "use client";
 // Dette préexistante, backlog points 21 et 22
-/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/immutability, react-hooks/set-state-in-effect, prefer-const, react/no-unescaped-entities */
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/immutability, react-hooks/set-state-in-effect, react/no-unescaped-entities */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { 
   AlertCircle, 
   Bot, 
@@ -21,11 +21,15 @@ import {
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { usePathname } from "next/navigation";
-import { getProfilMedical, ProfilMedical, createUrgence, getAiFirstAid, getMonAlerteEnCours, Urgence } from "@/lib/api_carnet";
+import { getProfilMedical, ProfilMedical, createUrgence, getAiFirstAid, getMonAlerteEnCours, nouvelleCleIdempotence, Urgence } from "@/lib/api_carnet";
 import { ApiError } from "@/lib/api_auth";
+import { localiserPrecisement, libellePrecisionSos, REGLAGES_SOS, PositionMesuree, ResultatPosition } from "@/lib/geolocalisation";
+import { getNumeroUrgenceMedicale, NUMERO_URGENCE_PAR_DEFAUT } from "@/lib/api_config";
 
 // Relecture de l'alerte en attente de prise en charge (D14)
 const INTERVALLE_RELECTURE_MS = 20_000;
+// Après le compte à rebours, attente maximale d'une meilleure position avant l'envoi
+const ATTENTE_MAX_APRES_DECOMPTE_MS = 2_000;
 
 // Compte à rebours affiché en mm:ss
 const formatMmSs = (ms: number) => {
@@ -40,8 +44,15 @@ export default function EmergencyButton() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [view, setView] = useState<"sos_confirm" | "sos_sent" | "first_aid">("sos_confirm");
-  const [location, setLocation] = useState<{lat: number, lng: number} | null>(null);
-  const [locLoading, setLocLoading] = useState(false);
+  const [position, setPosition] = useState<PositionMesuree | null>(null);
+  const [rechercheEnCours, setRechercheEnCours] = useState(false);
+  const [numeroUrgence, setNumeroUrgence] = useState(NUMERO_URGENCE_PAR_DEFAUT);
+  const rechercheRef = useRef<Promise<ResultatPosition> | null>(null);
+  // Meilleure mesure reçue jusqu'ici, envoyée si la recherche n'est pas finie à temps
+  const meilleureRef = useRef<PositionMesuree | null>(null);
+  // Incrémenté à chaque nouvelle recherche et à la fermeture : résultats périmés ignorés, envoi en attente abandonné
+  const numeroRecherche = useRef(0);
+  const cleRef = useRef("");
   const [countdown, setCountdown] = useState(5);
   const [timerActive, setTimerActive] = useState(false);
   const [profile, setProfile] = useState<ProfilMedical | null>(null);
@@ -55,6 +66,17 @@ export default function EmergencyButton() {
       fetchProfile();
     }
   }, [user]);
+
+  useEffect(() => {
+    if (user?.role !== "PATIENT") return;
+    let actif = true;
+    getNumeroUrgenceMedicale().then((n) => {
+      if (actif) setNumeroUrgence(n);
+    });
+    return () => {
+      actif = false;
+    };
+  }, [user?.role]);
 
   const fetchProfile = async () => {
     try {
@@ -77,6 +99,8 @@ export default function EmergencyButton() {
       setTimerActive(false);
     }
     return () => clearInterval(interval);
+    // handleSendSOS est lu au rendu où le compte atteint 0 : volontairement hors dépendances
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timerActive, countdown]);
 
   // Alerte en cours (F5) : état lu sur le serveur, relu périodiquement, compte à rebours
@@ -118,7 +142,8 @@ export default function EmergencyButton() {
 
   const ouvrir = () => {
     setIsOpen(true);
-    getLoc();
+    cleRef.current = nouvelleCleIdempotence();
+    demarrerRecherche();
     setTimerActive(true);
     setView("sos_confirm");
     setErreurEnvoi(null);
@@ -133,14 +158,15 @@ export default function EmergencyButton() {
   };
 
   // Rejoue le flux d'envoi existant (position, compte à rebours de 5 s)
-  const relancer = () => {
+  const relancer = (nouvelleCle: boolean) => {
+    if (nouvelleCle) cleRef.current = nouvelleCleIdempotence();
     setErreurEnvoi(null);
     setEnvoiEchoue(false);
     setAucunEtablissement(false);
     setCountdown(5);
     setView("sos_confirm");
     setTimerActive(true);
-    getLoc();
+    demarrerRecherche();
   };
 
   const priseEnCharge = alerte?.status === "PRIS_EN_CHARGE";
@@ -149,44 +175,60 @@ export default function EmergencyButton() {
   const relanceMs = alerte?.peutRelancerA ? new Date(alerte.peutRelancerA).getTime() - maintenant : 0;
   const relanceBloquee = relanceMs > 0;
 
-  const getLoc = () => {
-    setLocLoading(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-          setLocLoading(false);
-        },
-        () => setLocLoading(false)
-      );
-    } else {
-      setLocLoading(false);
-    }
+  const demarrerRecherche = () => {
+    const n = ++numeroRecherche.current;
+    setPosition(null);
+    meilleureRef.current = null;
+    setRechercheEnCours(true);
+    const recherche = localiserPrecisement(REGLAGES_SOS, (p) => {
+      if (numeroRecherche.current !== n) return;
+      meilleureRef.current = p;
+      setPosition(p);
+    });
+    rechercheRef.current = recherche;
+    recherche.then((r) => {
+      if (numeroRecherche.current !== n) return;
+      setRechercheEnCours(false);
+      if (r.ok) setPosition(r.position);
+    });
   };
 
   const handleSendSOS = async () => {
-    // Tentative de récupération de la position de secours si elle est toujours nulle
-    let currentLoc = location;
-    
-    if (!currentLoc && "geolocation" in navigator) {
-      // On tente une dernière récupération rapide
-      navigator.geolocation.getCurrentPosition((pos) => {
-        const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-        setLocation(loc);
-        sendRequest(loc);
-      }, () => sendRequest(null), { timeout: 2000 });
-    } else {
-      sendRequest(currentLoc);
-    }
+    const n = numeroRecherche.current;
+    // Recherche encore en cours à la fin du décompte : 2 s de plus au plus, puis envoi
+    // de la meilleure mesure déjà reçue (l'alerte ne doit pas attendre les 10 s du GPS)
+    const resultat = rechercheRef.current
+      ? await Promise.race([
+          rechercheRef.current,
+          new Promise<null>((fin) => setTimeout(() => fin(null), ATTENTE_MAX_APRES_DECOMPTE_MS)),
+        ])
+      : null;
+    // Fenêtre fermée ou alerte annulée pendant l'attente : rien n'est envoyé
+    if (numeroRecherche.current !== n) return;
+    // Mesures arrivées après l'envoi ignorées : l'écran affiche la position envoyée
+    numeroRecherche.current++;
+    setRechercheEnCours(false);
+    await sendRequest(resultat?.ok ? resultat.position : meilleureRef.current);
   };
 
-  const sendRequest = async (loc: {lat: number, lng: number} | null) => {
+  const sendRequest = async (pos: PositionMesuree | null) => {
+    if (pos) setPosition(pos);
     try {
-      const res = await createUrgence({
-        latitude: loc?.lat,
-        longitude: loc?.lng,
-        message: "Urgence vitale déclenchée depuis le dashboard."
-      });
+      const res = await createUrgence(
+        {
+          ...(pos
+            ? {
+                latitude: pos.latitude,
+                longitude: pos.longitude,
+                precision: pos.precision,
+                horodatagePosition: pos.horodatagePosition,
+                source: pos.source,
+              }
+            : {}),
+          message: "Urgence vitale déclenchée depuis le dashboard.",
+        },
+        cleRef.current
+      );
       // Le serveur dit exactement qui a été prévenu : aucun faux succès affiché.
       const personnePrevenue = res.data?.structuresAlertees === 0;
       setAucunEtablissement(personnePrevenue);
@@ -228,6 +270,7 @@ export default function EmergencyButton() {
   };
 
   const reset = () => {
+    numeroRecherche.current++;
     setIsOpen(false);
     setTimeout(() => {
       setView("sos_confirm");
@@ -300,15 +343,19 @@ export default function EmergencyButton() {
                     </svg>
                     <span className="text-6xl font-black text-slate-900 dark:text-white animate-pulse">{countdown}</span>
                   </div>
-                  <h4 className="text-2xl font-black text-slate-900 dark:text-white mb-2 uppercase tracking-tighter">Envoi automatique...</h4>
+                  <h4 className="text-2xl font-black text-slate-900 dark:text-white mb-2 uppercase tracking-tighter">{countdown === 0 ? "Envoi en cours..." : "Envoi automatique..."}</h4>
                   <p className="text-slate-500 mb-8 max-w-[280px] text-sm">
                     Nous alertons vos proches et les 5 structures médicales les plus proches de votre position GPS.
                   </p>
 
                   <div className="flex items-center gap-2 mb-6 px-4 py-2 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-slate-100 dark:border-slate-800">
-                    <MapPin className={`w-4 h-4 ${location ? 'text-emerald-500' : 'text-slate-400 animate-pulse'}`} />
-                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                      {location ? 'Position GPS acquise' : 'Recherche de votre position...'}
+                    <MapPin className={`w-4 h-4 ${position ? 'text-emerald-500' : 'text-slate-400 animate-pulse'}`} />
+                    <span aria-live="polite" className="text-xs font-bold text-slate-600 dark:text-slate-300">
+                      {position
+                        ? libellePrecisionSos(position, numeroUrgence)
+                        : rechercheEnCours
+                          ? "Recherche de votre position..."
+                          : libellePrecisionSos(null, numeroUrgence)}
                     </span>
                   </div>
                   <button 
@@ -333,7 +380,7 @@ export default function EmergencyButton() {
                         {envoiEchoue ? "Alerte non envoyée" : aucunEtablissement ? "Aucun établissement alerté" : priseEnCharge ? "Prise en charge" : "Alerte envoyée"}
                       </h4>
                       {!envoiEchoue && (
-                        <p className="text-sm text-slate-500">Position partagée : {location ? `${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : "Localisation en cours..."}</p>
+                        <p className="text-sm text-slate-500">{libellePrecisionSos(position, numeroUrgence)}</p>
                       )}
                     </div>
                   </div>
@@ -343,7 +390,7 @@ export default function EmergencyButton() {
                   )}
                   {(envoiEchoue || aucunEtablissement) && (
                     <button
-                      onClick={relancer}
+                      onClick={() => relancer(!envoiEchoue)}
                       className="w-full py-4 bg-emergency-600 text-white rounded-3xl font-black text-xs uppercase tracking-widest hover:bg-emergency-500 transition-all"
                     >
                       {aucunEtablissement ? "Relancer l'alerte" : "Réessayer l'envoi"}
@@ -385,7 +432,7 @@ export default function EmergencyButton() {
                       )}
                       {(delaiDepasse || !priseEnCharge) && (
                         <button
-                          onClick={relancer}
+                          onClick={() => relancer(true)}
                           disabled={relanceBloquee}
                           className="w-full py-3 bg-emergency-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-emergency-500 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                         >
@@ -397,9 +444,9 @@ export default function EmergencyButton() {
 
                   {/* EMERGENCY CARDS */}
                   <div className="space-y-3">
-                    <a href="tel:15" className="w-full bg-emergency-500 text-white p-4 rounded-3xl flex items-center gap-4 shadow-lg shadow-emergency-500/20 hover:scale-[1.02] transition-transform">
+                    <a href={`tel:${numeroUrgence}`} className="w-full bg-emergency-500 text-white p-4 rounded-3xl flex items-center gap-4 shadow-lg shadow-emergency-500/20 hover:scale-[1.02] transition-transform">
                       <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center"><Phone className="w-5 h-5" /></div>
-                      <div className="text-left"><p className="text-[10px] font-bold text-white/70 uppercase">Service d'urgence</p><p className="text-lg font-black">Appeler le 15 (SAMU)</p></div>
+                      <div className="text-left"><p className="text-[10px] font-bold text-white/70 uppercase">Service d'urgence</p><p className="text-lg font-black">Appeler le {numeroUrgence}</p></div>
                     </a>
 
                     {profile?.contactTelephone && (

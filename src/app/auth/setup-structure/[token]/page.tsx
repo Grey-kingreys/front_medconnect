@@ -1,12 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { Building2, Mail, Lock, User, Phone, MapPin, Loader2, ArrowRight, CheckCircle2, ShieldCheck, Eye, EyeOff } from "lucide-react";
 import Link from "next/link";
 import { verifyInviteToken, setupStructure, MyStructure } from "@/lib/api_structure";
 import { useAuth } from "@/hooks/useAuth";
 import { ApiError } from "@/lib/api_auth";
+import ReglesMotDePasse, { descriptionMotDePasse } from "@/components/ReglesMotDePasse";
+import { motDePasseValide, MSG_REGLES_NON_RESPECTEES, LONGUEUR_MAX_MOT_DE_PASSE } from "@/lib/regles_mot_de_passe";
 
 export default function SetupStructurePage() {
   const router = useRouter();
@@ -16,6 +18,8 @@ export default function SetupStructurePage() {
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const champMotDePasse = useRef<HTMLInputElement>(null);
   const [structure, setStructure] = useState<MyStructure | null>(null);
 
   const [step, setStep] = useState(1); // 1: Info perso, 2: Info structure
@@ -54,12 +58,14 @@ export default function SetupStructurePage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step === 1) {
-      if (form.password !== form.passwordConfirm) {
-        setError("Les mots de passe ne correspondent pas.");
+      setPasswordError("");
+      if (!motDePasseValide(form.password)) {
+        setPasswordError(MSG_REGLES_NON_RESPECTEES);
+        champMotDePasse.current?.focus();
         return;
       }
-      if (form.password.length < 8) {
-        setError("Le mot de passe doit contenir au moins 8 caractères.");
+      if (form.password !== form.passwordConfirm) {
+        setError("Les mots de passe ne correspondent pas.");
         return;
       }
       setError("");
@@ -193,21 +199,22 @@ export default function SetupStructurePage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Mot de passe <span className="text-emergency-500">*</span></label>
+                <label htmlFor="password" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Mot de passe <span className="text-emergency-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input type={showPassword ? "text" : "password"} required minLength={8} placeholder="Min. 8 caractères" className={`${inputCls} pl-12 pr-12`} value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} />
+                  <input id="password" name="password" ref={champMotDePasse} type={showPassword ? "text" : "password"} required maxLength={LONGUEUR_MAX_MOT_DE_PASSE} autoComplete="new-password" aria-invalid={passwordError ? true : undefined} aria-describedby={descriptionMotDePasse("password", passwordError)} className={`${inputCls} pl-12 pr-12`} value={form.password} onChange={e => { setForm({ ...form, password: e.target.value }); setPasswordError(""); }} />
                   <button type="button" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"} aria-pressed={showPassword} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none focus:text-primary-500">
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
+                <ReglesMotDePasse motDePasse={form.password} idChamp="password" erreur={passwordError} />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Confirmer mot de passe <span className="text-emergency-500">*</span></label>
+                <label htmlFor="passwordConfirm" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">Confirmer mot de passe <span className="text-emergency-500">*</span></label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
-                  <input type={showPasswordConfirm ? "text" : "password"} required minLength={8} placeholder="Confirmez" className={`${inputCls} pl-12 pr-12`} value={form.passwordConfirm} onChange={e => setForm({ ...form, passwordConfirm: e.target.value })} />
+                  <input id="passwordConfirm" type={showPasswordConfirm ? "text" : "password"} required maxLength={LONGUEUR_MAX_MOT_DE_PASSE} autoComplete="new-password" placeholder="Confirmez" className={`${inputCls} pl-12 pr-12`} value={form.passwordConfirm} onChange={e => setForm({ ...form, passwordConfirm: e.target.value })} />
                   <button type="button" onClick={() => setShowPasswordConfirm(v => !v)} aria-label={showPasswordConfirm ? "Masquer le mot de passe" : "Afficher le mot de passe"} aria-pressed={showPasswordConfirm} className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors focus:outline-none focus:text-primary-500">
                     {showPasswordConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>

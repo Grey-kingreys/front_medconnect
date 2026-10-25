@@ -14,7 +14,6 @@ import {
   ArrowDownRight, 
   Trash2,
   Edit,
-  Loader2,
   Pill,
   ShoppingBag,
   TrendingUp,
@@ -61,6 +60,16 @@ export default function StockPage() {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Accès rapide « Importer le stock » du tableau de bord : ouvre directement la fenêtre d'import
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("importer") !== "1") return;
+    setIsImportOpen(true);
+    params.delete("importer");
+    const reste = params.toString();
+    window.history.replaceState(window.history.state, "", `${window.location.pathname}${reste ? `?${reste}` : ""}`);
+  }, []);
 
   const filteredStocks = stockInfo?.stocks.filter(s => {
     const matchesSearch = s.medicament.nom.toLowerCase().includes(search.toLowerCase()) || 
@@ -215,7 +224,7 @@ export default function StockPage() {
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{s.medicament.nom}</p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{s.medicament.nomGenerique || "—"}</p>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{s.medicament.nomGenerique || "Non renseigné"}</p>
                         </div>
                       </div>
                     </td>
@@ -245,7 +254,7 @@ export default function StockPage() {
                       </div>
                     </td>
                     <td className="px-8 py-5 text-right font-mono text-sm font-bold text-slate-600 dark:text-slate-400">
-                      {s.prixUnitaire?.toLocaleString() || "—"}
+                      {s.prixUnitaire?.toLocaleString() || "-"}
                     </td>
                     <td className="px-8 py-5 text-center">
                       <div className="flex justify-center">

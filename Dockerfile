@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # ============================================================
-#  MedConnecte — Frontend (Next.js 16 + React 19)
+#  MedConnecte : Frontend (Next.js 16 + React 19)
 #  Multi-stage : base → deps → (dev | build → prod)
 #  NB : les variables NEXT_PUBLIC_* sont inlinées dans le bundle client
 #       AU MOMENT DU BUILD → elles sont passées en build args pour l'image prod.

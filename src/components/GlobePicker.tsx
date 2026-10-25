@@ -4,6 +4,12 @@ import React, { useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { MapPin, Target, ZoomIn, ZoomOut, Layers, Crosshair } from "lucide-react";
+import {
+  libelleDistancePrecision,
+  localiserPrecisement,
+  PRECISION_MAX_FIABLE_M,
+  REGLAGES_PRECIS,
+} from "@/lib/geolocalisation";
 
 interface GlobePickerProps {
   initialLat?: number;
@@ -34,6 +40,33 @@ export default function GlobePicker({
 
   const [isSatellite, setIsSatellite] = useState(false);
   const isInitialMount = useRef(true);
+  // Recherche « Me localiser » en cours, et phrase sur sa précision ou son échec
+  const [localisationEnCours, setLocalisationEnCours] = useState(false);
+  const [infoLocalisation, setInfoLocalisation] = useState<{ texte: string; alerte: boolean } | null>(null);
+  // Dernier rappel reçu : la carte est créée une seule fois, ses écouteurs lisent ce ref
+  const onLocationSelectRef = useRef(onLocationSelect);
+  useEffect(() => {
+    onLocationSelectRef.current = onLocationSelect;
+  });
+
+  /** Pose ou déplace le marqueur ; déplaçable au doigt quand l'utilisateur choisit une position. */
+  const placerMarqueur = (lng: number, lat: number) => {
+    if (!map.current) return;
+    if (marker.current) {
+      marker.current.setLngLat([lng, lat]);
+      return;
+    }
+    marker.current = new mapboxgl.Marker({ color: "#3b82f6", draggable: !!onLocationSelectRef.current })
+      .setLngLat([lng, lat])
+      .addTo(map.current);
+    marker.current.on("dragend", () => {
+      const p = marker.current?.getLngLat();
+      if (!p) return;
+      setCoords({ lat: p.lat, lng: p.lng });
+      setInfoLocalisation(null);
+      onLocationSelectRef.current?.(p.lat, p.lng);
+    });
+  };
 
   useEffect(() => {
     if (!mapContainer.current || !MAPBOX_TOKEN) return;
@@ -121,24 +154,15 @@ export default function GlobePicker({
       }
     });
 
-    if (initialLat && initialLng) {
-      marker.current = new mapboxgl.Marker({ color: "#3b82f6" })
-        .setLngLat([initialLng, initialLat])
-        .addTo(map.current);
-    }
+    if (initialLat && initialLng) placerMarqueur(initialLng, initialLat);
 
     map.current.on("click", (e) => {
-      if (!onLocationSelect) return;
+      if (!onLocationSelectRef.current) return;
       const { lng, lat } = e.lngLat;
-      if (marker.current) {
-        marker.current.setLngLat([lng, lat]);
-      } else {
-        marker.current = new mapboxgl.Marker({ color: "#3b82f6" })
-          .setLngLat([lng, lat])
-          .addTo(map.current!);
-      }
+      placerMarqueur(lng, lat);
       setCoords({ lat, lng });
-      onLocationSelect(lat, lng);
+      setInfoLocalisation(null);
+      onLocationSelectRef.current(lat, lng);
     });
 
     return () => {
@@ -243,21 +267,46 @@ export default function GlobePicker({
 
   const handleAutoLocation = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition((pos) => {
-      const { latitude, longitude } = pos.coords;
-      map.current?.flyTo({ center: [longitude, latitude], zoom: 15 });
-      if (onLocationSelect) {
-        if (marker.current) {
-          marker.current.setLngLat([longitude, latitude]);
-        } else {
-          marker.current = new mapboxgl.Marker({ color: "#3b82f6" })
-            .setLngLat([longitude, latitude])
-            .addTo(map.current!);
-        }
-        setCoords({ lat: latitude, lng: longitude });
-        onLocationSelect(latitude, longitude);
+    if (localisationEnCours) return;
+    setLocalisationEnCours(true);
+    setInfoLocalisation({ texte: "Recherche de votre position…", alerte: false });
+    let premiere = true;
+    // Le point suit chaque mesure plus précise (wifi puis GPS), 10 s au plus
+    const montrer = (latitude: number, longitude: number) => {
+      if (!map.current) return;
+      if (premiere) map.current.flyTo({ center: [longitude, latitude], zoom: 16 });
+      else map.current.easeTo({ center: [longitude, latitude] });
+      premiere = false;
+      placerMarqueur(longitude, latitude);
+    };
+    localiserPrecisement(REGLAGES_PRECIS, (p) => {
+      montrer(p.latitude, p.longitude);
+      setInfoLocalisation({ texte: `Précision ${libelleDistancePrecision(p.precision)}, affinage…`, alerte: false });
+    }).then((r) => {
+      setLocalisationEnCours(false);
+      if (!r.ok) {
+        setInfoLocalisation({
+          alerte: true,
+          texte:
+            r.cause === "refusee"
+              ? "Localisation refusée : autorisez-la dans votre navigateur, ou cliquez sur la carte."
+              : r.cause === "non_prise_en_charge"
+                ? "Votre navigateur ne permet pas la localisation : cliquez sur la carte."
+                : "Position introuvable : réessayez à l'extérieur, ou cliquez sur la carte.",
+        });
+        return;
       }
+      const { latitude, longitude, precision } = r.position;
+      montrer(latitude, longitude);
+      setCoords({ lat: latitude, lng: longitude });
+      onLocationSelectRef.current?.(latitude, longitude);
+      const approximative = precision > PRECISION_MAX_FIABLE_M;
+      setInfoLocalisation({
+        alerte: approximative,
+        texte: approximative
+          ? `Position approximative (${libelleDistancePrecision(precision)}) : ${onLocationSelectRef.current ? "déplacez le point ou cliquez au bon endroit." : "activez le GPS pour plus de précision."}`
+          : `Position précise à ${libelleDistancePrecision(precision)}`,
+      });
     });
   };
 
@@ -311,8 +360,11 @@ export default function GlobePicker({
           onClick={handleAutoLocation}
           className="p-2 bg-white dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 hover:text-primary-500 transition-colors shadow-lg"
           title="Me localiser"
+          aria-label="Me localiser"
+          aria-busy={localisationEnCours}
+          disabled={localisationEnCours}
         >
-          <Crosshair className="w-4 h-4" />
+          <Crosshair className={`w-4 h-4 ${localisationEnCours ? "animate-pulse text-primary-500" : ""}`} />
         </button>
         {coords && (
           <button
@@ -327,7 +379,15 @@ export default function GlobePicker({
       </div>
 
       {/* Overlay info */}
-      <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between pointer-events-none">
+      <div className="absolute bottom-4 left-4 right-4 flex flex-col items-start gap-2 pointer-events-none">
+        {infoLocalisation && (
+          <p
+            role="status"
+            className={`px-3 py-1.5 max-w-full rounded-xl backdrop-blur-md border text-xs pointer-events-auto ${infoLocalisation.alerte ? "bg-amber-50/95 dark:bg-amber-950/80 border-amber-300 dark:border-amber-700 text-amber-800 dark:text-amber-200" : "bg-slate-900/80 border-slate-700 text-slate-200"}`}
+          >
+            {infoLocalisation.texte}
+          </p>
+        )}
         <div className="px-3 py-1.5 bg-slate-900/80 backdrop-blur-md border border-slate-700 rounded-full flex items-center gap-2 text-[10px] text-slate-400 pointer-events-auto">
           <MapPin className="w-3 h-3 text-primary-500" />
           {coords ? (

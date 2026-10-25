@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from "react";
 import { ArrowRight, Download, Share, Plus, X, Check } from "lucide-react";
@@ -16,7 +18,7 @@ type BeforeInstallPromptEvent = Event & {
  * (Partager → Sur l'écran d'accueil) dans une modale.
  *
  * ⚠️ `beforeinstallprompt` n'est émis par Chrome/Edge que si un service worker
- * avec gestionnaire `fetch` est actif — cf. `public/sw.js`.
+ * avec gestionnaire `fetch` est actif, cf. `public/sw.js`.
  */
 export default function InstallAppButton() {
   const [promptEvent, setPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);

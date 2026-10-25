@@ -5,6 +5,10 @@
  * L'URL du backend est lue depuis NEXT_PUBLIC_API_URL dans .env
  */
 
+import { deconnexionForcee, motifDepuisReponse, MESSAGES_DECONNEXION, type MotifDeconnexion } from "./deconnexion_forcee";
+import { estPermissionRefusee, signalerAccesRefuse } from "./acces";
+import type { StructureType } from "./api_admin";
+
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 // ─── Types ──────────────────────────────────────────────────────
@@ -45,6 +49,8 @@ export interface UserProfile {
   avatarUrl?: string | null;
   /** Permissions effectives renvoyées par /auth/me (ex. "catalogue:write"). */
   permissions?: string[];
+  /** Type de la structure de rattachement (absent sur un ancien serveur, null sans structure). */
+  structureType?: StructureType | null;
   structure?: {
     id: string;
     nom: string;
@@ -112,6 +118,16 @@ interface ReglagesAppel {
   sansJournal?: boolean;
 }
 
+/** Vrai si le corps d'une réponse 502/503/504 vient du serveur applicatif (objet JSON avec un `code` texte). */
+async function estReponseApplicative(res: Response): Promise<boolean> {
+  try {
+    const corps: unknown = await res.clone().json();
+    return typeof corps === "object" && corps !== null && typeof (corps as CorpsReponse).code === "string";
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Envoi commun à apiFetch et authDownload : délai de 20 s par tentative, nouvelles
  * tentatives (1 s puis 3 s) pour GET et HEAD seulement, sur erreur réseau, délai
@@ -150,6 +166,9 @@ async function envoyer(endpoint: string, options: RequestInit, reglages: Reglage
         signal: controleur.signal,
       });
       if (!STATUTS_INDISPONIBLES.includes(res.status)) return res;
+      // Réponse rédigée par le serveur (corps JSON avec un code) : rendue telle quelle,
+      // sans nouvel essai, pour que son message parvienne à l'utilisateur (D02)
+      if (await estReponseApplicative(res)) return res;
       derniereErreur = new ApiError(MSG_INDISPONIBLE, res.status);
     } catch (err) {
       // Annulation voulue par l'appelant : propagée telle quelle
@@ -208,52 +227,87 @@ let refreshPromise: Promise<ApiResponse<{ access_token: string }>> | null = null
 const lireJeton = () =>
   typeof window !== "undefined" ? localStorage.getItem("access_token") : null;
 
+/** Déconnexion forcée (appareil déconnecté ou compte désactivé) : prévient l'application et renvoie l'erreur à lever. */
+function arreterConnexion(motif: MotifDeconnexion, details?: Record<string, unknown>): ApiError {
+  deconnexionForcee(motif);
+  return new ApiError(MESSAGES_DECONNEXION[motif], 401, details);
+}
+
+/** Codes d'un 401 qui demandent de renouveler le jeton de connexion (D14). */
+const CODES_JETON_A_RENOUVELER = ["JETON_ABSENT", "JETON_EXPIRE", "JETON_INVALIDE"];
+
+/** Vrai si un 401 appelle un rafraîchissement : code de jeton, ou pas de code (ancien serveur). */
+function doitRafraichir(err: ApiError): boolean {
+  if (err.status !== 401) return false;
+  const code = err.details?.code;
+  return typeof code !== "string" || CODES_JETON_A_RENOUVELER.includes(code);
+}
+
 /**
- * Exécute un appel authentifié ; en cas de 401 (jeton expiré), rafraîchit la connexion
- * puis réessaie une seule fois. Partagé par authFetch et authDownload.
+ * Exécute un appel authentifié ; en cas de 401 de jeton (expiré, invalide ou absent, ou sans code),
+ * rafraîchit la connexion puis réessaie une seule fois. Partagé par authFetch et authDownload.
  */
 async function avecRafraichissement<R>(appel: (token: string | null) => Promise<R>): Promise<R> {
   try {
     return await appel(lireJeton());
   } catch (err) {
-    // Si 401 → tenter un refresh du token puis réessayer une seule fois
-    if (err instanceof ApiError && err.status === 401) {
-      try {
-        // Utiliser une promesse partagée pour éviter les appels concurrents.
-        // Le refresh token vit dans un cookie httpOnly (envoyé via credentials:include),
-        // il n'est donc plus lu/transmis depuis le JS.
-        if (!refreshPromise) {
-          refreshPromise = apiFetch<{ access_token: string }>("/auth/refresh", {
-            method: "POST",
-          });
-        }
+    if (!(err instanceof ApiError) || err.status !== 401) throw err;
 
-        const refreshRes = await refreshPromise;
+    // Appareil déconnecté ou compte désactivé : inutile de rafraîchir la connexion
+    const motifImmediat = motifDepuisReponse(err.status, err.details);
+    if (motifImmediat) throw arreterConnexion(motifImmediat, err.details);
 
-        // Nettoyer la promesse une fois terminée
-        refreshPromise = null;
+    // 401 qui ne concerne pas le jeton : relancée telle quelle, sans rien nettoyer
+    if (!doitRafraichir(err)) throw err;
+  }
 
-        // Sauvegarder le nouvel access token
-        if (typeof window !== "undefined") {
-          localStorage.setItem("access_token", refreshRes.data.access_token);
-        }
+  let nouveauJeton: string;
+  try {
+    // Utiliser une promesse partagée pour éviter les appels concurrents.
+    // Le refresh token vit dans un cookie httpOnly (envoyé via credentials:include),
+    // il n'est donc plus lu/transmis depuis le JS.
+    if (!refreshPromise) {
+      refreshPromise = apiFetch<{ access_token: string }>("/auth/refresh", {
+        method: "POST",
+      });
+    }
 
-        // Réessayer la requête originale avec le nouveau token
-        return await appel(refreshRes.data.access_token);
-      } catch {
-        // Nettoyer la promesse en cas d'échec
-        refreshPromise = null;
-        
-        // Refresh échoué → session expirée, nettoyer le localStorage
-        if (typeof window !== "undefined") {
-          localStorage.removeItem("access_token");
-          localStorage.removeItem("refresh_token");
-          localStorage.removeItem("user");
-          // Retirer aussi le cookie témoin lu par src/proxy.ts (voir useAuth.tsx)
-          document.cookie = "mc_connecte=; path=/; max-age=0; SameSite=Lax";
-        }
-        throw new ApiError("Vous avez été déconnecté. Reconnectez-vous pour continuer.", 401);
-      }
+    const refreshRes = await refreshPromise;
+
+    // Nettoyer la promesse une fois terminée
+    refreshPromise = null;
+
+    // Sauvegarder le nouvel access token
+    nouveauJeton = refreshRes.data.access_token;
+    if (typeof window !== "undefined") {
+      localStorage.setItem("access_token", nouveauJeton);
+    }
+  } catch (errRafraichissement) {
+    // Nettoyer la promesse en cas d'échec
+    refreshPromise = null;
+    if (errRafraichissement instanceof ApiError) {
+      const motif = motifDepuisReponse(errRafraichissement.status, errRafraichissement.details);
+      if (motif) throw arreterConnexion(motif, errRafraichissement.details);
+    }
+
+    // Refresh échoué → session expirée, nettoyer le localStorage
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("access_token");
+      localStorage.removeItem("refresh_token");
+      localStorage.removeItem("user");
+      // Retirer aussi le cookie témoin lu par src/proxy.ts (voir useAuth.tsx)
+      document.cookie = "mc_connecte=; path=/; max-age=0; SameSite=Lax";
+    }
+    throw new ApiError("Vous avez été déconnecté. Reconnectez-vous pour continuer.", 401);
+  }
+
+  // Réessayer la requête originale avec le nouveau token (hors du rafraîchissement : D15)
+  try {
+    return await appel(nouveauJeton);
+  } catch (err) {
+    if (err instanceof ApiError) {
+      const motif = motifDepuisReponse(err.status, err.details);
+      if (motif) throw arreterConnexion(motif, err.details);
     }
     throw err;
   }
@@ -261,21 +315,29 @@ async function avecRafraichissement<R>(appel: (token: string | null) => Promise<
 
 /**
  * Fetch authentifié : ajoute automatiquement le jeton de connexion.
- * En cas de 401 (jeton expiré), tente un rafraîchissement et réessaie une fois.
+ * En cas de 401 de jeton (expiré, invalide ou absent, ou sans code), tente un rafraîchissement et réessaie une fois.
  */
 export async function authFetch<T>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
-  return avecRafraichissement((token) =>
-    apiFetch<T>(endpoint, {
-      ...options,
-      headers: {
-        ...options.headers,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
-    })
-  );
+  try {
+    return await avecRafraichissement((token) =>
+      apiFetch<T>(endpoint, {
+        ...options,
+        headers: {
+          ...options.headers,
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
+    );
+  } catch (err) {
+    // Lecture refusée faute de droit : le tableau de bord remplace la page par un message
+    if ((options.method ?? "GET").toUpperCase() === "GET" && estPermissionRefusee(err)) {
+      signalerAccesRefuse();
+    }
+    throw err;
+  }
 }
 
 /**
@@ -503,12 +565,13 @@ export async function removeMyAvatar() {
 }
 
 /**
- * Changer le mot de passe de l'utilisateur connecté
+ * Changer le mot de passe de l'utilisateur connecté ; `deconnecterAutresAppareils`
+ * déconnecte aussi les autres appareils du compte (vrai par défaut côté serveur).
  */
-export async function changePassword(currentPassword: string, newPassword: string) {
-  return authFetch<null>("/auth/change-password", {
+export async function changePassword(currentPassword: string, newPassword: string, deconnecterAutresAppareils: boolean) {
+  return authFetch<{ appareilsDeconnectes: number }>("/auth/change-password", {
     method: "POST",
-    body: JSON.stringify({ currentPassword, newPassword }),
+    body: JSON.stringify({ currentPassword, newPassword, deconnecterAutresAppareils }),
   });
 }
 
@@ -536,12 +599,16 @@ export async function refreshAccessToken() {
     return res;
   } catch (err) {
     refreshPromise = null;
+    if (err instanceof ApiError) {
+      const motif = motifDepuisReponse(err.status, err.details);
+      if (motif) throw arreterConnexion(motif, err.details);
+    }
     throw err;
   }
 }
 
 /**
- * Déconnexion — invalide le refresh token côté serveur
+ * Déconnexion : invalide le refresh token côté serveur
  */
 export async function logout() {
   try {

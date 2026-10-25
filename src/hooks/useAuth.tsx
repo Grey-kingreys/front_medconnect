@@ -16,6 +16,7 @@ import {
   verifyToken,
   ApiError,
 } from "@/lib/api_auth";
+import { EVENEMENT_DECONNEXION_FORCEE } from "@/lib/deconnexion_forcee";
 
 // ─── Types ──────────────────────────────────────────────────────
 
@@ -171,6 +172,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setProfile(null);
       router.push("/auth/login");
     }
+  }, [router]);
+
+  // ── Déconnexion forcée (appareil déconnecté à distance, compte désactivé) ──
+  // Le stockage est déjà vidé par deconnexionForcee : on vide l'état et on ouvre la connexion
+  useEffect(() => {
+    const surDeconnexionForcee = () => {
+      supprimerCookieConnecte();
+      setUser(null);
+      setProfile(null);
+      router.push("/auth/login");
+    };
+    window.addEventListener(EVENEMENT_DECONNEXION_FORCEE, surDeconnexionForcee);
+    return () => window.removeEventListener(EVENEMENT_DECONNEXION_FORCEE, surDeconnexionForcee);
   }, [router]);
 
   // ── Vérification initiale de l'authentification ───────────────

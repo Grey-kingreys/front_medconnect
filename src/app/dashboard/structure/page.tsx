@@ -3,18 +3,21 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import {
-  Building2, Users, MapPin, Phone, Mail, Edit3, Save, X,
-  AlertCircle, Loader2, Stethoscope, Pill, Activity,
+  Building2, Users, MapPin, Phone, Mail, Edit3,
+  AlertCircle, Stethoscope, Pill, Activity,
 } from "lucide-react";
 import { DonutChart } from "@/components/charts/DonutChart";
 import { StatCard } from "@/components/charts/StatCard";
-import { getMyStructure, updateMyStructure, setMyLogo, removeMyLogo, MyStructure, UpdateStructurePayload, ApiError } from "@/lib/api_structure";
+import { getMyStructure, setMyLogo, removeMyLogo, MyStructure, ApiError } from "@/lib/api_structure";
 import { StructureModal } from "@/components/modals/StructureModal";
 import FileUpload from "@/components/FileUpload";
 import ImageWithFallback from "@/components/ImageWithFallback";
 import type { StoredFileView } from "@/lib/api_storage";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
+import { lireContexteAcces } from "@/lib/acces";
+import { estRouteAutorisee } from "@/lib/navigation_tableau_de_bord";
+import { MaPharmacie } from "./MaPharmacie";
 
 const TYPE_LABEL: Record<string, string> = { HOPITAL: "Hôpital", CLINIQUE: "Clinique", PHARMACIE: "Pharmacie" };
 const TYPE_GRADIENT: Record<string, string> = {
@@ -26,7 +29,12 @@ const TYPE_GRADIENT: Record<string, string> = {
 
 
 export default function MyStructurePage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  const contexte = user ? lireContexteAcces(user, profile ?? null) : null;
+  // Droits de la vue pharmacie (en mode de repli, on suit le rôle de l'administrateur)
+  const peutModifier = contexte?.mode === "permissions" ? contexte.permissions.has("structure:write") : user?.role === "STRUCTURE_ADMIN";
+  const peutGererEquipe = contexte?.mode === "permissions" ? contexte.permissions.has("membre:manage") : user?.role === "STRUCTURE_ADMIN";
+  const peutVoirEquipe = contexte !== null && estRouteAutorisee("/dashboard/membres", contexte);
   const [structure, setStructure] = useState<MyStructure | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -55,10 +63,24 @@ export default function MyStructurePage() {
     finally { setLogoBusy(false); }
   }, [fetch]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  // Chargement initial, déclenché après le premier rendu
+  useEffect(() => { void Promise.resolve().then(fetch); }, [fetch]);
 
   if (loading) return <div className="flex items-center justify-center min-h-[400px]"><LoadingSpinner /></div>;
   if (error || !structure) return <div className="max-w-2xl mx-auto mt-12"><div className="flex gap-3 p-4 rounded-2xl bg-emergency-500/10 border border-emergency-500/20 text-emergency-400 text-sm"><AlertCircle className="w-5 h-5" />{error || "Structure introuvable"}</div></div>;
+
+  if (structure.type === "PHARMACIE") {
+    return (
+      <MaPharmacie
+        structure={structure}
+        peutModifier={peutModifier}
+        peutGererEquipe={peutGererEquipe}
+        peutVoirEquipe={peutVoirEquipe}
+        onStructureModifiee={(maj) => setStructure((prev) => (prev ? { ...prev, ...maj } : prev))}
+        logo={{ occupe: logoBusy, erreur: logoError, onEnvoye: handleLogoUploaded, onSupprimer: handleLogoRemove }}
+      />
+    );
+  }
 
   const medecins = structure.membres.filter(m => m.role === "MEDECIN");
   const pharmaciens = structure.membres.filter(m => m.role === "PHARMACIEN");

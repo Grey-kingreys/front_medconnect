@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, Suspense } from "react";
+import { useState, useEffect, useCallback, useRef, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import {
@@ -12,17 +12,16 @@ import {
   AlertCircle,
   CheckCircle2,
   ShieldAlert,
-  Check,
   ArrowLeft,
 } from "lucide-react";
 import { verifyResetToken, resetPassword, ApiError } from "@/lib/api_auth";
-
-const passwordRules = [
-  { label: "Au moins 8 caractères", test: (p: string) => p.length >= 8 },
-  { label: "Une lettre majuscule", test: (p: string) => /[A-Z]/.test(p) },
-  { label: "Une lettre minuscule", test: (p: string) => /[a-z]/.test(p) },
-  { label: "Un chiffre", test: (p: string) => /\d/.test(p) },
-];
+import ReglesMotDePasse, { descriptionMotDePasse } from "@/components/ReglesMotDePasse";
+import {
+  motDePasseValide,
+  messageErreurNouveauMotDePasse,
+  MSG_REGLES_NON_RESPECTEES,
+  LONGUEUR_MAX_MOT_DE_PASSE,
+} from "@/lib/regles_mot_de_passe";
 
 type PageState = "verifying" | "form" | "success" | "invalid";
 
@@ -51,6 +50,8 @@ function ResetPasswordContent() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const champMotDePasse = useRef<HTMLInputElement>(null);
 
   // Vérification du token au montage
   const verify = useCallback(async () => {
@@ -68,26 +69,30 @@ function ResetPasswordContent() {
   }, [token]);
 
   useEffect(() => {
+    // Dette préexistante : vérification du lien au montage
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     verify();
   }, [verify]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     if (error) setError("");
+    if (e.target.name === "password") setPasswordError("");
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setPasswordError("");
 
-    if (form.password !== form.confirmPassword) {
-      setError("Les mots de passe ne correspondent pas.");
+    if (!motDePasseValide(form.password)) {
+      setPasswordError(MSG_REGLES_NON_RESPECTEES);
+      champMotDePasse.current?.focus();
       return;
     }
 
-    const failedRules = passwordRules.filter((r) => !r.test(form.password));
-    if (failedRules.length > 0) {
-      setError(`Le mot de passe doit contenir : ${failedRules.map((r) => r.label.toLowerCase()).join(", ")}`);
+    if (form.password !== form.confirmPassword) {
+      setError("Les mots de passe ne correspondent pas.");
       return;
     }
 
@@ -96,9 +101,13 @@ function ResetPasswordContent() {
       await resetPassword(token, form.password);
       setState("success");
     } catch (err) {
+      const erreurNouveau = messageErreurNouveauMotDePasse(err);
       if (err instanceof ApiError) {
         if (err.status === 401) {
           setState("invalid");
+        } else if (erreurNouveau) {
+          setPasswordError(erreurNouveau);
+          champMotDePasse.current?.focus();
         } else {
           setError(err.message);
         }
@@ -253,7 +262,11 @@ function ResetPasswordContent() {
               name="password"
               type={showPassword ? "text" : "password"}
               required
-              minLength={8}
+              ref={champMotDePasse}
+              maxLength={LONGUEUR_MAX_MOT_DE_PASSE}
+              autoComplete="new-password"
+              aria-invalid={passwordError ? true : undefined}
+              aria-describedby={descriptionMotDePasse("password", passwordError)}
               value={form.password}
               onChange={handleChange}
               placeholder="••••••••"
@@ -270,25 +283,7 @@ function ResetPasswordContent() {
             </button>
           </div>
 
-          {/* Password rules */}
-          {form.password.length > 0 && (
-            <div className="mt-3 grid grid-cols-2 gap-1.5">
-              {passwordRules.map((rule, i) => {
-                const passed = rule.test(form.password);
-                return (
-                  <div
-                    key={i}
-                    className={`flex items-center gap-1.5 text-[11px] transition-colors duration-200 ${
-                      passed ? "text-secondary-400" : "text-slate-600"
-                    }`}
-                  >
-                    <Check className={`w-3 h-3 ${passed ? "opacity-100" : "opacity-30"}`} />
-                    {rule.label}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <ReglesMotDePasse motDePasse={form.password} idChamp="password" erreur={passwordError} />
         </div>
 
         {/* Confirm password */}
@@ -303,7 +298,8 @@ function ResetPasswordContent() {
               name="confirmPassword"
               type={showPassword ? "text" : "password"}
               required
-              minLength={8}
+              maxLength={LONGUEUR_MAX_MOT_DE_PASSE}
+              autoComplete="new-password"
               value={form.confirmPassword}
               onChange={handleChange}
               placeholder="••••••••"

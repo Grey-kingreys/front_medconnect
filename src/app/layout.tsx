@@ -22,7 +22,7 @@ const outfit = Outfit({
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com"),
   title: {
-    default: "MedConnecte — Plateforme de Santé Numérique en Guinée",
+    default: "MedConnecte : Plateforme de Santé Numérique en Guinée",
     template: "%s | MedConnecte Guinée",
   },
   manifest: "/manifest.json",
@@ -61,7 +61,7 @@ export const metadata: Metadata = {
     locale: "fr_GN",
     url: process.env.NEXT_PUBLIC_BASE_URL || "https://medconnecte.com",
     siteName: "MedConnecte Guinée",
-    title: "MedConnecte — Votre santé connectée en Guinée",
+    title: "MedConnecte : Votre santé connectée en Guinée",
     description:
       "Carnet de santé intelligent, diagnostic IA, pharmacie digitale et urgences 24/7. La plateforme santé 360° pour la Guinée. Gratuit et sécurisé.",
     images: [
@@ -69,14 +69,14 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "MedConnecte — Plateforme de Santé Numérique Guinée",
+        alt: "MedConnecte : Plateforme de Santé Numérique Guinée",
         type: "image/png",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "MedConnecte — Santé Numérique en Guinée",
+    title: "MedConnecte : Santé Numérique en Guinée",
     description:
       "Carnet de santé intelligent, diagnostic IA, pharmacie en ligne et urgences 24/7. Gratuit, sécurisé, hors-ligne.",
     images: ["/og-image.png"],
@@ -120,7 +120,7 @@ export const metadata: Metadata = {
       { url: "/icons/icon-512x512.png", sizes: "512x512", type: "image/png" },
     ],
     apple: [
-      { url: "/icons/icon-192x192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
     ],
   },
 };

@@ -1,11 +1,11 @@
 @AGENTS.md
 
-# MedConnecte — Frontend (Next.js 16 + React 19)
+# MedConnecte : Frontend (Next.js 16 + React 19)
 
 Web app de la plateforme de santé. Voir aussi le `CLAUDE.md` racine (architecture +
 liste complète des problématiques).
 
-> ⚠️ **Next.js 16** : voir `AGENTS.md` ci-dessus — APIs/conventions peuvent différer de
+> ⚠️ **Next.js 16** : voir `AGENTS.md` ci-dessus : APIs/conventions peuvent différer de
 > ton entraînement. **Lire `node_modules/next/dist/docs/`** avant d'écrire du code Next,
 > et tenir compte des avis de dépréciation.
 
@@ -36,15 +36,15 @@ est vide, le signaler et proposer la commande ci-dessus avant tout commit.
 
 ## Structure
 
-- `src/app/` — App Router. `auth/` (login, register, reset…), `dashboard/` (~20 sous-routes
+- `src/app/` : App Router. `auth/` (login, register, reset…), `dashboard/` (~20 sous-routes
   métier : patients, consultations, ordonnances, analyses, carnet, pharmacies, stock,
   chat, rendez-vous, map, super-admin…), `offline/`, `debug/`.
-- `src/lib/` — **couche API centralisée** : tous les appels passent par `authFetch()`
+- `src/lib/` : **couche API centralisée** : tous les appels passent par `authFetch()`
   (`api_auth.ts`) qui ajoute le Bearer token, gère le **refresh automatique** sur 401,
   et normalise les erreurs (`ApiError`). Un fichier `api_<domaine>.ts` par domaine.
   **Ne pas faire de `fetch()` brut dans les composants.**
-- `src/hooks/` — `useAuth` (contexte global, silent refresh ~12 min), etc.
-- `src/components/` — UI réutilisable (`modals/`, `charts/`, listeners socket).
+- `src/hooks/` : `useAuth` (contexte global, silent refresh ~12 min), etc.
+- `src/components/` : UI réutilisable (`modals/`, `charts/`, listeners socket).
 
 ## Conventions importantes
 
@@ -70,7 +70,7 @@ est vide, le signaler et proposer la commande ci-dessus avant tout commit.
 
 Utiliser la couche `src/lib/api_storage.ts` + `src/hooks/useR2Upload.ts` +
 `src/components/FileUpload.tsx`. **Ne pas** rappeler l'ancien module legacy
-(`/storage/upload-url`, `/storage/download-url`, `fichierUrl`) — dormant, à retirer.
+(`/storage/upload-url`, `/storage/download-url`, `fichierUrl`) : dormant, à retirer.
 
 **Flux d'upload** (`uploadToR2`) : `POST /storage/presign` (via `authFetch`) →
 **PUT direct du fichier sur R2** (seul appel hors `authFetch`, avec progression XHR) →
@@ -85,7 +85,7 @@ ensuite rattaché à une entité métier.
   `createAnalyse` / `createOrdonnance` (`api_carnet`).
 
 **Lecture** : les fichiers **publics** (avatar/logo) exposent une `*Url` directe
-(`avatarUrl`, `logoUrl`) — affichage via `<img>`. Les documents **privés** passent par
+(`avatarUrl`, `logoUrl`) : affichage via `<img>`. Les documents **privés** passent par
 `GET /storage/:id/read-url` (`openStoredFile`, URL présignée courte, contrôle d'accès + audit).
 
 ⚠️ Ces hôtes R2 sont whitelistés dans la **CSP** (`next.config.ts`) : `*.r2.cloudflarestorage.com`

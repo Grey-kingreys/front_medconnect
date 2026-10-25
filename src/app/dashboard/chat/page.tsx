@@ -3,13 +3,15 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { io, Socket } from "socket.io-client";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/useToast";
-import { getConversations, getMessages, startConversation, Conversation, Message } from "@/lib/api_chat";
-import { 
-  Send, MapPin, Loader2, User as UserIcon, Building2, Phone, Search, AlertCircle, Menu, ArrowLeft
+import { getConversations, getMessages, Conversation, Message } from "@/lib/api_chat";
+import { gererSessionRevoquee } from "@/lib/deconnexion_forcee";
+import { localiserPrecisement, REGLAGES_PRECIS } from "@/lib/geolocalisation";
+import {
+  Send, MapPin, Loader2, User as UserIcon, Building2, Search, ArrowLeft
 } from "lucide-react";
 
 const SOCKET_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -38,9 +40,12 @@ export default function ChatPage() {
       transports: ["websocket"]
     });
 
+    newSocket.on("sessionRevoquee", gererSessionRevoquee);
+
     setSocket(newSocket);
 
     return () => {
+      newSocket.off("sessionRevoquee", gererSessionRevoquee);
       newSocket.disconnect();
     };
   }, []);
@@ -127,28 +132,22 @@ export default function ChatPage() {
     if (!activeConv || !socket) return;
     
     setLocationLoading(true);
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          socket.emit("sendMessage", {
-            conversationId: activeConv.id,
-            content: "📍 Position partagée",
-            isLocation: true,
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-          setLocationLoading(false);
-        },
-        (error) => {
-          console.error("Error getting location", error);
-          setLocationLoading(false);
-          notifier("Impossible de récupérer votre position. Autorisez l'accès à votre position dans votre navigateur puis réessayez.", "erreur");
-        }
-      );
-    } else {
+    localiserPrecisement(REGLAGES_PRECIS).then((r) => {
       setLocationLoading(false);
-      notifier("Votre navigateur ne permet pas de partager votre position. Décrivez plutôt votre emplacement dans un message.", "erreur");
-    }
+      if (r.ok) {
+        socket.emit("sendMessage", {
+          conversationId: activeConv.id,
+          content: "📍 Position partagée",
+          isLocation: true,
+          lat: r.position.latitude,
+          lng: r.position.longitude
+        });
+      } else if (r.cause === "non_prise_en_charge") {
+        notifier("Votre navigateur ne permet pas de partager votre position. Décrivez plutôt votre emplacement dans un message.", "erreur");
+      } else {
+        notifier("Impossible de récupérer votre position. Autorisez l'accès à votre position dans votre navigateur puis réessayez.", "erreur");
+      }
+    });
   };
 
   const getConvName = (conv: Conversation) => {

@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
@@ -197,7 +199,7 @@ export default function MembresPage() {
                       <td className="px-5 py-4">
                         {m.telephone
                           ? <div className="flex items-center gap-1.5"><Phone className="w-3.5 h-3.5 text-slate-600" /><span className="text-xs text-slate-500 dark:text-slate-400">{m.telephone}</span></div>
-                          : <span className="text-xs text-slate-700">—</span>}
+                          : <span className="text-xs text-slate-700">-</span>}
                       </td>
                       <td className="px-5 py-4">
                         <span className={`inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-1 rounded-full ${m.isActive ? "bg-secondary-500/10 text-secondary-500 dark:text-secondary-400" : "bg-slate-100 dark:bg-slate-700/50 text-slate-500"}`}>

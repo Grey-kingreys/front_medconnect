@@ -1,15 +1,9 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import {
-  getNotifications,
-  markAllAsRead,
-  markNotificationAsRead,
-  deleteNotification,
-  clearReadNotifications,
-  Notification,
-} from "@/lib/api_notifications";
+import { useNotifications } from "@/hooks/useNotifications";
+import { Notification } from "@/lib/api_notifications";
 import {
   Bell,
   BellRing,
@@ -83,37 +77,10 @@ export default function NotificationBell({
 }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [nonLues, setNonLues] = useState(0);
-  const [loading, setLoading] = useState(false);
+  const { notifications, nonLues, premierChargement, rafraichir, marquerToutLu, marquerLu, supprimer, supprimerLues } =
+    useNotifications();
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
-
-  const fetchNotifs = useCallback(async () => {
-    if (!user) return;
-    try {
-      setLoading(true);
-      const res = await getNotifications();
-      setNotifications(res.data.notifications);
-      setNonLues(res.data.nonLues);
-    } catch {
-      // silently fail
-    } finally {
-      setLoading(false);
-    }
-  }, [user]);
-
-  // Fetch on mount and every 30s
-  useEffect(() => {
-    fetchNotifs();
-    const interval = setInterval(fetchNotifs, 30000);
-    return () => clearInterval(interval);
-  }, [fetchNotifs]);
-
-  // Fetch when panel opens
-  useEffect(() => {
-    if (open) fetchNotifs();
-  }, [open, fetchNotifs]);
 
   // Close on outside click
   useEffect(() => {
@@ -129,9 +96,7 @@ export default function NotificationBell({
   const handleMarkAllRead = async () => {
     setActionLoading("all");
     try {
-      await markAllAsRead();
-      setNotifications((prev) => prev.map((n) => ({ ...n, lu: true })));
-      setNonLues(0);
+      await marquerToutLu();
     } finally {
       setActionLoading(null);
     }
@@ -140,11 +105,7 @@ export default function NotificationBell({
   const handleMarkRead = async (id: string) => {
     setActionLoading(id);
     try {
-      await markNotificationAsRead(id);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, lu: true } : n))
-      );
-      setNonLues((prev) => Math.max(0, prev - 1));
+      await marquerLu(id);
     } finally {
       setActionLoading(null);
     }
@@ -153,9 +114,7 @@ export default function NotificationBell({
   const handleDelete = async (id: string, wasUnread: boolean) => {
     setActionLoading(`del-${id}`);
     try {
-      await deleteNotification(id);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-      if (wasUnread) setNonLues((prev) => Math.max(0, prev - 1));
+      await supprimer(id, wasUnread);
     } finally {
       setActionLoading(null);
     }
@@ -164,8 +123,7 @@ export default function NotificationBell({
   const handleClearRead = async () => {
     setActionLoading("clear");
     try {
-      await clearReadNotifications();
-      setNotifications((prev) => prev.filter((n) => !n.lu));
+      await supprimerLues();
     } finally {
       setActionLoading(null);
     }
@@ -178,7 +136,10 @@ export default function NotificationBell({
       {/* ─── Bell Button ─── */}
       <button
         id="notification-bell-btn"
-        onClick={() => setOpen((v) => !v)}
+        onClick={() => {
+          if (!open) void rafraichir();
+          setOpen((v) => !v);
+        }}
         className={`
           relative p-2.5 rounded-xl transition-all duration-200
           ${open
@@ -268,7 +229,7 @@ export default function NotificationBell({
 
           {/* Liste */}
           <div className="overflow-y-auto flex-1 custom-scrollbar">
-            {loading && notifications.length === 0 ? (
+            {premierChargement && notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 gap-3">
                 <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
                 <p className="text-xs text-slate-400">Chargement...</p>

@@ -64,7 +64,7 @@ export function StatCard({
         {/* Value */}
         <p className="text-3xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-0.5">
           {value === null || value === undefined ? (
-            <span className="text-slate-600 text-lg">—</span>
+            <span className="text-slate-600 text-lg">-</span>
           ) : (
             value
           )}

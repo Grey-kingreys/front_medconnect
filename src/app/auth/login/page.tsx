@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, LogIn, Loader2, AlertCircle } from "lucide-react";
 import { login, ApiError } from "@/lib/api_auth";
 import { useTerminerConnexion } from "@/hooks/useAuth";
 import ComptesDemo from "@/components/ComptesDemo";
+import { lireEtEffacerMotif, MESSAGES_DECONNEXION, type MotifDeconnexion } from "@/lib/deconnexion_forcee";
 
 export default function LoginPage() {
   const terminerConnexion = useTerminerConnexion();
@@ -13,6 +14,14 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [motifDeconnexion, setMotifDeconnexion] = useState<MotifDeconnexion | null>(null);
+
+  // Motif d'une déconnexion forcée, lu après le montage (stockage absent au rendu serveur)
+  useEffect(() => {
+    const motif = lireEtEffacerMotif();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (motif) setMotifDeconnexion(motif);
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
@@ -53,6 +62,13 @@ export default function LoginPage() {
           Connectez-vous à votre compte MedConnecte
         </p>
       </div>
+
+      {motifDeconnexion && (
+        <div role="status" className="mb-6 flex items-start gap-3 p-4 rounded-2xl bg-emergency-500/10 border border-emergency-500/20 text-emergency-500 text-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <span>{MESSAGES_DECONNEXION[motifDeconnexion]}</span>
+        </div>
+      )}
 
       {/* Error */}
       {error && (

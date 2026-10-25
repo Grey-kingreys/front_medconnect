@@ -1,3 +1,5 @@
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react/no-unescaped-entities */
 export default function CGU() {
   return (
     <div className="min-h-screen bg-gray-50 py-16 px-4">
@@ -21,7 +23,7 @@ export default function CGU() {
         </section>
 
         <section className="mb-8">
-          <h2 className="text-2xl font-semibold mb-4">3. Diagnostic IA — Disclaimer</h2>
+          <h2 className="text-2xl font-semibold mb-4">3. Diagnostic IA : avertissement</h2>
           <p className="text-gray-700 mb-4 font-semibold text-red-600">
             ⚠️ Le diagnostic IA de MedConnecte est une aide à l'orientation uniquement.
             Il ne remplace <strong>EN AUCUN CAS</strong> un avis médical professionnel.
@@ -39,7 +41,7 @@ export default function CGU() {
 
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mt-8">
           <p className="text-sm text-gray-600">
-            <strong>TODO: Relecture juriste</strong> — CGU à compléter et valider avant usage public.
+            <strong>TODO: Relecture juriste</strong> : CGU à compléter et valider avant usage public.
           </p>
         </div>
       </div>
