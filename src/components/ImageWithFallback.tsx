@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect */
 
 import { useEffect, useState } from "react";
 
@@ -8,7 +10,7 @@ interface ImageWithFallbackProps {
   alt: string;
   className?: string;
   /** Rendu de repli : si `src` est absent OU si l'image échoue à charger (hors-ligne,
-   *  connexion instable — contexte Guinée). Évite l'icône « image cassée ». */
+   *  connexion instable, contexte Guinée). Évite l'icône « image cassée ». */
   fallback: React.ReactNode;
 }
 

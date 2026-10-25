@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable @typescript-eslint/no-explicit-any, react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
@@ -161,7 +163,7 @@ export default function SuperAdminDashboard() {
               </span>
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 max-w-xl">
-              Vue d&apos;ensemble de la plateforme MedConnecte — statistiques globales et gestion des structures.
+              Vue d&apos;ensemble de la plateforme MedConnecte : statistiques globales et gestion des structures.
             </p>
           </div>
 
@@ -225,7 +227,7 @@ export default function SuperAdminDashboard() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Utilisateurs total"
-            value={globalStats?.totalUsers ?? "—"}
+            value={globalStats?.totalUsers ?? "-"}
             icon={<Users className="w-5 h-5" />}
             iconColor="text-primary-400"
             iconBg="bg-primary-500/10"
@@ -234,7 +236,7 @@ export default function SuperAdminDashboard() {
           />
           <StatCard
             label="Structures enregistrées"
-            value={globalStats?.totalStructures ?? "—"}
+            value={globalStats?.totalStructures ?? "-"}
             icon={<Building2 className="w-5 h-5" />}
             iconColor="text-cyan-400"
             iconBg="bg-cyan-500/10"
@@ -243,7 +245,7 @@ export default function SuperAdminDashboard() {
           />
           <StatCard
             label="Structures configurées"
-            value={globalStats?.structuresConfigurees ?? "—"}
+            value={globalStats?.structuresConfigurees ?? "-"}
             icon={<CheckCircle2 className="w-5 h-5" />}
             iconColor="text-secondary-400"
             iconBg="bg-secondary-500/10"
@@ -253,7 +255,7 @@ export default function SuperAdminDashboard() {
           />
           <StatCard
             label="En attente de config."
-            value={globalStats?.structuresEnAttente ?? "—"}
+            value={globalStats?.structuresEnAttente ?? "-"}
             icon={<Clock className="w-5 h-5" />}
             iconColor="text-amber-400"
             iconBg="bg-amber-500/10"

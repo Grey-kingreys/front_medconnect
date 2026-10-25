@@ -62,7 +62,7 @@ export default function AuthLayout({
           </h1>
           <p className="text-lg text-slate-500 dark:text-slate-400 max-w-md leading-relaxed">
             Carnet de santé numérique, géolocalisation médicale, urgences et
-            diagnostic IA — tout dans votre poche.
+            diagnostic IA, tout dans votre poche.
           </p>
 
           {/* Feature pills */}

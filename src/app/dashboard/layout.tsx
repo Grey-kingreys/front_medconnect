@@ -290,7 +290,7 @@ export default function DashboardLayout({
     return <LoadingSpinner fullPage message="Chargement du dashboard..." />;
   }
 
-  // Non connecté — le hook redirigera vers /auth/login
+  // Non connecté : le hook redirigera vers /auth/login
   if (!user) {
     return <LoadingSpinner fullPage message="Redirection vers la connexion..." />;
   }

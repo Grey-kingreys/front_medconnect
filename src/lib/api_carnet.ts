@@ -83,7 +83,7 @@ export interface Ordonnance {
   notes: string | null;
   dateEmission: string;
   dateExpiration: string | null;
-  /** Ordonnance scannée (StoredFile privé) — lecture via /storage/:id/read-url. */
+  /** Ordonnance scannée (StoredFile privé) : lecture via /storage/:id/read-url. */
   scanFileId: string | null;
   createdAt: string;
   updatedAt: string;
@@ -108,9 +108,9 @@ export interface ResultatAnalyse {
   typeAnalyse: string;
   laboratoire: string | null;
   resultats: string;
-  /** @deprecated ancienne URL brute — remplacée par documentFileId. */
+  /** @deprecated ancienne URL brute, remplacée par documentFileId. */
   fichierUrl: string | null;
-  /** Document d'analyse (StoredFile privé) — lecture via /storage/:id/read-url. */
+  /** Document d'analyse (StoredFile privé) : lecture via /storage/:id/read-url. */
   documentFileId: string | null;
   dateAnalyse: string;
   notes: string | null;

@@ -224,7 +224,7 @@ export default function StockPage() {
                         </div>
                         <div>
                           <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{s.medicament.nom}</p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{s.medicament.nomGenerique || "—"}</p>
+                          <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{s.medicament.nomGenerique || "Non renseigné"}</p>
                         </div>
                       </div>
                     </td>
@@ -254,7 +254,7 @@ export default function StockPage() {
                       </div>
                     </td>
                     <td className="px-8 py-5 text-right font-mono text-sm font-bold text-slate-600 dark:text-slate-400">
-                      {s.prixUnitaire?.toLocaleString() || "—"}
+                      {s.prixUnitaire?.toLocaleString() || "-"}
                     </td>
                     <td className="px-8 py-5 text-center">
                       <div className="flex justify-center">

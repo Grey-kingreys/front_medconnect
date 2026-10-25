@@ -608,7 +608,7 @@ export async function refreshAccessToken() {
 }
 
 /**
- * Déconnexion — invalide le refresh token côté serveur
+ * Déconnexion : invalide le refresh token côté serveur
  */
 export async function logout() {
   try {

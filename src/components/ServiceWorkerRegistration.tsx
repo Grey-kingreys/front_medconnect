@@ -7,7 +7,7 @@ import { useEffect } from "react";
  * Chrome/Edge n'émettent jamais `beforeinstallprompt` : l'application ne serait
  * pas installable sur Android malgré un manifeste valide.
  *
- * Ce SW ne met rien en cache — le hors-ligne (serwist) reste désactivé.
+ * Ce SW ne met rien en cache : le hors-ligne (serwist) reste désactivé.
  */
 export function ServiceWorkerRegistration() {
   useEffect(() => {

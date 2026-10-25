@@ -352,7 +352,7 @@ export default function PricingSection() {
           </div>
         </div>
 
-        {/* Plans Grid — les trois grilles sont rendues dans le HTML initial et
+        {/* Plans Grid : les trois grilles sont rendues dans le HTML initial et
             basculées par l'attribut `hidden` : en rendu conditionnel React, seul
             l'onglet Patients existait dans la page, les tarifs Pharmacies et
             Hôpitaux n'étaient donc ni indexés ni accessibles sans JavaScript.

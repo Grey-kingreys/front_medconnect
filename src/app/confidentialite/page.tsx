@@ -1,3 +1,5 @@
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react/no-unescaped-entities */
 export default function Confidentialite() {
   return (
     <div className="min-h-screen bg-gray-50 py-16 px-4">
@@ -34,7 +36,7 @@ export default function Confidentialite() {
 
         <div className="bg-blue-50 border-l-4 border-blue-500 p-4 mt-8">
           <p className="text-sm text-gray-600">
-            <strong>TODO: Relecture juriste</strong> — Cette page nécessite une revue légale avant déploiement public.
+            <strong>TODO: Relecture juriste</strong> : Cette page nécessite une revue légale avant déploiement public.
           </p>
         </div>
       </div>

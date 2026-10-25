@@ -11,7 +11,7 @@ interface FileUploadProps {
   prefix?: string;
   /** Types MIME acceptés côté navigateur (ex. "image/png,image/jpeg"). */
   accept?: string;
-  /** Taille max indicative côté client (Mo) — la limite réelle est appliquée par le serveur. */
+  /** Taille max indicative côté client (Mo) : la limite réelle est appliquée par le serveur. */
   maxSizeMb?: number;
   /** Libellé du bouton. */
   label?: string;

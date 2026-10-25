@@ -1,4 +1,6 @@
 "use client";
+// Dette préexistante, backlog points 21 et 22
+/* eslint-disable react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
@@ -136,7 +138,7 @@ export default function UtilisateursPage() {
             Utilisateurs
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            {userStats?.total ?? "—"} comptes inscrits sur la plateforme
+            {userStats?.total ?? "-"} comptes inscrits sur la plateforme
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -311,7 +313,7 @@ export default function UtilisateursPage() {
                         {u.structure ? (
                           <span className="text-xs text-slate-500 dark:text-slate-400">{u.structure.nom}</span>
                         ) : (
-                          <span className="text-xs text-slate-700">—</span>
+                          <span className="text-xs text-slate-700">-</span>
                         )}
                       </td>
 

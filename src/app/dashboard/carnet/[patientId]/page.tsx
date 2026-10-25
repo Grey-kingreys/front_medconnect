@@ -183,7 +183,7 @@ export default function PatientCarnetViewPage() {
               {patient.prenom} {patient.nom}
             </h1>
             <div className="flex flex-wrap justify-center sm:justify-start gap-4 text-white/80 text-sm">
-              {/* Âge calculé dynamiquement — la date brute n'est jamais affichée */}
+              {/* Âge calculé dynamiquement : la date brute n'est jamais affichée */}
               <span className="flex items-center gap-2">
                 <Activity className="w-4 h-4" />
                 {(profil?.dateNaissance || patient.dateNaissance) ? `${calculateAge(profil?.dateNaissance || (patient as any).dateNaissance)} ans` : "Âge non renseigné"}
@@ -200,7 +200,7 @@ export default function PatientCarnetViewPage() {
               <div className="px-4 py-2 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 flex items-center gap-2">
                 <Activity className="w-4 h-4 text-emerald-400" />
                 <span className="text-sm font-bold text-white">
-                  {(profil?.poids || patient.poids) || "—"} kg / {(profil?.taille || patient.taille) || "—"} cm
+                  {(profil?.poids || patient.poids) || "-"} kg / {(profil?.taille || patient.taille) || "-"} cm
                 </span>
               </div>
             </div>
@@ -441,7 +441,7 @@ export default function PatientCarnetViewPage() {
                     {Array.isArray(o.medicaments) ? o.medicaments.map((m: any, idx: number) => (
                       <p key={idx} className="text-xs text-slate-700 dark:text-slate-300 flex items-center gap-2">
                         <span className="w-1.5 h-1.5 rounded-full bg-secondary-400" />
-                        <strong>{m.nom}</strong> — {m.dosage}
+                        <strong>{m.nom}</strong> : {m.dosage}
                       </p>
                     )) : <p className="text-xs text-slate-500 italic">Format invalide</p>}
                   </div>
