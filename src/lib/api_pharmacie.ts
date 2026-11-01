@@ -304,3 +304,117 @@ export async function importerCatalogue(fichier: File) {
     body: corpsImport(fichier),
   });
 }
+
+// ─── Réceptions et fournisseurs (PF07a) ─────────────────────────
+
+export interface Fournisseur {
+  id: string;
+  nom: string;
+  telephone: string | null;
+  createdAt: string;
+}
+
+/** Une ligne de la facture : exactement un de `nombreBoites` et `quantiteUnites` ; la date manque seulement avec `sansPeremption`. */
+export interface LigneReceptionDemandee {
+  stockId: string;
+  numeroLot?: string;
+  /** Jour AAAA-MM-JJ. */
+  dateExpiration?: string;
+  sansPeremption?: boolean;
+  nombreBoites?: number;
+  quantiteUnites?: number;
+  /** Coût d'une boîte en GNF (entier, 0 ou plus). */
+  coutAchatBoite?: number;
+}
+
+export interface CorpsReception {
+  /** Identifiant choisi par le client : un rejeu du même identifiant ne crée rien de plus (D688). */
+  id?: string;
+  fournisseurId?: string;
+  reference?: string;
+  /** Date ISO, jamais dans le futur. */
+  recueLe?: string;
+  lignes: LigneReceptionDemandee[];
+}
+
+export interface LotRecu {
+  id: string;
+  stockId: string;
+  nom: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  quantiteRecue: number;
+  coefficientReception: number;
+  solde: number;
+  /** Présents seulement avec `marge:read` : tester la présence de la clé, un coût nul ou absent est « inconnu » (D698). */
+  coutAchatBoite?: number | null;
+  coutUnitaire?: number | null;
+}
+
+export interface AvertissementReception {
+  code: "FICHE_NON_QUALIFIEE";
+  stockId: string;
+  nom: string;
+  message: string;
+}
+
+export interface ReceptionResume {
+  id: string;
+  reference: string | null;
+  recueLe: string;
+  createdAt: string;
+  auteurId: string;
+  fournisseur: { id: string; nom: string } | null;
+  nombreLots: number;
+  quantiteTotale: number;
+}
+
+export interface Reception {
+  id: string;
+  reference: string | null;
+  recueLe: string;
+  createdAt: string;
+  auteurId: string;
+  fournisseur: { id: string; nom: string } | null;
+  lots: LotRecu[];
+  resolutions?: unknown[];
+  /** Faux sur le rejeu d'un identifiant déjà enregistré. */
+  cree?: boolean;
+  avertissements?: AvertissementReception[];
+}
+
+export interface PageReceptions {
+  receptions: ReceptionResume[];
+  page: number;
+  parPage: number;
+  total: number;
+}
+
+export async function listerFournisseurs(structureId: string) {
+  return authFetch<Fournisseur[]>(`/pharmacie/${encodeURIComponent(structureId)}/fournisseurs`);
+}
+
+export async function creerFournisseur(structureId: string, corps: { nom: string; telephone?: string }) {
+  return authFetch<Fournisseur & { cree: boolean }>(`/pharmacie/${encodeURIComponent(structureId)}/fournisseurs`, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
+/** Enregistre une livraison ; rejouable avec le même `id` sans rien enregistrer deux fois. */
+export async function enregistrerReception(structureId: string, corps: CorpsReception) {
+  return authFetch<Reception>(`/pharmacie/${encodeURIComponent(structureId)}/receptions`, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
+export async function listerReceptions(structureId: string, page = 1) {
+  return authFetch<PageReceptions>(`/pharmacie/${encodeURIComponent(structureId)}/receptions?page=${page}`);
+}
+
+export async function getReception(structureId: string, receptionId: string) {
+  return authFetch<Reception>(
+    `/pharmacie/${encodeURIComponent(structureId)}/receptions/${encodeURIComponent(receptionId)}`,
+  );
+}

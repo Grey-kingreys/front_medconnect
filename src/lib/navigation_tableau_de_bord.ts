@@ -23,6 +23,7 @@ import {
   ShoppingCart,
   Stethoscope,
   Syringe,
+  Truck,
   Users,
 } from "lucide-react";
 import type { CodePermission, ContexteAcces, RoleUtilisateur } from "./acces";
@@ -52,6 +53,8 @@ interface EntreeTableauDeBord {
   acces: RegleAcces;
   /** Ancien serveur (sans structureType) : rôles qui voient l'entrée, comme avant F9. */
   rolesRepli: readonly RoleUtilisateur[];
+  /** Vrai : la même règle d'accès garde aussi les pages sous `href` (`href/...`), absentes du menu. */
+  couvreSousPages?: boolean;
   raccourci?: {
     libelle?: TexteSelonType;
     description: TexteSelonType;
@@ -424,6 +427,17 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
     },
   },
   {
+    id: "receptions",
+    section: "activite",
+    href: "/dashboard/receptions",
+    icone: Truck,
+    libelle: { defaut: "Réceptions" },
+    acces: perm(["reception:write"], { typesStructure: P }),
+    rolesRepli: [],
+    // Saisie (`/nouvelle`) et détail (`/<id>`, PF07b) sous la même permission.
+    couvreSousPages: true,
+  },
+  {
     id: "catalogue",
     section: "activite",
     href: "/dashboard/catalogue",
@@ -668,7 +682,9 @@ export function cartesCompteurs(ctx: ContexteAcces): CarteCompteur[] {
 export function estRouteAutorisee(chemin: string, ctx: ContexteAcces): boolean {
   const propre = chemin.length > 1 && chemin.endsWith("/") ? chemin.slice(0, -1) : chemin;
   if (propre === "/dashboard") return true;
-  const entrees = ENTREES.filter((entree) => entree.href === propre);
+  const entrees = ENTREES.filter(
+    (entree) => entree.href === propre || (entree.couvreSousPages === true && propre.startsWith(`${entree.href}/`)),
+  );
   if (entrees.length === 0) return true;
   return entrees.some((entree) => estVisible(entree.acces, entree.rolesRepli, ctx));
 }

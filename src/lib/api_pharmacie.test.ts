@@ -4,6 +4,8 @@ import {
   apercuImportCatalogue,
   apercuImportStock,
   importerCatalogue,
+  creerFournisseur,
+  enregistrerReception,
   importerStock,
   telechargerModeleImportCatalogue,
 } from "./api_pharmacie";
@@ -100,5 +102,30 @@ describe("api_pharmacie, import Excel du stock", () => {
     expect(options?.method).toBe("POST");
     expect((options?.body as FormData).get("mode")).toBe("livraison");
     expect((options?.body as FormData).get("fichier")).toBe(f);
+  });
+});
+
+describe("api_pharmacie, réceptions et fournisseurs", () => {
+  it("enregistrerReception envoie le corps tel quel en POST", () => {
+    const corps = {
+      id: "11111111-1111-4111-8111-111111111111",
+      reference: "BL-1",
+      lignes: [{ stockId: "m1", nombreBoites: 10, dateExpiration: "2028-06-30" }],
+    };
+    enregistrerReception("s1", corps);
+
+    const [endpoint, options] = mockedAuthFetch.mock.calls[0];
+    expect(endpoint).toBe("/pharmacie/s1/receptions");
+    expect(options?.method).toBe("POST");
+    expect(JSON.parse(options?.body as string)).toEqual(corps);
+  });
+
+  it("creerFournisseur envoie le nom et le téléphone", () => {
+    creerFournisseur("s1", { nom: "UbiPharm", telephone: "622 00 00 00" });
+
+    const [endpoint, options] = mockedAuthFetch.mock.calls[0];
+    expect(endpoint).toBe("/pharmacie/s1/fournisseurs");
+    expect(options?.method).toBe("POST");
+    expect(JSON.parse(options?.body as string)).toEqual({ nom: "UbiPharm", telephone: "622 00 00 00" });
   });
 });

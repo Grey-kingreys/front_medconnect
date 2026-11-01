@@ -111,6 +111,28 @@ describe("raccourcis de la pharmacie", () => {
     expect(raccourcis(repli).map((x) => x.href)).not.toContain("/dashboard/ventes");
   });
 
+  it("montre Réceptions avec reception:write, la cache et la refuse au rôle Pharmacien (D704)", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "reception:write"]);
+    expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/receptions");
+    expect(estRouteAutorisee("/dashboard/receptions", titulaire)).toBe(true);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(vendeur))).not.toContain("/dashboard/receptions");
+    expect(estRouteAutorisee("/dashboard/receptions", vendeur)).toBe(false);
+  });
+
+  it("garde la saisie et le détail d'une réception sous reception:write", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "reception:write"]);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    for (const chemin of ["/dashboard/receptions/nouvelle", "/dashboard/receptions/nouvelle/", "/dashboard/receptions/r-123"]) {
+      expect(estRouteAutorisee(chemin, titulaire)).toBe(true);
+      expect(estRouteAutorisee(chemin, vendeur)).toBe(false);
+    }
+    // Le préfixe s'arrête au séparateur : une autre adresse qui commence pareil n'est pas couverte.
+    expect(estRouteAutorisee("/dashboard/receptionsX", vendeur)).toBe(true);
+    // Les autres entrées gardent leur comportement exact : une sous-page du stock n'est pas filtrée ici.
+    expect(estRouteAutorisee("/dashboard/stock/import", contexte("PATIENT", null, []))).toBe(true);
+  });
+
   it("ne crée aucune entrée de menu avec une adresse paramétrée", () => {
     const menu = hrefs(sectionsMenu(contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN)));
     expect(menu.filter((h) => h.includes("?"))).toEqual([]);
