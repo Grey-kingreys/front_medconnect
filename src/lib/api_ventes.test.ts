@@ -70,7 +70,7 @@ describe("annulerVente", () => {
 
 describe("codeErreurVente", () => {
   it("reconnaît un code connu", () => {
-    expect(codeErreurVente(new ApiError("x", 409, { code: "STOCK_INSUFFISANT" }))).toBe("STOCK_INSUFFISANT");
+    expect(codeErreurVente(new ApiError("x", 409, { code: "SORTIE_MANUELLE_REQUISE" }))).toBe("SORTIE_MANUELLE_REQUISE");
   });
 
   it.each(["STOCK_INTROUVABLE", "VENTE_DEJA_ANNULEE", "ANNULATION_HORS_DELAI"])("reconnaît %s", (code) => {

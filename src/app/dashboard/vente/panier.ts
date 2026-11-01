@@ -3,18 +3,31 @@
  * Chaque fonction renvoie un nouvel objet et ne modifie jamais ses arguments.
  */
 import type { StockMedicament } from "@/lib/api_pharmacie";
-import type { CorpsCreationVente, LigneErreurVente } from "@/lib/api_ventes";
+import type { CorpsCreationVente, PaiementDemande, UniteVente } from "@/lib/api_ventes";
+import { calculerLigne, type EntreeLigne } from "@/lib/caisse/regles/prix";
 
-export type RaisonNonVendable = "perime" | "rupture" | "sans-prix";
+export type RaisonNonVendable = "sans-prix" | "unite-interdite";
 export const LIBELLES_RAISON: Record<RaisonNonVendable, string> = {
-  perime: "Date de péremption dépassée",
-  rupture: "Rupture de stock",
   "sans-prix": "Prix non renseigné",
+  "unite-interdite": "Se vend uniquement à la boîte",
 };
 
+export type AvertissementStock = "attente-stock" | "perime-seulement";
+export const LIBELLES_AVERTISSEMENT: Record<AvertissementStock, string> = {
+  "attente-stock": "Stock insuffisant : la vente sera enregistrée en attente de livraison.",
+  "perime-seulement": "Il ne reste que des boîtes périmées : vous devrez choisir le lot à sortir.",
+};
+
+/** Lot périmé choisi par le vendeur pour une ligne ; jamais enregistré dans le stockage local. */
+export interface SortieManuelleLigne {
+  lotId: string;
+  motif: string;
+}
 export interface LignePanier {
   stockId: string;
-  quantite: number;
+  unite: UniteVente;
+  nombre: number;
+  sortieManuelle?: SortieManuelleLigne;
 }
 export interface PanierVente {
   cleIdempotence: string | null;
@@ -38,7 +51,7 @@ export interface CorrectionPanier {
   apres: number;
 }
 export const NOMBRE_MAX_RESULTATS = 50;
-/** Limites imposées par le back : 50 lignes par vente, 10000 unités par ligne. */
+/** Limites imposées par le back : 50 lignes par vente, 10000 par ligne. */
 export const MAX_LIGNES_PANIER = 50;
 export const QUANTITE_MAX_LIGNE = 10000;
 export const LONGUEUR_MAX_NOM_CLIENT = 100;
@@ -46,35 +59,60 @@ export const FORMAT_TELEPHONE_CLIENT = /^\+?[0-9 ]{8,20}$/;
 
 const NOM_PAR_DEFAUT = "Un médicament";
 
-/** Jour (UTC) d'une date ISO, ou null si elle est illisible. */
-function jourUtc(date: string | Date): string | null {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+/** Clé d'une ligne : une fiche peut avoir une ligne en boîtes et une ligne en unités. */
+export function cleLigne(stockId: string, unite: UniteVente): string {
+  return `${stockId}:${unite}`;
+}
+export const cleDe = (ligne: LignePanier): string => cleLigne(ligne.stockId, ligne.unite);
+
+export function autreUnite(unite: UniteVente): UniteVente {
+  return unite === "BOITE" ? "UNITE" : "BOITE";
 }
 
-/** Pourquoi ce stock ne peut pas être vendu, ou null s'il est vendable. Le jour même de la péremption reste vendable. */
-export function raisonNonVendable(stock: StockMedicament, maintenant: Date): RaisonNonVendable | null {
-  if (stock.dateExpiration) {
-    const jourExpiration = jourUtc(stock.dateExpiration);
-    const jourCourant = jourUtc(maintenant);
-    if (jourExpiration !== null && jourCourant !== null && jourExpiration < jourCourant) return "perime";
-  }
-  if (stock.quantite <= 0) return "rupture";
-  if (stock.prixUnitaire === undefined || stock.prixUnitaire === null || stock.prixUnitaire <= 0) return "sans-prix";
-  return null;
+function entreeLigne(stock: StockMedicament, unite: UniteVente, nombre: number): EntreeLigne {
+  return {
+    unite,
+    nombre,
+    coefficientBoite: stock.coefficientBoite ?? 1,
+    prixBoite: stock.prixUnitaire ?? null,
+    prixUnite: stock.prixUnite ?? null,
+    deconditionnable: stock.deconditionnable === true,
+  };
 }
 
-/** Quantité maximale vendable sur une ligne : le stock, dans la limite d'une vente. */
-export function quantiteMaxLigne(stock: StockMedicament): number {
-  return Math.max(0, Math.min(stock.quantite, QUANTITE_MAX_LIGNE));
+/** Unité proposée d'abord (D690) : l'unité si la fiche se déconditionne avec un prix à l'unité, sinon la boîte. */
+export function uniteParDefaut(stock: StockMedicament): UniteVente {
+  const prix = stock.prixUnite;
+  return stock.deconditionnable === true && typeof prix === "number" && Number.isInteger(prix) && prix > 0
+    ? "UNITE"
+    : "BOITE";
+}
+
+/** Pourquoi ce stock ne peut pas être vendu dans cette unité, ou null. Ni la rupture ni la péremption ne bloquent (D689). */
+export function raisonNonVendable(stock: StockMedicament, unite: UniteVente): RaisonNonVendable | null {
+  const calcul = calculerLigne(entreeLigne(stock, unite, 1));
+  if (calcul.ok) return null;
+  return calcul.code === "VENTE_UNITE_INTERDITE" ? "unite-interdite" : "sans-prix";
+}
+
+/** Quantité en unités minimales qu'une ligne demande. */
+function quantiteDemandee(stock: StockMedicament, unite: UniteVente, nombre: number): number {
+  return unite === "UNITE" ? nombre : nombre * (stock.coefficientBoite ?? 1);
+}
+
+/** Avertissement non bloquant sur le stock pour ce nombre dans cette unité. */
+export function avertissementStock(
+  stock: StockMedicament,
+  unite: UniteVente,
+  nombreDansPanier: number,
+): AvertissementStock | null {
+  if (stock.quantite > 0 && stock.quantiteVendable === 0) return "perime-seulement";
+  const vendable = stock.quantiteVendable ?? stock.quantite;
+  return quantiteDemandee(stock, unite, nombreDansPanier) > vendable ? "attente-stock" : null;
 }
 
 export function panierPlein(panier: PanierVente): boolean {
   return panier.lignes.length >= MAX_LIGNES_PANIER;
-}
-
-export function prixArrondi(stock: StockMedicament): number {
-  return Math.round(stock.prixUnitaire ?? 0);
 }
 
 const normaliser = (texte: string): string =>
@@ -103,61 +141,90 @@ function sansLigneSiVide(panier: PanierVente): PanierVente {
 export function ajouterAuPanier(
   panier: PanierVente,
   stock: StockMedicament,
+  unite: UniteVente,
   nouvelleCle: () => string,
-  maintenant: Date,
 ): PanierVente {
-  if (raisonNonVendable(stock, maintenant) !== null) return panier;
-  const existante = panier.lignes.find((l) => l.stockId === stock.id);
+  if (raisonNonVendable(stock, unite) !== null) return panier;
+  const existante = panier.lignes.find((l) => l.stockId === stock.id && l.unite === unite);
   if (existante) {
-    if (existante.quantite >= quantiteMaxLigne(stock)) return panier;
+    if (existante.nombre >= QUANTITE_MAX_LIGNE) return panier;
     return {
       ...panier,
-      lignes: panier.lignes.map((l) => (l.stockId === stock.id ? { ...l, quantite: l.quantite + 1 } : l)),
+      lignes: panier.lignes.map((l) => (l === existante ? { ...l, nombre: l.nombre + 1 } : l)),
     };
   }
   if (panierPlein(panier)) return panier;
   return {
     ...panier,
     cleIdempotence: panier.lignes.length === 0 ? nouvelleCle() : panier.cleIdempotence,
-    lignes: [...panier.lignes, { stockId: stock.id, quantite: 1 }],
+    lignes: [...panier.lignes, { stockId: stock.id, unite, nombre: 1 }],
     ordonnanceVue: stock.medicament.ordonnanceRequise ? false : panier.ordonnanceVue,
   };
 }
 
-export function changerQuantite(panier: PanierVente, stock: StockMedicament, delta: number): PanierVente {
+export function changerNombre(panier: PanierVente, cle: string, delta: number): PanierVente {
   return {
     ...panier,
     lignes: panier.lignes.map((l) =>
-      l.stockId === stock.id ? { ...l, quantite: Math.min(Math.max(l.quantite + delta, 1), quantiteMaxLigne(stock)) } : l,
+      cleDe(l) === cle ? { ...l, nombre: Math.min(Math.max(l.nombre + delta, 1), QUANTITE_MAX_LIGNE) } : l,
     ),
   };
 }
 
-export function retirerDuPanier(panier: PanierVente, stockId: string): PanierVente {
-  return sansLigneSiVide({ ...panier, lignes: panier.lignes.filter((l) => l.stockId !== stockId) });
+/** Bascule la ligne entre boîte et unité si l'autre unité est vendable ; fusionne avec la ligne de l'autre unité si elle existe. */
+export function changerUnite(panier: PanierVente, cle: string, stock: StockMedicament): PanierVente {
+  const ligne = panier.lignes.find((l) => cleDe(l) === cle);
+  if (!ligne || stock.id !== ligne.stockId) return panier;
+  const unite = autreUnite(ligne.unite);
+  if (raisonNonVendable(stock, unite) !== null) return panier;
+  const existante = panier.lignes.find((l) => l.stockId === ligne.stockId && l.unite === unite);
+  if (existante) {
+    const somme = Math.min(existante.nombre + ligne.nombre, QUANTITE_MAX_LIGNE);
+    return {
+      ...panier,
+      lignes: panier.lignes.filter((l) => l !== ligne).map((l) => (l === existante ? { ...l, nombre: somme } : l)),
+    };
+  }
+  return { ...panier, lignes: panier.lignes.map((l) => (l === ligne ? { ...l, unite } : l)) };
+}
+
+/** Ajoute le lot périmé choisi (et son motif) aux lignes de la fiche citée ; null le retire. */
+export function definirSortieManuelle(
+  panier: PanierVente,
+  stockId: string,
+  sortie: SortieManuelleLigne | null,
+): PanierVente {
+  return {
+    ...panier,
+    lignes: panier.lignes.map((l) => {
+      if (l.stockId !== stockId) return l;
+      const sans: LignePanier = { stockId: l.stockId, unite: l.unite, nombre: l.nombre };
+      return sortie === null ? sans : { ...sans, sortieManuelle: sortie };
+    }),
+  };
+}
+
+export function retirerDuPanier(panier: PanierVente, cle: string): PanierVente {
+  return sansLigneSiVide({ ...panier, lignes: panier.lignes.filter((l) => cleDe(l) !== cle) });
 }
 
 export function retirerLignes(panier: PanierVente, stockIds: string[]): PanierVente {
   return sansLigneSiVide({ ...panier, lignes: panier.lignes.filter((l) => !stockIds.includes(l.stockId)) });
 }
 
-/** Aligne le panier sur le stock actuel : lignes devenues invendables retirées, quantités ramenées au stock. */
+/** Aligne le panier sur le stock actuel : lignes dont la fiche a disparu ou qui ne se vendent plus dans leur unité retirées. */
 export function reconcilierPanier(
   panier: PanierVente,
   stocks: StockMedicament[],
-  maintenant: Date,
 ): { panier: PanierVente; corrections: CorrectionPanier[] } {
   const corrections: CorrectionPanier[] = [];
   const lignes: LignePanier[] = [];
   for (const ligne of panier.lignes) {
     const stock = stocks.find((s) => s.id === ligne.stockId);
     if (!stock) {
-      corrections.push({ nom: NOM_PAR_DEFAUT, avant: ligne.quantite, apres: 0 });
-    } else if (raisonNonVendable(stock, maintenant) !== null) {
-      corrections.push({ nom: stock.medicament.nom, avant: ligne.quantite, apres: 0 });
-    } else if (ligne.quantite > quantiteMaxLigne(stock)) {
-      corrections.push({ nom: stock.medicament.nom, avant: ligne.quantite, apres: quantiteMaxLigne(stock) });
-      lignes.push({ ...ligne, quantite: quantiteMaxLigne(stock) });
+      corrections.push({ nom: NOM_PAR_DEFAUT, avant: ligne.nombre, apres: 0 });
+    } else if (raisonNonVendable(stock, ligne.unite) !== null) {
+      corrections.push({ nom: stock.medicament.nom, avant: ligne.nombre, apres: 0 });
     } else {
       lignes.push(ligne);
     }
@@ -165,40 +232,26 @@ export function reconcilierPanier(
   return { panier: sansLigneSiVide({ ...panier, lignes }), corrections };
 }
 
-/** Applique les quantités disponibles citées par une erreur de stock insuffisant. */
-export function appliquerStockInsuffisant(
-  panier: PanierVente,
-  lignesErreur: LigneErreurVente[],
-  stocks: StockMedicament[],
-): { panier: PanierVente; corrections: CorrectionPanier[] } {
-  const corrections: CorrectionPanier[] = [];
-  const lignes: LignePanier[] = [];
-  for (const ligne of panier.lignes) {
-    const erreur = lignesErreur.find((e) => e.stockId === ligne.stockId);
-    if (!erreur || erreur.disponible === undefined || erreur.disponible >= ligne.quantite) {
-      lignes.push(ligne);
-      continue;
-    }
-    const nom = erreur.nom ?? stocks.find((s) => s.id === ligne.stockId)?.medicament.nom ?? NOM_PAR_DEFAUT;
-    corrections.push({ nom, avant: ligne.quantite, apres: erreur.disponible });
-    if (erreur.disponible > 0) lignes.push({ ...ligne, quantite: erreur.disponible });
-  }
-  return { panier: sansLigneSiVide({ ...panier, lignes }), corrections };
+/** Montant d'une ligne selon la fiche, ou null si elle n'est pas vendable (estimation, le serveur fait foi). */
+export function montantLigne(ligne: LignePanier, stock: StockMedicament): number | null {
+  const calcul = calculerLigne(entreeLigne(stock, ligne.unite, ligne.nombre));
+  return calcul.ok ? calcul.montantLigne : null;
 }
 
 export function totalPanier(panier: PanierVente, stocks: StockMedicament[]): number {
   return panier.lignes.reduce((somme, ligne) => {
     const stock = stocks.find((s) => s.id === ligne.stockId);
-    return stock ? somme + prixArrondi(stock) * ligne.quantite : somme;
+    const montant = stock ? montantLigne(ligne, stock) : null;
+    return montant === null ? somme : somme + montant;
   }, 0);
 }
 
-/** Noms des médicaments du panier qui exigent une ordonnance, dans l'ordre du panier. */
+/** Noms des médicaments du panier qui exigent une ordonnance, dans l'ordre du panier, sans doublon. */
 export function medicamentsSurOrdonnance(panier: PanierVente, stocks: StockMedicament[]): string[] {
   const noms: string[] = [];
   for (const ligne of panier.lignes) {
     const stock = stocks.find((s) => s.id === ligne.stockId);
-    if (stock?.medicament.ordonnanceRequise) noms.push(stock.medicament.nom);
+    if (stock?.medicament.ordonnanceRequise && !noms.includes(stock.medicament.nom)) noms.push(stock.medicament.nom);
   }
   return noms;
 }
@@ -208,10 +261,21 @@ export function telephoneClientValide(telephone: string): boolean {
   return propre === "" || FORMAT_TELEPHONE_CLIENT.test(propre);
 }
 
-export function corpsVente(panier: PanierVente, surOrdonnance: boolean): CorpsCreationVente {
+/** Corps de la vente. `paiements` n'est envoyé que s'il est fourni : sans lui, le serveur encaisse le total en espèces (D691). */
+export function corpsVente(
+  panier: PanierVente,
+  surOrdonnance: boolean,
+  paiements: PaiementDemande[] | null = null,
+): CorpsCreationVente {
   const corps: CorpsCreationVente = {
-    lignes: panier.lignes.map((l) => ({ stockId: l.stockId, quantite: l.quantite })),
+    lignes: panier.lignes.map((l) => ({
+      stockId: l.stockId,
+      quantite: l.nombre,
+      unite: l.unite,
+      ...(l.sortieManuelle ? { sortieManuelle: l.sortieManuelle } : {}),
+    })),
   };
+  if (paiements !== null) corps.paiements = paiements;
   const nom = panier.clientNom.trim();
   const telephone = panier.clientTelephone.trim();
   if (nom !== "") corps.clientNom = nom;
@@ -222,7 +286,7 @@ export function corpsVente(panier: PanierVente, surOrdonnance: boolean): CorpsCr
 
 export function messageCorrections(corrections: CorrectionPanier[]): string {
   const elements = corrections.map((c) =>
-    c.apres === 0 ? `${c.nom} (épuisé, retiré)` : `${c.nom} (${c.apres} au lieu de ${c.avant})`,
+    c.apres === 0 ? `${c.nom} (retiré)` : `${c.nom} (${c.apres} au lieu de ${c.avant})`,
   );
   return `Le panier a été corrigé : ${elements.join(", ")}.`;
 }
@@ -236,19 +300,26 @@ export function cleStockagePanier(structureId: string, userId: string): string {
 const estObjet = (valeur: unknown): valeur is Record<string, unknown> =>
   typeof valeur === "object" && valeur !== null && !Array.isArray(valeur);
 
+/** Relit un panier version 2, ou version 1 (quantité en boîtes) ; tout autre contenu donne un panier vide. */
 export function lirePanierStocke(cle: string): PanierVente {
   try {
     const brut = localStorage.getItem(cle);
     if (brut === null) return PANIER_VIDE;
     const valeur: unknown = JSON.parse(brut);
-    if (!estObjet(valeur) || valeur.version !== 1 || !Array.isArray(valeur.lignes)) return PANIER_VIDE;
+    if (!estObjet(valeur) || (valeur.version !== 1 && valeur.version !== 2) || !Array.isArray(valeur.lignes)) {
+      return PANIER_VIDE;
+    }
+    const version = valeur.version;
     const lignes: LignePanier[] = [];
     for (const element of valeur.lignes as unknown[]) {
       if (!estObjet(element)) continue;
-      const { stockId, quantite } = element;
+      const { stockId } = element;
       if (typeof stockId !== "string" || stockId === "") continue;
-      if (typeof quantite !== "number" || !Number.isInteger(quantite) || quantite < 1) continue;
-      lignes.push({ stockId, quantite });
+      const nombre = version === 1 ? element.quantite : element.nombre;
+      if (typeof nombre !== "number" || !Number.isInteger(nombre) || nombre < 1) continue;
+      const unite: UniteVente = version === 1 ? "BOITE" : element.unite === "UNITE" ? "UNITE" : "BOITE";
+      if (version === 2 && element.unite !== "UNITE" && element.unite !== "BOITE") continue;
+      lignes.push({ stockId, unite, nombre });
     }
     lignes.splice(MAX_LIGNES_PANIER);
     return {
@@ -268,7 +339,8 @@ export function enregistrerPanier(cle: string, panier: PanierVente): void {
     if (panier.lignes.length === 0 && panier.clientNom === "" && panier.clientTelephone === "") {
       localStorage.removeItem(cle);
     } else {
-      localStorage.setItem(cle, JSON.stringify({ version: 1, ...panier }));
+      const lignes = panier.lignes.map(({ stockId, unite, nombre }) => ({ stockId, unite, nombre }));
+      localStorage.setItem(cle, JSON.stringify({ version: 2, ...panier, lignes }));
     }
   } catch {
     // Stockage indisponible : le panier reste seulement en mémoire.

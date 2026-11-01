@@ -12,7 +12,7 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | ID | Tâche | Statut |
 |----|-------|--------|
 | PF01a | Socle front de la caisse | validé (D705, rapports/PF01a-chef.md du run) |
-| PF01b | Écran de vente : unité, paiements | à faire |
+| PF01b | Écran de vente : unité, paiements | validé (D706, rapports/PF01b-chef.md du run) |
 | PF02a | Page stock : correction, aperçu | à faire |
 | PF02b | Fiche produit : deux prix, qualification | à faire |
 | PF07a | Réception, livraison, fournisseurs | à faire |

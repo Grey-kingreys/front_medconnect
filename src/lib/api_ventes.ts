@@ -8,10 +8,8 @@ export type StatutVente = "VALIDEE" | "ANNULEE";
 export type UniteVente = "BOITE" | "UNITE";
 export type TypePiece = "VENTE" | "ANNULATION" | "REGULARISATION";
 
-// STOCK_INSUFFISANT, MEDICAMENT_EXPIRE et ANNULATION_HORS_DELAI ne sont plus renvoyés par le serveur (PB11, PB12) ; retirés par PF01b et PF04.
+// ANNULATION_HORS_DELAI n'est plus renvoyé par le serveur (PB12) ; retiré par PF04.
 export const CODES_ERREUR_VENTE = [
-  "STOCK_INSUFFISANT",
-  "MEDICAMENT_EXPIRE",
   "PRIX_MANQUANT",
   "ORDONNANCE_NON_CONFIRMEE",
   "STOCK_INTROUVABLE",
@@ -171,7 +169,7 @@ export interface LotErreurVente {
   dateExpiration: string | null;
   quantite: number;
 }
-/** Ligne citée par une erreur de vente (STOCK_INSUFFISANT, STOCK_INTROUVABLE, MEDICAMENT_EXPIRE, PRIX_MANQUANT, ORDONNANCE_NON_CONFIRMEE, SORTIE_MANUELLE_REQUISE). */
+/** Ligne citée par une erreur de vente (STOCK_INTROUVABLE, PRIX_MANQUANT, ORDONNANCE_NON_CONFIRMEE, SORTIE_MANUELLE_REQUISE...). */
 export interface LigneErreurVente {
   stockId: string;
   nom?: string;
