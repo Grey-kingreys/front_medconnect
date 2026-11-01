@@ -4,7 +4,7 @@ Index du run orchestré en cours. 150 lignes max. Protocole : docs/ORCHESTRATOR.
 Reprise : lire ce fichier, puis seulement le fichier de la prochaine tâche.
 
 Run: 2026-10-25-pharmacie-t1 (tranche pharmacie 1, partie front) | Branche: orch/pharmacie-t1-front | Parallélisme: 1 | Audience: non-dev (écrans de la pharmacie)
-Détails du run (fiches, décisions, rapports) : dans le dépôt back, back_medconnect/docs/plans/runs/2026-10-25-pharmacie-t1/ (tasks/PF*.md, decisions.md D683 à D708, rapports/). Suivi complet : back_medconnect/docs/plans/ACTIVE.md. Contrat du back : orch/pharmacie-t1-back (tête 0ae19c1, PB01 à PB19 validés ; puis correctif D707 de l'upsert du stock commité avec PF02b), non fusionné vers dev.
+Détails du run (fiches, décisions, rapports) : dans le dépôt back, back_medconnect/docs/plans/runs/2026-10-25-pharmacie-t1/ (tasks/PF*.md, decisions.md D683 à D709, rapports/). Suivi complet : back_medconnect/docs/plans/ACTIVE.md. Contrat du back : orch/pharmacie-t1-back (tête 0ae19c1, PB01 à PB19 validés ; puis correctif D707 de l'upsert du stock commité avec PF02b), non fusionné vers dev.
 Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 = d338e70, fusionnés par la PR #39).
 
 ## À faire et en cours (ordre d'exécution, un commit par fiche)
@@ -16,7 +16,7 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | PF02a | Page stock : correction, aperçu | validé (rapports/PF02a-chef.md du run) |
 | PF02b | Fiche produit : deux prix, qualification | validé (D707 avec correction du back, rapports/PF02b-chef.md du run) |
 | PF07a | Réception, livraison, fournisseurs | validé (D708, rapports/PF07a-chef.md du run) |
-| PF07b | Détail d'une réception, sorties de stock | à faire |
+| PF07b | Détail d'une réception, sorties de stock | validé (D709, rapports/PF07b-chef.md du run) |
 | PF07c | Inventaire par lot | à faire |
 | PF07d | Import Excel livraison et inventaire | à faire |
 | PF03a | Ma caisse : ouverture, comptage | à faire |
@@ -44,8 +44,8 @@ Arrêt obligatoire avant le desktop (PD01 à PD05) : le porteur teste d'abord.
 
 ## Dernières décisions (5 max, historique complet dans le decisions.md du run, dépôt back)
 
+- D709 Une quantité de lot se lit avec le coefficient du lot (`coefficientDuLot`, repli sur la fiche)
 - D708 Garde de navigation : `couvreSousPages` étend la règle d'une entrée à ses sous-pages (réceptions)
-- D684 Péremption MM/AA ou MM/AAAA = dernier jour du mois (date_peremption.ts)
 - D687 Message du serveur affiché tel quel, réessai seulement sur erreur réseau, jamais sur un 409
 - D688 Un identifiant client par saisie, réutilisé après échec réseau
 - D698 Coût ou marge nul affiché « inconnu », jamais 0 GNF

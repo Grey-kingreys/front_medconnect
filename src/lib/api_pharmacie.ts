@@ -418,3 +418,90 @@ export async function getReception(structureId: string, receptionId: string) {
     `/pharmacie/${encodeURIComponent(structureId)}/receptions/${encodeURIComponent(receptionId)}`,
   );
 }
+
+// ─── Correction de date d'un lot, sorties de stock (PF07b) ──────
+
+/** Correction de la date d'un lot : une date (AAAA-MM-JJ) ou `sansPeremption`, et un motif de 3 à 300 caractères. Route non rejouable. */
+export async function corrigerDateLot(
+  structureId: string,
+  lotId: string,
+  corps: { dateExpiration?: string; sansPeremption?: true; motif: string },
+) {
+  return authFetch<unknown>(`/pharmacie/${encodeURIComponent(structureId)}/lots/${encodeURIComponent(lotId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(corps),
+  });
+}
+
+/** Lot à solde positif d'une fiche, dans l'ordre de sortie. */
+export interface LotEnStock {
+  id: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  dateReception: string;
+  /** Unités minimales restant dans le lot. */
+  quantite: number;
+  reliquat: number;
+  coefficientReception: number;
+  lotTechnique: boolean;
+  perime: boolean;
+  /** Présent seulement avec `marge:read` : tester la présence de la clé (D698). */
+  coutUnitaire?: number | null;
+}
+
+export async function listerLotsFiche(structureId: string, stockId: string) {
+  return authFetch<LotEnStock[]>(
+    `/pharmacie/${encodeURIComponent(structureId)}/stock/${encodeURIComponent(stockId)}/lots`,
+  );
+}
+
+export type RaisonSortie = "PERIME" | "CASSE" | "PERDU" | "RETOUR_FOURNISSEUR" | "AUTRE";
+
+export const LIBELLES_RAISON_SORTIE: Record<RaisonSortie, string> = {
+  PERIME: "Périmé",
+  CASSE: "Cassé ou abîmé",
+  PERDU: "Perdu ou volé",
+  RETOUR_FOURNISSEUR: "Retour au fournisseur",
+  AUTRE: "Autre raison",
+};
+
+export interface CorpsSortieStock {
+  /** Identifiant choisi par le client : un rejeu du même identifiant ne sort rien de plus (D688). */
+  id?: string;
+  stockId: string;
+  lotId: string;
+  unite: "BOITE" | "UNITE";
+  quantite: number;
+  raison: RaisonSortie;
+  commentaire?: string;
+}
+
+export interface SortieStockEnregistree {
+  id: string;
+  mouvementId: string;
+  stockId: string;
+  nom: string;
+  lotId: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  perime: boolean;
+  type: string;
+  motif: string;
+  /** Unités minimales sorties. */
+  quantite: number;
+  /** Unités minimales restant dans le lot. */
+  soldeLot: number;
+  soldeProduit: number;
+  auteurId: string;
+  createdAt: string;
+  /** Faux sur le rejeu d'un identifiant déjà enregistré. */
+  cree?: boolean;
+}
+
+/** Sort un lot du stock avec une raison ; rejouable avec le même `id` sans rien sortir deux fois. */
+export async function sortirDuStock(structureId: string, corps: CorpsSortieStock) {
+  return authFetch<SortieStockEnregistree>(`/pharmacie/${encodeURIComponent(structureId)}/stock/sorties`, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}

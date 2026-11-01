@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
-import { getMyStock, updateStockQuantite, type StockMedicament } from "@/lib/api_pharmacie";
+import { getMyStock, listerLotsFiche, updateStockQuantite, type StockMedicament } from "@/lib/api_pharmacie";
 import StockPage from "./page";
 
 vi.mock("@/hooks/useAuth", () => ({
@@ -9,10 +9,12 @@ vi.mock("@/hooks/useAuth", () => ({
     user: { id: "p1", role: "PHARMACIEN", structureId: "s1", email: "p@exemple.com", nom: "Bah", prenom: "Ali" },
   }),
 }));
-vi.mock("@/lib/api_pharmacie", () => ({
+vi.mock("@/lib/api_pharmacie", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/api_pharmacie")>()),
   getMyStock: vi.fn(),
   removeStockItem: vi.fn(),
   updateStockQuantite: vi.fn(),
+  listerLotsFiche: vi.fn(),
 }));
 vi.mock("@/components/modals/ImportStockModal", () => ({
   default: ({ isOpen }: { isOpen: boolean }) => (isOpen ? <div>Fenêtre d&apos;import ouverte</div> : null),
@@ -157,6 +159,23 @@ describe("Page du stock", () => {
         motif: "Erreur de comptage",
       }),
     );
+  });
+
+  it("ouvre la sortie de stock d'une fiche à quantité positive et la cache sinon", async () => {
+    vi.mocked(listerLotsFiche).mockResolvedValue({ data: [], message: "ok", success: true } as never);
+    vi.mocked(getMyStock).mockResolvedValue(
+      reponse([doliprane(40), fiche("n", "Nulle", 0), fiche("g", "Négative", -3)]),
+    );
+    render(<StockPage />);
+    await screen.findByText("Nulle");
+
+    expect(screen.queryByRole("button", { name: "Sortir Nulle du stock" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Sortir Négative du stock" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Sortir Doliprane du stock" }));
+    expect(await screen.findByRole("dialog", { name: "Sortir Doliprane du stock" })).toBeTruthy();
+    expect(await screen.findByText("Aucun lot en stock pour ce médicament.")).toBeTruthy();
+    expect(listerLotsFiche).toHaveBeenCalledWith("s1", "d1");
   });
 
   it("propose de réessayer quand le chargement échoue", async () => {

@@ -11,6 +11,8 @@ export interface LotChoisissable {
   numeroLot: string | null;
   dateExpiration: string | null;
   quantite: number;
+  /** Unités par boîte figées sur le lot à sa réception (D709) : s'il est connu, il prime sur le coefficient de la fiche. */
+  coefficientReception?: number;
 }
 
 interface ChoixLotProps {
@@ -22,6 +24,11 @@ interface ChoixLotProps {
   unite: UniteMinimale;
 }
 
+/** Coefficient avec lequel lire la quantité d'un lot : celui du lot, sinon celui de la fiche (D709). */
+export function coefficientDuLot(lot: LotChoisissable, coefficientFiche: number): number {
+  return Math.max(1, lot.coefficientReception ?? coefficientFiche);
+}
+
 /** Libellé d'un lot : « Lot DL23K052, périmé le 01/10/2026, 6 comprimés ». */
 export function libelleLot(lot: LotChoisissable, coefficient: number, unite: UniteMinimale, aujourdhui: string): string {
   const numero = lot.numeroLot ? `Lot ${lot.numeroLot}` : "Lot sans numéro";
@@ -30,7 +37,7 @@ export function libelleLot(lot: LotChoisissable, coefficient: number, unite: Uni
     const perime = lot.dateExpiration.slice(0, 10) < aujourdhui;
     date = `${perime ? "périmé le" : "expire le"} ${formaterDateCourte(lot.dateExpiration)}`;
   }
-  return `${numero}, ${date}, ${formaterQuantite(lot.quantite, coefficient, unite)}`;
+  return `${numero}, ${date}, ${formaterQuantite(lot.quantite, coefficientDuLot(lot, coefficient), unite)}`;
 }
 
 /** Choix d'un lot parmi une liste : boutons radio natifs, utilisables aux flèches du clavier. */

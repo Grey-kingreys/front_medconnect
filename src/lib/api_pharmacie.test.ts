@@ -4,9 +4,12 @@ import {
   apercuImportCatalogue,
   apercuImportStock,
   importerCatalogue,
+  corrigerDateLot,
   creerFournisseur,
   enregistrerReception,
   importerStock,
+  listerLotsFiche,
+  sortirDuStock,
   telechargerModeleImportCatalogue,
 } from "./api_pharmacie";
 
@@ -116,6 +119,27 @@ describe("api_pharmacie, réceptions et fournisseurs", () => {
 
     const [endpoint, options] = mockedAuthFetch.mock.calls[0];
     expect(endpoint).toBe("/pharmacie/s1/receptions");
+    expect(options?.method).toBe("POST");
+    expect(JSON.parse(options?.body as string)).toEqual(corps);
+  });
+
+  it("corrigerDateLot envoie la date et le motif en PATCH sur le lot", () => {
+    corrigerDateLot("s1", "l1", { dateExpiration: "2027-10-31", motif: "Date relue" });
+
+    const [endpoint, options] = mockedAuthFetch.mock.calls[0];
+    expect(endpoint).toBe("/pharmacie/s1/lots/l1");
+    expect(options?.method).toBe("PATCH");
+    expect(JSON.parse(options?.body as string)).toEqual({ dateExpiration: "2027-10-31", motif: "Date relue" });
+  });
+
+  it("listerLotsFiche et sortirDuStock visent les routes de la fiche et des sorties", () => {
+    listerLotsFiche("s1", "d1");
+    expect(mockedAuthFetch.mock.calls[0][0]).toBe("/pharmacie/s1/stock/d1/lots");
+
+    const corps = { stockId: "d1", lotId: "l1", unite: "BOITE" as const, quantite: 1, raison: "CASSE" as const };
+    sortirDuStock("s1", corps);
+    const [endpoint, options] = mockedAuthFetch.mock.calls[1];
+    expect(endpoint).toBe("/pharmacie/s1/stock/sorties");
     expect(options?.method).toBe("POST");
     expect(JSON.parse(options?.body as string)).toEqual(corps);
   });

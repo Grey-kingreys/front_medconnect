@@ -13,6 +13,7 @@ import {
   AlertTriangle,
   Archive,
   Edit,
+  PackageMinus,
   Pill,
   ShoppingBag,
   SlidersHorizontal,
@@ -35,6 +36,7 @@ import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 import { ALERTE_INFO, ALERTE_SUCCES } from "@/components/pharmacie/classes";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { CorrectionQuantite } from "./CorrectionQuantite";
+import { SortieStock } from "./SortieStock";
 
 type Filtre = "all" | "low" | "rupture" | "qualifier";
 
@@ -55,6 +57,7 @@ export default function StockPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockMedicament | null>(null);
   const [stockACorriger, setStockACorriger] = useState<StockMedicament | null>(null);
+  const [stockASortir, setStockASortir] = useState<StockMedicament | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user?.structureId) return;
@@ -128,6 +131,11 @@ export default function StockPage() {
 
   const fermerCorrection = (rechargerStock?: boolean) => {
     setStockACorriger(null);
+    if (rechargerStock) fetchData();
+  };
+
+  const fermerSortie = (rechargerStock?: boolean) => {
+    setStockASortir(null);
     if (rechargerStock) fetchData();
   };
 
@@ -341,6 +349,16 @@ export default function StockPage() {
                         >
                           <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
                         </button>
+                        {s.quantite > 0 && (
+                          <button
+                            onClick={() => setStockASortir(s)}
+                            title="Sortir du stock"
+                            aria-label={`Sortir ${nom} du stock`}
+                            className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10 transition-all"
+                          >
+                            <PackageMinus className="w-4 h-4" aria-hidden="true" />
+                          </button>
+                        )}
                         <button
                           onClick={() => openDeleteModal(s)}
                           title={`Archiver ${nom}`}
@@ -389,6 +407,17 @@ export default function StockPage() {
           stock={stockACorriger}
           structureId={user.structureId}
           onClose={fermerCorrection}
+          onSucces={handleCorrectionReussie}
+        />
+      )}
+
+      {/* Sortie d'un lot avec une raison */}
+      {user?.structureId && (
+        <SortieStock
+          isOpen={stockASortir !== null}
+          stock={stockASortir}
+          structureId={user.structureId}
+          onClose={fermerSortie}
           onSucces={handleCorrectionReussie}
         />
       )}
