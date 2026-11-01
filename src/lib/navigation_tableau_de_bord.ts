@@ -9,6 +9,7 @@ import {
   Bot,
   Building2,
   Calendar,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   FileSpreadsheet,
@@ -436,6 +437,15 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
     rolesRepli: [],
     // Saisie (`/nouvelle`) et détail (`/<id>`, PF07b) sous la même permission.
     couvreSousPages: true,
+  },
+  {
+    id: "inventaire",
+    section: "activite",
+    href: "/dashboard/inventaire",
+    icone: ClipboardCheck,
+    libelle: { defaut: "Inventaire" },
+    acces: perm(["inventaire:write"], { typesStructure: P }),
+    rolesRepli: [],
   },
   {
     id: "catalogue",

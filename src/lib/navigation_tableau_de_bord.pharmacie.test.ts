@@ -120,6 +120,15 @@ describe("raccourcis de la pharmacie", () => {
     expect(estRouteAutorisee("/dashboard/receptions", vendeur)).toBe(false);
   });
 
+  it("montre Inventaire avec inventaire:write et la refuse au rôle Pharmacien (D704)", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "inventaire:write"]);
+    expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/inventaire");
+    expect(estRouteAutorisee("/dashboard/inventaire", titulaire)).toBe(true);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(vendeur))).not.toContain("/dashboard/inventaire");
+    expect(estRouteAutorisee("/dashboard/inventaire", vendeur)).toBe(false);
+  });
+
   it("garde la saisie et le détail d'une réception sous reception:write", () => {
     const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "reception:write"]);
     const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);

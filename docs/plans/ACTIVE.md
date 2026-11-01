@@ -17,7 +17,7 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | PF02b | Fiche produit : deux prix, qualification | validé (D707 avec correction du back, rapports/PF02b-chef.md du run) |
 | PF07a | Réception, livraison, fournisseurs | validé (D708, rapports/PF07a-chef.md du run) |
 | PF07b | Détail d'une réception, sorties de stock | validé (D709, rapports/PF07b-chef.md du run) |
-| PF07c | Inventaire par lot | à faire |
+| PF07c | Inventaire par lot | validé (D710, rapports/PF07c-chef.md du run) |
 | PF07d | Import Excel livraison et inventaire | à faire |
 | PF03a | Ma caisse : ouverture, comptage | à faire |
 | PF03b | Ma caisse : mouvements, fermeture | à faire |

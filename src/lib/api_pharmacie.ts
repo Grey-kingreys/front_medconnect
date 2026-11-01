@@ -455,6 +455,70 @@ export async function listerLotsFiche(structureId: string, stockId: string) {
   );
 }
 
+// ─── Inventaire par lot (PF07c) ─────────────────────────────────
+
+/** Une ligne comptée : lot visé par `lotId`, sinon par sa date ; boîtes (et unités en plus) comptées avec le coefficient du lot. */
+export interface LigneInventaireDemandee {
+  stockId: string;
+  lotId?: string;
+  /** Jour AAAA-MM-JJ. */
+  dateExpiration?: string;
+  sansPeremption?: boolean;
+  nombreBoites?: number;
+  unitesEnPlus?: number;
+}
+
+export interface CorpsInventaire {
+  /** Identifiant choisi par le client : un rejeu du même identifiant ne compte rien de plus (D688). */
+  id?: string;
+  commentaire?: string;
+  lignes: LigneInventaireDemandee[];
+}
+
+export interface LigneInventaireEcrite {
+  id: string;
+  stockId: string;
+  nom: string;
+  lotId: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  lotTechnique: boolean;
+  /** Unités minimales attendues (peut être négatif). */
+  quantiteTheorique: number;
+  /** Unités minimales comptées. */
+  quantiteComptee: number;
+  /** Écart signé en unités minimales. */
+  ecart: number;
+  sousTolerance: boolean;
+  anomalieId: string | null;
+}
+
+export interface AvertissementInventaire {
+  code: "FICHE_NON_QUALIFIEE";
+  stockId: string;
+  nom: string;
+  message: string;
+}
+
+export interface Inventaire {
+  id: string;
+  createdAt: string;
+  commentaire: string | null;
+  auteurId: string;
+  lignes: LigneInventaireEcrite[];
+  /** Faux sur le rejeu d'un identifiant déjà enregistré. */
+  cree?: boolean;
+  avertissements?: AvertissementInventaire[];
+}
+
+/** Enregistre un inventaire ; rejouable avec le même `id` sans rien compter deux fois. */
+export async function enregistrerInventaire(structureId: string, corps: CorpsInventaire) {
+  return authFetch<Inventaire>(`/pharmacie/${encodeURIComponent(structureId)}/inventaires`, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
 export type RaisonSortie = "PERIME" | "CASSE" | "PERDU" | "RETOUR_FOURNISSEUR" | "AUTRE";
 
 export const LIBELLES_RAISON_SORTIE: Record<RaisonSortie, string> = {
