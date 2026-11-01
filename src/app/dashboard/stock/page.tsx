@@ -5,53 +5,67 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  Package, 
-  Plus, 
-  Search, 
-  AlertTriangle, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Trash2,
+import { messageErreurPour } from "@/hooks/useToast";
+import {
+  Package,
+  Plus,
+  Search,
+  AlertTriangle,
+  Archive,
   Edit,
   Pill,
   ShoppingBag,
+  SlidersHorizontal,
   TrendingUp,
   XCircle,
   FileSpreadsheet
 } from "lucide-react";
-import { 
-  getMyStock, 
-  StockMedicament, 
-  StockInfo, 
-  removeStockItem, 
-  updateStockQuantite 
+import {
+  getMyStock,
+  StockMedicament,
+  StockInfo,
+  removeStockItem
 } from "@/lib/api_pharmacie";
+import { calculerApercuStock } from "@/lib/apercu_pharmacie";
+import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { formaterGNF } from "@/lib/format_gnf";
 import StockModal from "@/components/modals/StockModal";
 import ImportStockModal from "@/components/modals/ImportStockModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
+import { ALERTE_INFO, ALERTE_SUCCES } from "@/components/pharmacie/classes";
+import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
+import { CorrectionQuantite } from "./CorrectionQuantite";
+
+type Filtre = "all" | "low" | "rupture" | "qualifier";
+
+const MSG_CHARGEMENT_ECHOUE = "Le stock n'a pas pu être chargé. Vérifiez votre connexion puis réessayez.";
 
 export default function StockPage() {
   const { user } = useAuth();
   const [stockInfo, setStockInfo] = useState<StockInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [erreurChargement, setErreurChargement] = useState<string | null>(null);
+  const [succes, setSucces] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "low" | "rupture">("all");
-  
+  const [filter, setFilter] = useState<Filtre>("all");
+
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockMedicament | null>(null);
+  const [stockACorriger, setStockACorriger] = useState<StockMedicament | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user?.structureId) return;
     setLoading(true);
+    setSucces(null);
+    setErreurChargement(null);
     try {
       const res = await getMyStock(user.structureId);
       setStockInfo(res.data);
     } catch (err) {
-      console.error(err);
+      setErreurChargement(messageErreurPour(err, MSG_CHARGEMENT_ECHOUE));
     } finally {
       setLoading(false);
     }
@@ -71,23 +85,19 @@ export default function StockPage() {
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${reste ? `?${reste}` : ""}`);
   }, []);
 
+  // Statuts lus des alertes du serveur (seuil des paramètres, quantité négative comprise)
+  const idsStockBas = new Set(stockInfo?.alertes.stockBas.map((a) => a.id) ?? []);
+  const idsRupture = new Set(stockInfo?.alertes.rupture.map((a) => a.id) ?? []);
+  const nombreAQualifier = stockInfo?.stocks.filter((s) => s.qualifie === false).length ?? 0;
+
   const filteredStocks = stockInfo?.stocks.filter(s => {
-    const matchesSearch = s.medicament.nom.toLowerCase().includes(search.toLowerCase()) || 
+    const matchesSearch = s.medicament.nom.toLowerCase().includes(search.toLowerCase()) ||
                           s.medicament.nomGenerique?.toLowerCase().includes(search.toLowerCase());
-    if (filter === "low") return matchesSearch && s.quantite > 0 && s.quantite < 10;
-    if (filter === "rupture") return matchesSearch && s.quantite === 0;
+    if (filter === "low") return matchesSearch && idsStockBas.has(s.id);
+    if (filter === "rupture") return matchesSearch && idsRupture.has(s.id);
+    if (filter === "qualifier") return matchesSearch && s.qualifie === false;
     return matchesSearch;
   }) || [];
-
-  const handleUpdateQuantite = async (stockId: string, variation: number) => {
-    if (!user?.structureId) return;
-    try {
-      await updateStockQuantite(user.structureId, stockId, variation);
-      fetchData();
-    } catch (err) {
-      console.error(err);
-    }
-  };
 
   const openAddModal = () => {
     setSelectedStock(null);
@@ -110,6 +120,17 @@ export default function StockPage() {
     fetchData();
   };
 
+  // Le message du serveur s'affiche après le rechargement, qui efface l'ancien message.
+  const handleCorrectionReussie = (message: string) => {
+    fetchData();
+    setSucces(message);
+  };
+
+  const fermerCorrection = (rechargerStock?: boolean) => {
+    setStockACorriger(null);
+    if (rechargerStock) fetchData();
+  };
+
   if (loading && !stockInfo) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
@@ -119,8 +140,27 @@ export default function StockPage() {
     );
   }
 
+  if (!stockInfo) {
+    return (
+      <div className="max-w-7xl mx-auto pb-20">
+        <ErreurAvecReessai message={erreurChargement ?? MSG_CHARGEMENT_ECHOUE} onReessayer={fetchData} />
+      </div>
+    );
+  }
+
+  const valeurStock = calculerApercuStock(stockInfo.stocks, new Date()).valeur;
+  const classeFiltreActif = "bg-primary-500/10 text-primary-600 dark:text-primary-400";
+  const classeFiltreInactif = "text-slate-500 hover:text-primary-500";
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20">
+      {erreurChargement && <ErreurAvecReessai message={erreurChargement} onReessayer={fetchData} />}
+      {succes && (
+        <div role="status" className={ALERTE_SUCCES}>
+          {succes}
+        </div>
+      )}
+
       {/* Header Stat Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-6 shadow-xl flex items-center gap-4">
@@ -134,14 +174,14 @@ export default function StockPage() {
           <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><AlertTriangle className="w-6 h-6" /></div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Stock Bas</p>
-            <p className="text-2xl font-black text-amber-500">{stockInfo?.alertes.stockBas.length || 0}</p>
+            <p className="text-2xl font-black text-amber-500">{stockInfo.alertes.stockBas.length}</p>
           </div>
         </div>
         <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-6 shadow-xl flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500"><XCircle className="w-6 h-6" /></div>
           <div>
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Rupture</p>
-            <p className="text-2xl font-black text-rose-500">{stockInfo?.alertes.rupture.length || 0}</p>
+            <p className="text-2xl font-black text-rose-500">{stockInfo.alertes.rupture.length}</p>
           </div>
         </div>
         <div className="bg-primary-600 rounded-[2rem] p-6 shadow-2xl text-white flex items-center gap-4 relative overflow-hidden group">
@@ -149,31 +189,33 @@ export default function StockPage() {
           <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center"><ShoppingBag className="w-6 h-6" /></div>
           <div className="relative z-10">
             <p className="text-xs font-bold text-white/70 uppercase tracking-widest">Valeur Stock</p>
-            <p className="text-xl font-black">GNF {stockInfo?.stocks.reduce((acc, curr) => acc + (curr.prixUnitaire || 0) * curr.quantite, 0).toLocaleString() || 0}</p>
+            <p className="text-xl font-black">{formaterGNF(valeurStock)}</p>
+            <p className="text-xs text-white/90">au prix de vente, hors périmés</p>
           </div>
         </div>
       </div>
 
       {/* Main Controls */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-4 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
           <div className="relative flex-1 sm:w-80">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Rechercher un médicament..." 
+            <input
+              type="text"
+              placeholder="Rechercher un médicament..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all shadow-sm dark:text-white"
             />
           </div>
-          <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 shadow-sm shrink-0">
-            <button onClick={() => setFilter("all")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "all" ? "bg-slate-100 dark:bg-slate-800 text-primary-500" : "text-slate-500 hover:text-primary-500"}`}>Tous</button>
-            <button onClick={() => setFilter("low")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "low" ? "bg-amber-500/10 text-amber-500" : "text-slate-500 hover:text-amber-500"}`}>Alertes</button>
-            <button onClick={() => setFilter("rupture")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "rupture" ? "bg-rose-500/10 text-rose-500" : "text-slate-500 hover:text-rose-500"}`}>Rupture</button>
+          <div className="flex flex-wrap items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 shadow-sm shrink-0">
+            <button onClick={() => setFilter("all")} aria-pressed={filter === "all"} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "all" ? "bg-slate-100 dark:bg-slate-800 text-primary-500" : "text-slate-500 hover:text-primary-500"}`}>Tous</button>
+            <button onClick={() => setFilter("low")} aria-pressed={filter === "low"} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "low" ? "bg-amber-500/10 text-amber-500" : "text-slate-500 hover:text-amber-500"}`}>Alertes</button>
+            <button onClick={() => setFilter("rupture")} aria-pressed={filter === "rupture"} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "rupture" ? "bg-rose-500/10 text-rose-500" : "text-slate-500 hover:text-rose-500"}`}>Rupture</button>
+            <button onClick={() => setFilter("qualifier")} aria-pressed={filter === "qualifier"} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "qualifier" ? classeFiltreActif : classeFiltreInactif}`}>À qualifier ({nombreAQualifier})</button>
           </div>
         </div>
-        
+
         <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
           <button
             onClick={() => setIsImportOpen(true)}
@@ -191,6 +233,12 @@ export default function StockPage() {
           </button>
         </div>
       </div>
+
+      {filter === "qualifier" && (
+        <p className={ALERTE_INFO}>
+          Confirmez le nombre d&apos;unités par boîte de ces médicaments : ouvrez la fiche avec le bouton Modifier.
+        </p>
+      )}
 
       {/* Stock Table */}
       <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
@@ -211,19 +259,29 @@ export default function StockPage() {
                 <tr>
                   <td colSpan={6} className="px-8 py-20 text-center">
                     <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                    <p className="text-slate-500 font-medium">Aucun médicament trouvé dans votre inventaire.</p>
+                    <p className="text-slate-600 dark:text-slate-400 font-medium">
+                      {stockInfo.stocks.length === 0
+                        ? "Votre stock est vide. Ajoutez un médicament ou importez votre fichier Excel."
+                        : "Aucun médicament dans ce filtre."}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                filteredStocks.map((s) => (
+                filteredStocks.map((s) => {
+                  const enRupture = idsRupture.has(s.id);
+                  const stockBas = !enRupture && idsStockBas.has(s.id);
+                  const coefficient = s.coefficientBoite ?? 1;
+                  const unite = s.uniteMinimale ?? "UNITE";
+                  const nom = s.medicament.nom;
+                  return (
                   <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-8 py-5">
                       <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.quantite === 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-primary-500/10 text-primary-500'}`}>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${enRupture ? 'bg-rose-500/10 text-rose-500' : 'bg-primary-500/10 text-primary-500'}`}>
                           <Pill className="w-5 h-5" />
                         </div>
                         <div>
-                          <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{s.medicament.nom}</p>
+                          <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{nom}</p>
                           <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{s.medicament.nomGenerique || "Non renseigné"}</p>
                         </div>
                       </div>
@@ -234,59 +292,68 @@ export default function StockPage() {
                       </span>
                     </td>
                     <td className="px-8 py-5">
-                      <div className="flex items-center justify-center gap-3">
-                        <button 
-                          onClick={() => handleUpdateQuantite(s.id, -1)}
-                          disabled={s.quantite === 0}
-                          className="p-1 rounded-lg hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 transition-colors disabled:opacity-30"
-                        >
-                          <ArrowDownRight className="w-4 h-4" />
-                        </button>
-                        <span className={`text-sm font-black w-8 text-center ${s.quantite < 10 ? 'text-amber-500' : 'text-slate-900 dark:text-white'}`}>
-                          {s.quantite}
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`text-sm font-black text-center ${enRupture ? 'text-rose-700 dark:text-rose-300' : stockBas ? 'text-amber-700 dark:text-amber-300' : 'text-slate-900 dark:text-white'}`}>
+                          {formaterQuantite(s.quantite, coefficient, unite)}
                         </span>
-                        <button 
-                          onClick={() => handleUpdateQuantite(s.id, 1)}
-                          className="p-1 rounded-lg hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-colors"
-                        >
-                          <ArrowUpRight className="w-4 h-4" />
-                        </button>
+                        {s.reliquat && s.reliquat.length > 0 && (
+                          <span className="text-xs text-slate-600 dark:text-slate-400">boîte entamée</span>
+                        )}
                       </div>
                     </td>
                     <td className="px-8 py-5 text-right font-mono text-sm font-bold text-slate-600 dark:text-slate-400">
-                      {s.prixUnitaire?.toLocaleString() || "-"}
+                      <div>{typeof s.prixUnitaire === "number" ? formaterGNF(s.prixUnitaire) : "Non renseigné"}</div>
+                      {typeof s.prixUnite === "number" && (
+                        <div className="text-xs font-normal">
+                          {formaterGNF(s.prixUnite)} le {LIBELLES_UNITE_MINIMALE[unite].singulier}
+                        </div>
+                      )}
                     </td>
                     <td className="px-8 py-5 text-center">
-                      <div className="flex justify-center">
-                        {s.quantite === 0 ? (
-                          <span className="px-2.5 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-black rounded-full border border-rose-500/20 uppercase tracking-widest">Rupture</span>
-                        ) : s.quantite < 10 ? (
-                          <span className="px-2.5 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black rounded-full border border-amber-500/20 uppercase tracking-widest">Faible</span>
+                      <div className="flex flex-wrap justify-center gap-1.5">
+                        {enRupture ? (
+                          <span className="px-2.5 py-1 bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[10px] font-black rounded-full border border-rose-500/20 uppercase tracking-widest">Rupture</span>
+                        ) : stockBas ? (
+                          <span className="px-2.5 py-1 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-black rounded-full border border-amber-500/20 uppercase tracking-widest">Stock bas</span>
                         ) : (
-                          <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black rounded-full border border-emerald-500/20 uppercase tracking-widest">OK</span>
+                          <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[10px] font-black rounded-full border border-emerald-500/20 uppercase tracking-widest">OK</span>
+                        )}
+                        {s.qualifie === false && (
+                          <span className="px-2.5 py-1 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-black rounded-full border border-amber-500/20 uppercase tracking-widest">À qualifier</span>
                         )}
                       </div>
                     </td>
                     <td className="px-8 py-5 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        <button 
+                        <button
                           onClick={() => openEditModal(s)}
                           title="Modifier"
-                          className="p-2 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-all"
+                          aria-label={`Modifier ${nom}`}
+                          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10 transition-all"
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit className="w-4 h-4" aria-hidden="true" />
                         </button>
-                        <button 
-                          onClick={() => openDeleteModal(s)}
-                          title="Retirer du stock"
-                          className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+                        <button
+                          onClick={() => setStockACorriger(s)}
+                          title="Corriger la quantité"
+                          aria-label={`Corriger la quantité de ${nom}`}
+                          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10 transition-all"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+                        </button>
+                        <button
+                          onClick={() => openDeleteModal(s)}
+                          title={`Archiver ${nom}`}
+                          aria-label={`Archiver ${nom}`}
+                          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-500/10 transition-all"
+                        >
+                          <Archive className="w-4 h-4" aria-hidden="true" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -295,7 +362,7 @@ export default function StockPage() {
 
       {/* Stock Add/Edit Modal */}
       {user?.structureId && (
-        <StockModal 
+        <StockModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           structureId={user.structureId}
@@ -314,15 +381,29 @@ export default function StockPage() {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Correction de la quantité avec motif (D700) */}
+      {user?.structureId && (
+        <CorrectionQuantite
+          isOpen={stockACorriger !== null}
+          stock={stockACorriger}
+          structureId={user.structureId}
+          onClose={fermerCorrection}
+          onSucces={handleCorrectionReussie}
+        />
+      )}
+
+      {/* Archive Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Retirer du stock ?"
+        title="Archiver ce médicament ?"
+        confirmLabel="Archiver"
+        libelleEnCours="Archivage..."
+        icone={Archive}
         description={
           <>
-            Êtes-vous sûr de vouloir retirer <strong>{selectedStock?.medicament.nom}</strong> de votre inventaire ? Cette action est irréversible.
+            <strong>{selectedStock?.medicament.nom}</strong> disparaîtra de la liste du stock et de la vente. Son historique (ventes, mouvements) est conservé. Vous pourrez le remettre en stock en l&apos;ajoutant de nouveau.
           </>
         }
       />

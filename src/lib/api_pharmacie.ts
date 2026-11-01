@@ -133,10 +133,15 @@ export const upsertStock = (structureId: string, data: {
   body: JSON.stringify(data),
 });
 
-export async function updateStockQuantite(structureId: string, stockId: string, variation: number, notes?: string) {
+/** Correction de quantité : `variation` en unités minimales (entier non nul), motif de 3 à 300 caractères. Route non rejouable. */
+export async function updateStockQuantite(
+  structureId: string,
+  stockId: string,
+  corps: { variation: number; lotId?: string; motif: string },
+) {
   return authFetch<StockMedicament>(`/pharmacie/stock/${structureId}/${stockId}/quantite`, {
     method: "PATCH",
-    body: JSON.stringify({ variation, notes }),
+    body: JSON.stringify(corps),
   });
 }
 

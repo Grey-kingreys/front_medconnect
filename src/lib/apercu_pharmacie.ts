@@ -1,7 +1,8 @@
 /** Chiffres de l'aperçu d'une pharmacie, calculés à partir de son stock (aucune valeur inventée). */
 import type { StockMedicament } from "./api_pharmacie";
+import { formaterQuantite } from "./caisse/regles/quantites";
 
-/** Même seuil que le serveur (alerte « stock bas » sous 10 unités). */
+/** Seuil par défaut du serveur (`seuilStockBas`), en boîtes : alerte « stock bas » sous 10 boîtes. */
 export const SEUIL_STOCK_BAS = 10;
 /** Fenêtre des péremptions proches, en jours (aujourd'hui compris). */
 export const JOURS_EXPIRATION_PROCHE = 60;
@@ -26,7 +27,7 @@ export interface ApercuStock {
   stockBas: number;
   expirentBientot: number;
   perimes: number;
-  /** Somme quantité × prix des lignes disponibles qui ont un prix, en GNF. */
+  /** Somme de la quantité vendable au prix de la boîte divisé par le nombre d'unités, des lignes disponibles qui ont un prix, en GNF. */
   valeur: number;
   /** Lignes disponibles exclues de la valeur faute de prix. */
   sansPrix: number;
@@ -35,8 +36,6 @@ export interface ApercuStock {
   /** Nombre total de médicaments à surveiller (avant la coupe à LIGNES_A_SURVEILLER). */
   aSurveillerTotal: number;
 }
-
-const pluriel = (n: number, singulier: string, plurielTexte: string) => `${n} ${n > 1 ? plurielTexte : singulier}`;
 
 const JOUR_MS = 24 * 60 * 60 * 1000;
 
@@ -80,12 +79,16 @@ export function calculerApercuStock(stocks: readonly StockMedicament[], maintena
 
   for (const s of stocks) {
     const q = s.quantite;
+    const coefficient = s.coefficientBoite ?? 1;
+    const unite = s.uniteMinimale ?? "UNITE";
+    const vendable = typeof s.quantiteVendable === "number" ? s.quantiteVendable : null;
     const j = joursRestants(s.dateExpiration, maintenant);
-    const perime = q > 0 && j !== null && j < 0;
+    // Le serveur compte la quantité vendable (lots non périmés) : elle prime sur la date de la fiche.
+    const perime = q > 0 && (vendable !== null ? vendable === 0 : j !== null && j < 0);
     const rupture = q <= 0;
-    const bas = q > 0 && q < SEUIL_STOCK_BAS;
+    const bas = q > 0 && q < SEUIL_STOCK_BAS * coefficient;
     const expireBientot = q > 0 && j !== null && j >= 0 && j <= JOURS_EXPIRATION_PROCHE;
-    const disponible = q > 0 && !perime;
+    const disponible = (vendable ?? q) > 0 && !perime;
 
     if (disponible) disponibles += 1;
     if (rupture) ruptures += 1;
@@ -93,7 +96,7 @@ export function calculerApercuStock(stocks: readonly StockMedicament[], maintena
     if (expireBientot) expirentBientot += 1;
     if (perime) perimes += 1;
     if (disponible) {
-      if (prixValide(s.prixUnitaire)) valeur += q * s.prixUnitaire;
+      if (prixValide(s.prixUnitaire)) valeur += Math.round((Math.max(vendable ?? q, 0) * s.prixUnitaire) / coefficient);
       else sansPrix += 1;
     }
 
@@ -102,9 +105,10 @@ export function calculerApercuStock(stocks: readonly StockMedicament[], maintena
     if (perime) {
       listables.push({ ...base, raison: "perime", detail: `Périmé depuis le ${date}` });
     } else if (rupture) {
-      listables.push({ ...base, raison: "rupture", detail: "Rupture de stock" });
+      const detail = q < 0 ? "Rupture de stock (ventes en attente de livraison)" : "Rupture de stock";
+      listables.push({ ...base, raison: "rupture", detail });
     } else if (bas) {
-      listables.push({ ...base, raison: "stockBas", detail: `Plus que ${pluriel(q, "unité", "unités")} en stock` });
+      listables.push({ ...base, raison: "stockBas", detail: `Plus que ${formaterQuantite(q, coefficient, unite)} en stock` });
     } else if (expireBientot) {
       const detail =
         j === 0

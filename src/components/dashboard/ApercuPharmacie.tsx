@@ -270,7 +270,7 @@ export default function ApercuPharmacie({
             libelle={LIBELLES_STOCK.stockBas}
             icone={AlertTriangle}
             couleur="text-amber-600 dark:text-amber-400"
-            sousTexte="Moins de 10 unités"
+            sousTexte="Moins de 10 boîtes"
           >
             <Valeur>{nombre(a.stockBas)}</Valeur>
           </Carte>

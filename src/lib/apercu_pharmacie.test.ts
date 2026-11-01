@@ -45,7 +45,7 @@ describe("calculerApercuStock", () => {
     expect(a.aSurveiller.map((l) => [l.stockId, l.raison, l.detail])).toEqual([
       ["e", "perime", "Périmé depuis le 01/10/2026"],
       ["b", "rupture", "Rupture de stock"],
-      ["c", "stockBas", "Plus que 4 unités en stock"],
+      ["c", "stockBas", "Plus que 4 boîtes en stock"],
       ["d", "expireBientot", "Expire le 03/11/2026, dans 12 jours"],
     ]);
   });
@@ -99,6 +99,42 @@ describe("calculerApercuStock", () => {
       MAINTENANT,
     );
     expect(a.aSurveiller.map((l) => l.nom)).toEqual(["Fer", "Aspirine", "Zinc"]);
-    expect(a.aSurveiller[0].detail).toBe("Plus que 1 unité en stock");
+    expect(a.aSurveiller[0].detail).toBe("Plus que 1 boîte en stock");
+  });
+
+  it("compte le stock bas en boîtes : 26 comprimés en boîtes de 20 sont bas, 260 ne le sont pas", () => {
+    const comprimes = (id: string, quantite: number) => ({
+      ...ligne(id, "Doliprane", quantite, 3500),
+      coefficientBoite: 20,
+      uniteMinimale: "COMPRIME" as const,
+    });
+    const bas = calculerApercuStock([comprimes("x", 26)], MAINTENANT);
+    expect(bas.stockBas).toBe(1);
+    expect(bas.aSurveiller[0].detail).toBe("Plus que 1 boîte et 6 comprimés en stock");
+    expect(calculerApercuStock([comprimes("x", 260)], MAINTENANT).stockBas).toBe(0);
+  });
+
+  it("valorise 40 comprimés à 3 500 la boîte de 20 à 7 000", () => {
+    const a = calculerApercuStock(
+      [{ ...ligne("x", "Doliprane", 40, 3500), coefficientBoite: 20, uniteMinimale: "COMPRIME" }],
+      MAINTENANT,
+    );
+    expect(a.valeur).toBe(7000);
+  });
+
+  it("compte comme périmée une fiche dont la quantité vendable est nulle, jamais comme disponible", () => {
+    const a = calculerApercuStock([{ ...ligne("x", "X", 12, 1000, "2027-06-01"), quantiteVendable: 0 }], MAINTENANT);
+    expect(a.perimes).toBe(1);
+    expect(a.disponibles).toBe(0);
+    expect(a.valeur).toBe(0);
+  });
+
+  it("compte en rupture une quantité négative avec le détail des ventes en attente de livraison", () => {
+    const a = calculerApercuStock([ligne("x", "Ventoline", -1, 1000)], MAINTENANT);
+    expect(a.ruptures).toBe(1);
+    expect(a.aSurveiller[0]).toMatchObject({
+      raison: "rupture",
+      detail: "Rupture de stock (ventes en attente de livraison)",
+    });
   });
 });
