@@ -368,6 +368,7 @@ export default function StockPage() {
           structureId={user.structureId}
           onSuccess={fetchData}
           editItem={selectedStock}
+          fichesActives={stockInfo?.stocks}
         />
       )}
 

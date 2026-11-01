@@ -4,7 +4,7 @@ Index du run orchestré en cours. 150 lignes max. Protocole : docs/ORCHESTRATOR.
 Reprise : lire ce fichier, puis seulement le fichier de la prochaine tâche.
 
 Run: 2026-10-25-pharmacie-t1 (tranche pharmacie 1, partie front) | Branche: orch/pharmacie-t1-front | Parallélisme: 1 | Audience: non-dev (écrans de la pharmacie)
-Détails du run (fiches, décisions, rapports) : dans le dépôt back, back_medconnect/docs/plans/runs/2026-10-25-pharmacie-t1/ (tasks/PF*.md, decisions.md D683 à D704, rapports/). Suivi complet : back_medconnect/docs/plans/ACTIVE.md. Contrat du back : orch/pharmacie-t1-back (tête 0ae19c1, PB01 à PB19 validés), non fusionné vers dev.
+Détails du run (fiches, décisions, rapports) : dans le dépôt back, back_medconnect/docs/plans/runs/2026-10-25-pharmacie-t1/ (tasks/PF*.md, decisions.md D683 à D707, rapports/). Suivi complet : back_medconnect/docs/plans/ACTIVE.md. Contrat du back : orch/pharmacie-t1-back (tête 0ae19c1, PB01 à PB19 validés ; puis correctif D707 de l'upsert du stock commité avec PF02b), non fusionné vers dev.
 Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 = d338e70, fusionnés par la PR #39).
 
 ## À faire et en cours (ordre d'exécution, un commit par fiche)
@@ -14,7 +14,7 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | PF01a | Socle front de la caisse | validé (D705, rapports/PF01a-chef.md du run) |
 | PF01b | Écran de vente : unité, paiements | validé (D706, rapports/PF01b-chef.md du run) |
 | PF02a | Page stock : correction, aperçu | validé (rapports/PF02a-chef.md du run) |
-| PF02b | Fiche produit : deux prix, qualification | à faire |
+| PF02b | Fiche produit : deux prix, qualification | validé (D707 avec correction du back, rapports/PF02b-chef.md du run) |
 | PF07a | Réception, livraison, fournisseurs | à faire |
 | PF07b | Détail d'une réception, sorties de stock | à faire |
 | PF07c | Inventaire par lot | à faire |

@@ -44,6 +44,8 @@ export interface StockMedicament {
   deconditionnable?: boolean;
   toleranceInventaire?: number | null;
   qualifie?: boolean;
+  /** Renseigné quand la fiche est archivée (retirée du stock) : l'ajout simple ne la désarchive pas. */
+  archiveLe?: string | null;
   reliquat?: { lotId: string; unitesRestantes: number }[];
   quantiteVendable?: number;
   lots?: LotFiche[];
@@ -124,14 +126,46 @@ export async function getMyStock(structureId: string) {
 
 export const upsertStock = (structureId: string, data: {
   medicamentId: string;
-  quantite: number;
+  /** Absente : aucune écriture de stock (fiche créée si elle manque, prix et notes seulement). */
+  quantite?: number;
   prixUnitaire?: number;
   dateExpiration?: string;
   notes?: string;
+  /** Fiche sans lot et quantité positive : la date est obligatoire, sauf si ce champ est vrai (D701). */
+  sansPeremption?: boolean;
 }) => authFetch<StockMedicament>(`/pharmacie/stock/${structureId}`, {
   method: "POST",
   body: JSON.stringify(data),
 });
+
+/** Avertissement non bloquant renvoyé par la modification d'une fiche. */
+export interface AvertissementFiche {
+  code: "ECART_PRIX";
+  ecartPct: number;
+}
+
+/** Champs modifiables d'une fiche ; `null` efface le prix de la boîte, le prix d'une unité ou la tolérance. */
+export interface CorpsFiche {
+  prixUnitaire?: number | null;
+  prixUnite?: number | null;
+  coefficientBoite?: number;
+  uniteMinimale?: UniteMinimale;
+  deconditionnable?: boolean;
+  toleranceInventaire?: number | null;
+  qualifie?: true;
+  conversionStock?: "MULTIPLIER" | "CONSERVER";
+}
+
+/** Modifie la fiche d'un médicament du stock (prix, unité, qualification, conversion du stock). */
+export async function modifierFiche(structureId: string, stockId: string, corps: CorpsFiche) {
+  return authFetch<StockMedicament & { avertissements: AvertissementFiche[]; conversion: unknown }>(
+    `/pharmacie/${structureId}/stock/${stockId}/fiche`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(corps),
+    },
+  );
+}
 
 /** Correction de quantité : `variation` en unités minimales (entier non nul), motif de 3 à 300 caractères. Route non rejouable. */
 export async function updateStockQuantite(
