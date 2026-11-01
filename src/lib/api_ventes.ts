@@ -5,6 +5,10 @@ import { ApiError, authFetch } from "./api_auth";
 
 export type StatutVente = "VALIDEE" | "ANNULEE";
 
+export type UniteVente = "BOITE" | "UNITE";
+export type TypePiece = "VENTE" | "ANNULATION" | "REGULARISATION";
+
+// STOCK_INSUFFISANT, MEDICAMENT_EXPIRE et ANNULATION_HORS_DELAI ne sont plus renvoyés par le serveur (PB11, PB12) ; retirés par PF01b et PF04.
 export const CODES_ERREUR_VENTE = [
   "STOCK_INSUFFISANT",
   "MEDICAMENT_EXPIRE",
@@ -14,27 +18,81 @@ export const CODES_ERREUR_VENTE = [
   "VALIDATION",
   "VENTE_DEJA_ANNULEE",
   "ANNULATION_HORS_DELAI",
+  "VENTE_UNITE_INTERDITE",
+  "PRIX_UNITE_MANQUANT",
+  "SORTIE_MANUELLE_REQUISE",
+  "MOTIF_REQUIS",
+  "PAIEMENTS_INCOHERENTS",
+  "MODE_PAIEMENT_INCONNU",
+  "POSTE_INCONNU",
+  "SESSION_AUTRE_UTILISATEUR",
+  "STOCK_LOT_NEGATIF",
+  "FICHE_MODIFIEE",
+  "JOURNEE_CLOTUREE",
+  "PIECE_NON_ANNULABLE",
 ] as const;
 export type CodeErreurVente = (typeof CODES_ERREUR_VENTE)[number];
 
 export interface LigneVenteDemandee {
   stockId: string;
   quantite: number;
+  unite?: UniteVente;
+  sortieManuelle?: { lotId: string; motif: string };
+}
+export interface PaiementDemande {
+  mode: string;
+  montant: number;
+  reference?: string;
+  montantRecu?: number;
 }
 export interface CorpsCreationVente {
   lignes: LigneVenteDemandee[];
+  paiements?: PaiementDemande[];
   clientNom?: string;
   clientTelephone?: string;
   ordonnanceVerifiee?: boolean;
+}
+export interface AllocationVente {
+  lotId: string | null;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  quantite: number;
+  statut: "DEFINITIVE" | "PROVISOIRE" | "REMPLACEE";
+  sortieManuelle: boolean;
+  motif: string | null;
+  lotTechnique: boolean;
+  coutUnitaire?: number | null;
 }
 export interface LigneVente {
   id: string;
   stockId: string;
   medicamentId: string;
   nomMedicament: string;
+  /** `quantite` et `prixUnitaire` sont en unités minimales ; `sousTotal` fait foi. */
   prixUnitaire: number;
   quantite: number;
   sousTotal: number;
+  // Facultatifs pour que les fixtures existantes compilent ; toujours présents dans la réponse du serveur.
+  uniteAffichee?: UniteVente;
+  nombreAffiche?: number;
+  coefficientApplique?: number;
+  allocations?: AllocationVente[];
+}
+export interface PaiementVente {
+  id: string;
+  mode: string;
+  libelle: string;
+  montant: number;
+  reference: string | null;
+  montantRecu: number | null;
+  rendu: number | null;
+}
+export interface AnnulationPiece {
+  id: string;
+  numero: string;
+  motif: string | null;
+  le: string;
+  par: { id: string; nom: string };
 }
 export interface PharmacieVente {
   id: string;
@@ -63,6 +121,18 @@ export interface Vente {
   motifAnnulation: string | null;
   lignes: LigneVente[];
   pharmacie: PharmacieVente;
+  // Facultatifs pour que les fixtures existantes compilent ; toujours présents dans la réponse du serveur.
+  typePiece?: TypePiece;
+  /** Numéro de ticket du poste (entier, null pour une pièce d'annulation) ; le numéro lisible est `numero`. */
+  numeroTicket?: number | null;
+  jourMetier?: string;
+  provisoire?: boolean;
+  poste?: { id: string; code: string };
+  session?: { id: string; ouverteAutomatiquement: boolean };
+  paiements?: PaiementVente[];
+  annulation?: AnnulationPiece | null;
+  venteOrigine?: { id: string; numero: string } | null;
+  motif?: string | null;
   /** Vrai quand la même clé a déjà servi : vente renvoyée sans second retrait du stock. */
   rejeu?: boolean;
 }
@@ -71,10 +141,19 @@ export interface VenteResume {
   numero: string;
   createdAt: string;
   statut: StatutVente;
+  /** Négatif pour une annulation. */
   total: number;
+  /** Somme des quantités en unités minimales. */
   nombreArticles: number;
   vendeur: VendeurVente;
   clientNom: string | null;
+  // Facultatifs pour que les fixtures existantes compilent ; toujours présents dans la réponse du serveur.
+  typePiece?: TypePiece;
+  /** Numéro de ticket du poste (entier, null pour une pièce d'annulation) ; le numéro lisible est `numero`. */
+  numeroTicket?: number | null;
+  jourMetier?: string;
+  venteOrigine?: { id: string; numero: string } | null;
+  annulation?: { id: string; numero: string } | null;
 }
 export interface VentesDuJour {
   date: string;
@@ -85,12 +164,20 @@ export interface VentesDuJour {
   totalPages: number;
   ventes: VenteResume[];
 }
-/** Ligne citée par une erreur de vente (STOCK_INSUFFISANT, STOCK_INTROUVABLE, MEDICAMENT_EXPIRE, PRIX_MANQUANT, ORDONNANCE_NON_CONFIRMEE). */
+/** Lot périmé cité par une erreur SORTIE_MANUELLE_REQUISE. */
+export interface LotErreurVente {
+  lotId: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  quantite: number;
+}
+/** Ligne citée par une erreur de vente (STOCK_INSUFFISANT, STOCK_INTROUVABLE, MEDICAMENT_EXPIRE, PRIX_MANQUANT, ORDONNANCE_NON_CONFIRMEE, SORTIE_MANUELLE_REQUISE). */
 export interface LigneErreurVente {
   stockId: string;
   nom?: string;
   disponible?: number;
   demande?: number;
+  lots?: LotErreurVente[];
 }
 
 export function creerVente(structureId: string, corps: CorpsCreationVente, cleIdempotence: string) {
@@ -147,6 +234,19 @@ export function lignesErreurVente(err: unknown): LigneErreurVente[] {
     if (typeof nom === "string") ligne.nom = nom;
     if (entierPositif(disponible)) ligne.disponible = disponible;
     if (entierPositif(demande)) ligne.demande = demande;
+    if (Array.isArray(element.lots)) {
+      const lots: LotErreurVente[] = [];
+      for (const lot of element.lots as unknown[]) {
+        if (!estObjet(lot)) continue;
+        const { lotId, numeroLot, dateExpiration, quantite } = lot;
+        if (typeof lotId !== "string" || lotId === "") continue;
+        if (typeof quantite !== "number" || !Number.isInteger(quantite)) continue;
+        if (numeroLot !== null && typeof numeroLot !== "string") continue;
+        if (dateExpiration !== null && typeof dateExpiration !== "string") continue;
+        lots.push({ lotId, numeroLot, dateExpiration, quantite });
+      }
+      ligne.lots = lots;
+    }
     lignes.push(ligne);
   }
   return lignes;

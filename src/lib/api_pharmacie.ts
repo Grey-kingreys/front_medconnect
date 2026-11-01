@@ -16,13 +16,37 @@ export interface Medicament {
   formes: string[];
 }
 
+export type UniteMinimale = "COMPRIME" | "GELULE" | "ML" | "SACHET" | "GRAMME" | "AMPOULE" | "UNITE";
+
+export interface LotFiche {
+  id: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  quantite: number;
+  lotTechnique: boolean;
+  /** Présent seulement avec `marge:read` : tester la présence de la clé (D698). */
+  coutUnitaire?: number | null;
+}
+
 export interface StockMedicament {
   id: string;
   medicamentId: string;
   medicament: Medicament;
   structureId: string;
+  /** Unités minimales (comprimés, ml...), peut être négative. */
   quantite: number;
+  /** Prix de la boîte. */
   prixUnitaire?: number;
+  // Champs de la fiche : la recherche publique ne les renvoie pas.
+  uniteMinimale?: UniteMinimale;
+  coefficientBoite?: number;
+  prixUnite?: number | null;
+  deconditionnable?: boolean;
+  toleranceInventaire?: number | null;
+  qualifie?: boolean;
+  reliquat?: { lotId: string; unitesRestantes: number }[];
+  quantiteVendable?: number;
+  lots?: LotFiche[];
   disponible: boolean;
   dateExpiration?: string;
   notes?: string;

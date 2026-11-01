@@ -77,6 +77,10 @@ describe("codeErreurVente", () => {
     expect(codeErreurVente(new ApiError("x", 409, { code }))).toBe(code);
   });
 
+  it("reconnaît PAIEMENTS_INCOHERENTS", () => {
+    expect(codeErreurVente(new ApiError("x", 400, { code: "PAIEMENTS_INCOHERENTS" }))).toBe("PAIEMENTS_INCOHERENTS");
+  });
+
   it("ignore un code inconnu", () => {
     expect(codeErreurVente(new ApiError("x", 400, { code: "AUTRE" }))).toBeNull();
     expect(codeErreurVente(new ApiError("x", 500))).toBeNull();
@@ -119,6 +123,26 @@ describe("lignesErreurVente", () => {
       ],
     });
     expect(lignesErreurVente(err)).toEqual([{ stockId: "s1" }, { stockId: "s2" }, { stockId: "s3", nom: "Aspirine", disponible: 0 }]);
+  });
+
+  it("lit les lots d'une sortie manuelle requise et ignore les lots invalides", () => {
+    const err = new ApiError("x", 409, {
+      code: "SORTIE_MANUELLE_REQUISE",
+      details: [
+        {
+          stockId: "s1",
+          nom: "Doliprane",
+          lots: [{ lotId: "l1", numeroLot: "DL23K052", dateExpiration: "2026-10-01", quantite: 6 }, { lotId: "" }],
+        },
+      ],
+    });
+    expect(lignesErreurVente(err)).toEqual([
+      {
+        stockId: "s1",
+        nom: "Doliprane",
+        lots: [{ lotId: "l1", numeroLot: "DL23K052", dateExpiration: "2026-10-01", quantite: 6 }],
+      },
+    ]);
   });
 
   it("renvoie une liste vide sans détails ou pour une autre erreur", () => {

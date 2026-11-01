@@ -3,33 +3,49 @@
 Index du run orchestré en cours. 150 lignes max. Protocole : docs/ORCHESTRATOR.md, section 9.
 Reprise : lire ce fichier, puis seulement le fichier de la prochaine tâche.
 
-Run: 2026-10-22-lot9 | Branche: orch/lot9-front | Parallélisme: 5 (1 seul sur l'arbre principal, les autres en worktree) | Audience: mixte par surface (non-dev partout sauf /debug)
-Détails: docs/plans/runs/2026-10-22-lot9/ (tasks/, rapports/, decisions.md). Contrat du back : back_medconnect branche origin/dev (tête 8331e63), non modifié. Branche de départ : task/import-colonnes-front (225d4ab). Runs précédents à archiver : docs/plans/runs/2026-10-21-lot3/ (F7 = 39fa4b1), docs/plans/runs/2026-10-21-lot4/ (F8 = b3b4ff6), docs/plans/runs/2026-10-21-lot5/ (F9 = 0ebb5f3, F10 = 71ebfe2), docs/plans/runs/2026-10-21-lot6/ (F11 = 46944b1, correctif f8c6890), docs/plans/runs/2026-10-22-lot7/ (F12 = 67bc6eb), docs/plans/runs/2026-10-22-lot7b/ (D1 = 213a5ec), docs/plans/runs/2026-10-22-lot8/ (F13, fusionné par la PR #35)
+Run: 2026-10-25-pharmacie-t1 (tranche pharmacie 1, partie front) | Branche: orch/pharmacie-t1-front | Parallélisme: 1 | Audience: non-dev (écrans de la pharmacie)
+Détails du run (fiches, décisions, rapports) : dans le dépôt back, back_medconnect/docs/plans/runs/2026-10-25-pharmacie-t1/ (tasks/PF*.md, decisions.md D683 à D704, rapports/). Suivi complet : back_medconnect/docs/plans/ACTIVE.md. Contrat du back : orch/pharmacie-t1-back (tête 0ae19c1, PB01 à PB19 validés), non fusionné vers dev.
+Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 = d338e70, fusionnés par la PR #39).
 
-## À faire et en cours
+## À faire et en cours (ordre d'exécution, un commit par fiche)
 
-| ID | Tâche | Tier | Statut | Tent. |
-|----|-------|------|--------|-------|
-| F14 | Page « Ma pharmacie » modifiable sur place par blocs, lecture seule pour le pharmacien, plus de médecins pour une pharmacie (tasks/F14-ma-pharmacie-edition-directe.md) | spécifié | à faire | 0 |
-| F15 | Accueil d'une pharmacie différencié par permissions : « pilotage » (ventes du jour, équipe, stock) pour l'administrateur, « comptoir » (Nouvelle vente, mes ventes, stock) pour le pharmacien (tasks/F15-accueil-pharmacie-pilotage-comptoir.md) | spécifié | à faire | 0 |
+| ID | Tâche | Statut |
+|----|-------|--------|
+| PF01a | Socle front de la caisse | validé (D705, rapports/PF01a-chef.md du run) |
+| PF01b | Écran de vente : unité, paiements | à faire |
+| PF02a | Page stock : correction, aperçu | à faire |
+| PF02b | Fiche produit : deux prix, qualification | à faire |
+| PF07a | Réception, livraison, fournisseurs | à faire |
+| PF07b | Détail d'une réception, sorties de stock | à faire |
+| PF07c | Inventaire par lot | à faire |
+| PF07d | Import Excel livraison et inventaire | à faire |
+| PF03a | Ma caisse : ouverture, comptage | à faire |
+| PF03b | Ma caisse : mouvements, fermeture | à faire |
+| PF04 | Annulation et ventes du jour | à faire |
+| PF05 | Clôture journalière | à faire |
+| PF06a | File d'anomalies | à faire |
+| PF06b | Alertes de péremption et marge | à faire |
+
+Arrêt obligatoire avant le desktop (PD01 à PD05) : le porteur teste d'abord.
 
 ## Faites (preuve = commit)
 
+- (lot9) F14 Ma pharmacie = 430e02d ; F15 Accueil pilotage et comptoir = d338e70 (PR #39)
 - (lot8) F13 Reçu et ventes du jour = PR #35
 - (lot7) F12 Nouvelle vente = 67bc6eb
-- (lot7b) D1 Aperçu pharmacie = 213a5ec
 
 ## Questions parquées
 
 - (lot3) Noms des champs de position du SOS et en-tête `Idempotency-Key` : à confirmer avec B6 (orch/lot3-back) avant l'intégration (lot3 D02)
 - (lot4) Emplacement exact de `invitationEnvoyee` (data ou racine) et forme du 503 EMAIL_INDISPONIBLE : à confirmer avec orch/lot4-back ; le front accepte les deux (lot4 D01, D02)
 - (lot5) Règles du mot de passe dans `UserModal` (création d'utilisateur par un administrateur, 8 caractères seulement) : à aligner si le back exige aussi majuscule, minuscule et chiffre (lot5 D20)
-- (lot7) Lecture du stock par le vendeur : `GET /pharmacie/stock/:structureId` exige `stock:read` ET `stock:write` ; l'administrateur de pharmacie (`vente:write` sans droit sur le stock) ne peut pas charger « Nouvelle vente » tant que le back n'ouvre pas cette lecture (lot7 D06, lot7b D02)
+- (lot7) Lecture du stock par le vendeur : `GET /pharmacie/stock/:structureId` exige `stock:read` ET `stock:write` (lot7 D06, lot7b D02) ; à revoir avec la tranche pharmacie 1
+- (pharmacie-t1) Le rôle Pharmacien n'a ni `reception:write` ni `inventaire:write` (D598, D704) : le porteur dit s'il faut les lui donner
 
-## Dernières décisions (5 max, historique complet dans decisions.md)
+## Dernières décisions (5 max, historique complet dans le decisions.md du run, dépôt back)
 
-- D16 vue d'accueil pharmacie par `vuePharmacie(ctx)` : `structure:write` ou `vente:annuler` = pilotage, sinon comptoir, repli inchangé
-- D17 annulées comptées sur la première page des ventes (50), mention si `totalPages > 1`
-- D18 « Mes ventes du jour » = ventes de la première page dont `vendeur.id` = l'utilisateur, validées seulement dans le montant
-- D20 ventes, équipe et stock chargés indépendamment ; 403 = bloc masqué
-- D22 menu : aucune entrée retirée, seule la description du raccourci « Ma pharmacie » change
+- D683 PF07 « Réception, inventaire et sorties de stock » ajouté après PF02
+- D684 Péremption MM/AA ou MM/AAAA = dernier jour du mois (date_peremption.ts)
+- D687 Message du serveur affiché tel quel, réessai seulement sur erreur réseau, jamais sur un 409
+- D688 Un identifiant client par saisie, réutilisé après échec réseau
+- D698 Coût ou marge nul affiché « inconnu », jamais 0 GNF
