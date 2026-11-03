@@ -215,6 +215,30 @@ export interface LigneImportStock {
   quantiteApres?: number | null;
   /** Unités vendues sans stock qui étaient à régulariser avant l'import (rattachées par l'import) ; absente sur un ancien serveur. */
   quantiteARegulariserAvant?: number | null;
+  /** Livraison : numéro de lot du fichier (facultatif). */
+  numeroLot?: string | null;
+  /** Livraison : coût d'achat d'une boîte ; clé absente sans le droit « marge:read » (D698), `null` si inconnu. */
+  coutAchatBoite?: number | null;
+  /** Livraison : la ligne est déclarée « sans péremption ». */
+  sansPeremption?: boolean;
+  /** Livraison : unités reçues (boîtes du fichier converties en unités). */
+  unitesRecues?: number;
+  /** Lot créé ou compté par l'import. */
+  lotId?: string;
+  /** Inventaire : unités comptées en plus d'une boîte entamée. */
+  unitesEnPlus?: number;
+  /** Inventaire : quantité comptée, en unités (jamais négative). */
+  quantiteComptee?: number;
+  /** Inventaire : quantité attendue, écrêtée à 0 (D717). */
+  quantiteTheorique?: number;
+  /** Inventaire : part à régulariser que le serveur sort de `quantiteTheorique` (D717). */
+  quantiteARegulariser?: number;
+  /** Inventaire : écart signé entre le compté et l'attendu (une différence, pas une quantité). */
+  ecart?: number;
+  /** Inventaire : l'écart reste dans la tolérance, aucun signalement. */
+  sousTolerance?: boolean;
+  /** Inventaire : le lot compté n'existait pas encore. */
+  nouveauLot?: boolean;
 }
 
 /** Colonnes du fichier telles que le serveur les a comprises. */
@@ -238,7 +262,12 @@ export interface RapportImport<L> {
   colonnes?: ColonnesLuesImport;
 }
 
-export type RapportImportStock = RapportImport<LigneImportStock>;
+/** Rapport de l'import du stock : l'un de `receptionId` (livraison) et `inventaireId` (inventaire) est renseigné après l'import. */
+export type RapportImportStock = RapportImport<LigneImportStock> & {
+  mode?: ModeImportStock;
+  receptionId?: string | null;
+  inventaireId?: string | null;
+};
 
 const corpsImport = (fichier: File, mode?: ModeImportStock) => {
   const formulaire = new FormData();
@@ -248,13 +277,13 @@ const corpsImport = (fichier: File, mode?: ModeImportStock) => {
 };
 
 /** Télécharge le modèle Excel à remplir ; renvoie le contenu et le nom du fichier. */
-export async function telechargerModeleImportStock(structureId: string) {
-  const { blob, filename } = await authDownload(`/pharmacie/stock/${structureId}/import/modele`);
-  return { blob, filename: filename ?? "modele-import-stock.xlsx" };
+export async function telechargerModeleImportStock(structureId: string, mode: ModeImportStock) {
+  const { blob, filename } = await authDownload(`/pharmacie/stock/${structureId}/import/modele?mode=${mode}`);
+  return { blob, filename: filename ?? `modele-${mode}-stock.xlsx` };
 }
 
 /** Analyse le fichier sans rien enregistrer, selon le mode choisi. */
-export async function apercuImportStock(structureId: string, fichier: File, mode: ModeImportStock = "inventaire") {
+export async function apercuImportStock(structureId: string, fichier: File, mode: ModeImportStock) {
   return authFetch<RapportImportStock>(`/pharmacie/stock/${structureId}/import/apercu`, {
     method: "POST",
     body: corpsImport(fichier, mode),
@@ -262,7 +291,7 @@ export async function apercuImportStock(structureId: string, fichier: File, mode
 }
 
 /** Refait l'analyse et enregistre les lignes acceptées : la quantité remplace celle en stock (inventaire) ou s'y ajoute (livraison). */
-export async function importerStock(structureId: string, fichier: File, mode: ModeImportStock = "inventaire") {
+export async function importerStock(structureId: string, fichier: File, mode: ModeImportStock) {
   return authFetch<RapportImportStock>(`/pharmacie/stock/${structureId}/import`, {
     method: "POST",
     body: corpsImport(fichier, mode),

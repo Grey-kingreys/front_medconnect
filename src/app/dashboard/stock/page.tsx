@@ -6,6 +6,7 @@ import { LoadingSpinner } from "@/components/LoadingSpinner";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
+import { lireContexteAcces } from "@/lib/acces";
 import {
   Package,
   Plus,
@@ -25,7 +26,8 @@ import {
   getMyStock,
   StockMedicament,
   StockInfo,
-  removeStockItem
+  removeStockItem,
+  type ModeImportStock
 } from "@/lib/api_pharmacie";
 import { calculerApercuStock } from "@/lib/apercu_pharmacie";
 import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
@@ -45,7 +47,14 @@ type Filtre = "all" | "low" | "rupture" | "qualifier";
 const MSG_CHARGEMENT_ECHOUE = "Le stock n'a pas pu être chargé. Vérifiez votre connexion puis réessayez.";
 
 export default function StockPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  // Modes d'import permis par les droits : livraison (réception) et inventaire (D695)
+  const permissions = user ? lireContexteAcces(user, profile ?? null).permissions : null;
+  const modesPermis: ModeImportStock[] = [
+    ...(permissions?.has("reception:write") ? (["livraison"] as const) : []),
+    ...(permissions?.has("inventaire:write") ? (["inventaire"] as const) : []),
+  ];
+  const peutImporter = modesPermis.length > 0;
   const [stockInfo, setStockInfo] = useState<StockInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [erreurChargement, setErreurChargement] = useState<string | null>(null);
@@ -83,12 +92,12 @@ export default function StockPage() {
   // Accès rapide « Importer le stock » du tableau de bord : ouvre directement la fenêtre d'import
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("importer") !== "1") return;
+    if (params.get("importer") !== "1" || !peutImporter) return;
     setIsImportOpen(true);
     params.delete("importer");
     const reste = params.toString();
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${reste ? `?${reste}` : ""}`);
-  }, []);
+  }, [peutImporter]);
 
   // Statuts lus des alertes du serveur (seuil des paramètres, quantité négative comprise)
   const idsStockBas = new Set(stockInfo?.alertes.stockBas.map((a) => a.id) ?? []);
@@ -228,13 +237,15 @@ export default function StockPage() {
         </div>
 
         <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => setIsImportOpen(true)}
-            className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl font-bold text-sm hover:border-primary-500 transition-all flex items-center justify-center gap-2"
-          >
-            <FileSpreadsheet className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-            Importer depuis Excel
-          </button>
+          {peutImporter && (
+            <button
+              onClick={() => setIsImportOpen(true)}
+              className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl font-bold text-sm hover:border-primary-500 transition-all flex items-center justify-center gap-2"
+            >
+              <FileSpreadsheet className="w-5 h-5 text-primary-600 dark:text-primary-400" />
+              Importer depuis Excel
+            </button>
+          )}
           <button
             onClick={openAddModal}
             className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
@@ -273,7 +284,9 @@ export default function StockPage() {
                     <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
                     <p className="text-slate-600 dark:text-slate-400 font-medium">
                       {stockInfo.stocks.length === 0
-                        ? "Votre stock est vide. Ajoutez un médicament ou importez votre fichier Excel."
+                        ? peutImporter
+                          ? "Votre stock est vide. Ajoutez un médicament ou importez votre fichier Excel."
+                          : "Votre stock est vide. Ajoutez un médicament."
                         : "Aucun médicament dans ce filtre."}
                     </p>
                   </td>
@@ -421,8 +434,9 @@ export default function StockPage() {
       )}
 
       {/* Import Excel du stock (F1) */}
-      {user?.structureId && (
+      {user?.structureId && peutImporter && (
         <ImportStockModal
+          modesPermis={modesPermis}
           isOpen={isImportOpen}
           onClose={() => setIsImportOpen(false)}
           structureId={user.structureId}

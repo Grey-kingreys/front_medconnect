@@ -4,11 +4,17 @@ import { ApiError } from "@/lib/api_auth";
 import { getMyStock, listerLotsFiche, updateStockQuantite, type StockMedicament } from "@/lib/api_pharmacie";
 import StockPage from "./page";
 
-vi.mock("@/hooks/useAuth", () => ({
-  useAuth: () => ({
-    user: { id: "p1", role: "PHARMACIEN", structureId: "s1", email: "p@exemple.com", nom: "Bah", prenom: "Ali" },
-  }),
-}));
+// Droits du profil simulé : modifiés d'un test à l'autre
+const droitsSimules = vi.hoisted(() => ({ permissions: ["stock:read", "stock:write", "reception:write"] as string[] }));
+vi.mock("@/hooks/useAuth", () => {
+  const user = { id: "p1", role: "PHARMACIEN", structureId: "s1", email: "p@exemple.com", nom: "Bah", prenom: "Ali" };
+  return {
+    useAuth: () => ({
+      user,
+      profile: { ...user, isActive: true, structureType: "PHARMACIE", permissions: droitsSimules.permissions },
+    }),
+  };
+});
 vi.mock("@/lib/api_pharmacie", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api_pharmacie")>()),
   getMyStock: vi.fn(),
@@ -49,6 +55,7 @@ const reponse = (
 
 describe("Page du stock", () => {
   beforeEach(() => {
+    droitsSimules.permissions = ["stock:read", "stock:write", "reception:write"];
     vi.mocked(getMyStock).mockResolvedValue(reponse([]));
   });
   afterEach(() => {
@@ -62,6 +69,25 @@ describe("Page du stock", () => {
     render(<StockPage />);
     expect(await screen.findByText("Fenêtre d'import ouverte")).toBeTruthy();
     expect(window.location.search).toBe("");
+  });
+
+  it("sans droit de réception ni d'inventaire, n'affiche pas le bouton d'import et n'ouvre rien par l'adresse", async () => {
+    droitsSimules.permissions = ["stock:read", "stock:write"];
+    window.history.replaceState(null, "", "/dashboard/stock?importer=1");
+    render(<StockPage />);
+    await waitFor(() => expect(getMyStock).toHaveBeenCalled());
+    expect(screen.queryByText("Importer depuis Excel")).toBeNull();
+    expect(screen.queryByText("Fenêtre d'import ouverte")).toBeNull();
+  });
+
+  it("stock vide : la phrase parle de l'import seulement avec un droit d'import", async () => {
+    render(<StockPage />);
+    expect(await screen.findByText("Votre stock est vide. Ajoutez un médicament ou importez votre fichier Excel.")).toBeTruthy();
+    cleanup();
+
+    droitsSimules.permissions = ["stock:read", "stock:write"];
+    render(<StockPage />);
+    expect(await screen.findByText("Votre stock est vide. Ajoutez un médicament.")).toBeTruthy();
   });
 
   it("n'ouvre pas la fenêtre d'import sans cette demande", async () => {

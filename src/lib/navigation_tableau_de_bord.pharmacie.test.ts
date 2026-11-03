@@ -45,7 +45,7 @@ describe("raccourcis de la pharmacie", () => {
   });
 
   it("ajoute l'import et le catalogue quand l'administrateur a les droits du stock", () => {
-    const ctx = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "stock:read", "stock:write"]);
+    const ctx = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "stock:read", "stock:write", "reception:write"]);
     const menu = hrefs(sectionsMenu(ctx));
     expect(menu).toContain("/dashboard/stock");
     expect(menu).toContain(CATALOGUE);
@@ -60,7 +60,7 @@ describe("raccourcis de la pharmacie", () => {
   });
 
   it("place les deux accès rapides après le stock pour le pharmacien", () => {
-    const r = raccourcis(contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN));
+    const r = raccourcis(contexte("PHARMACIEN", "PHARMACIE", [...PHARMACIEN, "reception:write"]));
     expect(r.map((x) => x.href)).toEqual([
       "/dashboard/chat",
       "/dashboard/ordonnances",
@@ -72,6 +72,12 @@ describe("raccourcis de la pharmacie", () => {
     ]);
     expect(r.find((x) => x.href === IMPORT)?.libelle).toBe("Importer le stock");
     expect(r.find((x) => x.href === CATALOGUE)?.libelle).toBe("Catalogue des médicaments");
+  });
+
+  it("n'affiche pas « Importer le stock » au pharmacien par défaut, sans droit de réception ni d'inventaire", () => {
+    const r = raccourcis(contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN));
+    expect(r.map((x) => x.href)).not.toContain(IMPORT);
+    expect(r.map((x) => x.libelle)).not.toContain("Importer le stock");
   });
 
   it("ne propose rien de tout cela à un médecin d'hôpital", () => {

@@ -564,9 +564,9 @@ const RACCOURCIS_SUPPLEMENTAIRES: readonly RaccourciSupplementaire[] = [
     href: "/dashboard/stock?importer=1",
     icone: FileSpreadsheet,
     libelle: { defaut: "Importer le stock" },
-    description: { defaut: "Mettez à jour votre stock depuis un fichier Excel" },
+    description: { defaut: "Ajoutez une livraison ou un inventaire depuis un fichier Excel" },
     degrade: "from-secondary-500 to-cyan-500",
-    acces: perm(["stock:read", "stock:write"], { typesStructure: P }),
+    acces: perm(["reception:write", "inventaire:write"], { typesStructure: P }),
   },
   {
     id: "catalogue-pharmacie",

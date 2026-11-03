@@ -21,6 +21,8 @@ export interface DroitsPilotage {
   peutAnnuler: boolean;
   /** Route /dashboard/stock autorisée. */
   peutVoirStock: boolean;
+  /** reception:write ou inventaire:write : l'import Excel du stock est ouvert. */
+  peutImporter?: boolean;
 }
 
 export interface LienVue {
@@ -252,6 +254,7 @@ export default function PilotagePharmacie({
         titre="Votre stock"
         peutVoirStock={droits.peutVoirStock}
         peutVoirEquipe={false}
+        peutImporter={droits.peutImporter}
       />
     </>
   );

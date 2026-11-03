@@ -14,8 +14,12 @@ import {
   type LigneImportStock,
   type ModeImportStock,
   type RapportImport,
+  type RapportImportStock,
 } from "@/lib/api_pharmacie";
 import { messageErreurPour, useToast } from "@/hooks/useToast";
+import Link from "next/link";
+import { afficherDatePeremption } from "@/lib/date_peremption";
+import { formaterGNF } from "@/lib/format_gnf";
 
 type Etape = "preparer" | "verifier" | "termine";
 type Chargement = "modele" | "apercu" | "import" | null;
@@ -24,11 +28,6 @@ type Chargement = "modele" | "apercu" | "import" | null;
 const TAILLE_MAX_OCTETS = 2 * 1024 * 1024;
 
 const pluriel = (n: number, singulier: string, plurielTexte: string) => `${n} ${n > 1 ? plurielTexte : singulier}`;
-
-const formatPrix = (prix?: number) =>
-  prix === undefined ? "-" : `${prix.toLocaleString("fr-GN")} GNF`;
-const formatDate = (iso?: string) =>
-  iso ? new Date(iso).toLocaleDateString("fr-FR", { timeZone: "UTC" }) : "-";
 
 /** « avant → après » pour une ligne du stock ; rien si le serveur ne fournit pas ces quantités (D04, D07). */
 const renduEvolutionStock = (l: LigneImportStock) => {
@@ -82,7 +81,8 @@ export interface ConfigImportExcel<L extends LigneImportBase, M extends string =
   nomFeuille: string;
   /** Consignes de l'étape 1, une par ligne. */
   consignes: ReactNode[];
-  colonnes: ColonneApercu<L>[];
+  /** Colonnes fixes, ou calculées d'après le rapport et le mode de l'aperçu affiché (PF07d). */
+  colonnes: ColonneApercu<L>[] | ((rapport: RapportImport<L>, mode?: M) => ColonneApercu<L>[]);
   /** Choix du mode d'import, la première option est celle par défaut ; absent : pas de choix. */
   modes?: OptionModeImport<M>[];
   textes: {
@@ -97,9 +97,11 @@ export interface ConfigImportExcel<L extends LigneImportBase, M extends string =
     termine: (n: number) => string;
     termineRejetees: (n: number) => string;
   };
-  telechargerModele: () => Promise<{ blob: Blob; filename: string }>;
+  telechargerModele: (mode?: M) => Promise<{ blob: Blob; filename: string }>;
   apercu: (fichier: File, mode?: M) => Promise<{ data: RapportImport<L> }>;
   importer: (fichier: File, mode?: M) => Promise<{ data: RapportImport<L>; message?: string }>;
+  /** Complément affiché à l'étape « terminé » : message du serveur, lien vers la pièce créée. */
+  renduResultat?: (rapport: RapportImport<L>, message: string | undefined) => ReactNode;
   /** Si présent, une notification de succès est affichée après l'import. */
   notifierSucces?: boolean;
 }
@@ -177,14 +179,24 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
   const [chargement, setChargement] = useState<Chargement>(null);
   const [seulementACorriger, setSeulementACorriger] = useState(false);
   const [confirmation, setConfirmation] = useState(false);
-  const [mode, setMode] = useState<M | undefined>(config.modes?.[0]?.valeur);
+  const [modeChoisi, setMode] = useState<M | undefined>(config.modes?.[0]?.valeur);
+  // Mode de l'aperçu affiché : les colonnes et la confirmation suivent l'aperçu, pas un choix en cours de vérification
+  const [modeApercu, setModeApercu] = useState<M | undefined>(undefined);
+  const [messageServeur, setMessageServeur] = useState<string | undefined>(undefined);
 
-  const { textes, colonnes } = config;
+  // Un mode qui n'est plus proposé (droits changés) retombe sur le premier mode permis
+  const mode = config.modes?.some((o) => o.valeur === modeChoisi) ? modeChoisi : config.modes?.[0]?.valeur;
+  const plusieursModes = (config.modes?.length ?? 0) > 1;
+  const modeUnique = config.modes?.length === 1 ? config.modes[0] : undefined;
+
+  const { textes } = config;
+  const colonnes = typeof config.colonnes === "function" ? (rapport ? config.colonnes(rapport, modeApercu) : []) : config.colonnes;
 
   const recommencer = () => {
     setEtape("preparer");
     setFichier(null);
     setRapport(null);
+    setMessageServeur(undefined);
     setErreur(null);
     setSeulementACorriger(false);
     setConfirmation(false);
@@ -212,7 +224,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
     setErreur(null);
     setChargement("modele");
     try {
-      const { blob, filename } = await config.telechargerModele();
+      const { blob, filename } = await config.telechargerModele(mode);
       const url = URL.createObjectURL(blob);
       const lien = document.createElement("a");
       lien.href = url;
@@ -252,6 +264,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
     try {
       const res = await config.apercu(fichier, modeVoulu);
       setRapport(res.data);
+      setModeApercu(modeVoulu);
       setSeulementACorriger(false);
       setConfirmation(false);
       setEtape("verifier");
@@ -278,6 +291,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
     try {
       const res = await config.importer(fichier, mode);
       setRapport(res.data);
+      setMessageServeur(res.message);
       setEtape("termine");
       if (config.notifierSucces) {
         notifier(res.message || textes.termine(res.data.importees ?? res.data.acceptees), "succes");
@@ -346,6 +360,11 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
           {/* Étape 1 : préparer le fichier */}
           {etape === "preparer" && (
             <>
+              {modeUnique && (
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  Cet import sert à : <strong className="text-slate-900 dark:text-white">« {modeUnique.libelle} »</strong>. {modeUnique.explication}
+                </p>
+              )}
               <ol className="space-y-2 text-sm text-slate-700 dark:text-slate-300 list-decimal list-inside">
                 {config.consignes.map((consigne, i) => (
                   <li key={i}>{consigne}</li>
@@ -375,7 +394,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 />
               </div>
 
-              {config.modes && (
+              {config.modes && plusieursModes && (
                 <ChoixModeImport options={config.modes} valeur={mode} onChange={changerMode} desactive={!!chargement} />
               )}
 
@@ -394,7 +413,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
           {/* Étape 2 : vérifier */}
           {etape === "verifier" && rapport && (
             <>
-              {config.modes && (
+              {config.modes && plusieursModes && (
                 <>
                   <ChoixModeImport options={config.modes} valeur={mode} onChange={changerMode} desactive={!!chargement} />
                   {chargement === "apercu" && (
@@ -495,7 +514,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                   {confirmation ? (
                     <div className="space-y-3">
                       <p className="text-sm font-bold text-slate-900 dark:text-white">
-                        {textes.confirmation(rapport.acceptees, mode)}
+                        {textes.confirmation(rapport.acceptees, modeApercu)}
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3">
                         <button
@@ -554,6 +573,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                   {textes.termineRejetees(rapport.rejetees)}
                 </p>
               )}
+              {config.renduResultat?.(rapport, messageServeur)}
               <button
                 type="button"
                 onClick={fermer}
@@ -572,26 +592,38 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
 // ─── Import du stock d'une pharmacie ────────────────────────────
 
 /** Paramétrage de l'import du stock : la quantité du fichier remplace celle en stock (inventaire) ou s'y ajoute (livraison). */
-export function configImportStock(structureId: string): ConfigImportExcel<LigneImportStock, ModeImportStock> {
+export function configImportStock(
+  structureId: string,
+  modesPermis: ModeImportStock[] = ["livraison", "inventaire"],
+): ConfigImportExcel<LigneImportStock, ModeImportStock> {
+  const toutes: OptionModeImport<ModeImportStock>[] = [
+    {
+      valeur: "livraison",
+      libelle: "Livraison : ajouter les boîtes reçues",
+      explication:
+        "Chaque ligne du fichier crée un lot. Quantités en boîtes ; date de péremption obligatoire (ou « sans péremption ») ; numéro de lot et coût d'achat facultatifs.",
+    },
+    {
+      valeur: "inventaire",
+      libelle: "Inventaire : remplacer par les quantités comptées",
+      explication:
+        "Une ligne par lot compté, quantités en boîtes (et unités en plus d'une boîte entamée). Les quantités du fichier remplacent celles enregistrées.",
+    },
+  ];
+  const options = toutes.filter((o) => modesPermis.includes(o.valeur));
+  const modeParDefaut: ModeImportStock = options[0]?.valeur ?? "livraison";
+
   return {
     titre: "Importer depuis Excel",
     nomFeuille: "Stock",
     consignes: [
-      "Une ligne par médicament.",
-      "Le nom du médicament tel qu'il apparaît dans le catalogue.",
-      "Choisissez ensuite si les quantités du fichier remplacent votre stock (inventaire) ou s'y ajoutent (livraison).",
+      "Téléchargez le modèle du mode choisi.",
+      "Remplissez une ligne par produit et par lot : les quantités sont en boîtes.",
+      "Pour une livraison, indiquez la date de péremption de chaque ligne (par exemple 30/06/2028), ou écrivez « sans péremption ».",
+      "Envoyez le fichier : rien n'est enregistré avant votre confirmation.",
     ],
-    modes: [
-      { valeur: "inventaire", libelle: "Inventaire : remplacer les quantités", explication: "Les quantités du fichier deviennent votre stock." },
-      { valeur: "livraison", libelle: "Livraison : ajouter aux quantités", explication: "Les quantités du fichier s'ajoutent à votre stock actuel." },
-    ],
-    colonnes: [
-      { titre: "Médicament reconnu", rendu: (l) => l.medicamentNom },
-      { titre: "Quantité", rendu: (l) => l.quantite },
-      { titre: "Stock", rendu: renduEvolutionStock },
-      { titre: "Prix", rendu: (l) => formatPrix(l.prixUnitaire), secondaire: true },
-      { titre: "Expiration", rendu: (l) => formatDate(l.dateExpiration), secondaire: true },
-    ],
+    modes: options,
+    colonnes: (rapport, mode) => colonnesImportStock(rapport, mode),
     textes: {
       prets: (n) => `${pluriel(n, "médicament prêt", "médicaments prêts")} à être importé${n > 1 ? "s" : ""}`,
       rejetees: (n) => `${pluriel(n, "ligne", "lignes")} à corriger`,
@@ -599,17 +631,122 @@ export function configImportStock(structureId: string): ConfigImportExcel<LigneI
       boutonImporter: (n) => `Importer ${pluriel(n, "médicament", "médicaments")}`,
       confirmation: (n, mode) =>
         mode === "livraison"
-          ? `Pour ${pluriel(n, "médicament", "médicaments")}, la quantité du fichier sera ajoutée à celle en stock. Confirmer ?`
-          : `Pour ${pluriel(n, "médicament", "médicaments")}, la quantité en stock sera remplacée par celle du fichier. Confirmer ?`,
+          ? `Ajouter ${pluriel(n, "lot", "lots")} au stock ?`
+          : `Remplacer le stock de ${pluriel(n, "lot", "lots")} par les quantités comptées ?`,
       boutonConfirmer: "Confirmer l'import",
-      termine: (n) => `${pluriel(n, "médicament mis à jour", "médicaments mis à jour")} dans votre stock`,
+      termine: (n) => `${pluriel(n, "ligne enregistrée", "lignes enregistrées")} dans votre stock`,
       termineRejetees: (n) =>
         `${pluriel(n, "ligne n'a pas été importée", "lignes n'ont pas été importées")} : corrigez-les dans le fichier puis importez-le à nouveau.`,
     },
-    telechargerModele: () => telechargerModeleImportStock(structureId),
-    apercu: (fichier, mode) => apercuImportStock(structureId, fichier, mode),
-    importer: (fichier, mode) => importerStock(structureId, fichier, mode),
+    telechargerModele: (mode) => telechargerModeleImportStock(structureId, mode ?? modeParDefaut),
+    apercu: (fichier, mode) => apercuImportStock(structureId, fichier, mode ?? modeParDefaut),
+    importer: (fichier, mode) => importerStock(structureId, fichier, mode ?? modeParDefaut),
+    renduResultat: (rapport, message) => {
+      const { receptionId, inventaireId } = rapport as RapportImportStock;
+      return (
+        <>
+          {message && <p className="text-sm text-slate-700 dark:text-slate-300">{message}</p>}
+          {receptionId && (
+            <Link href={`/dashboard/receptions/${receptionId}`} className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:underline">
+              Voir la réception
+            </Link>
+          )}
+          {inventaireId && (
+            <>
+              <p className="text-sm text-slate-700 dark:text-slate-300">Les écarts au-delà de la tolérance sont signalés au titulaire.</p>
+              <EcartsInventaire lignes={rapport.lignes} />
+            </>
+          )}
+        </>
+      );
+    },
   };
+}
+
+const entierSigne = (n: number) => (n > 0 ? `+${n}` : String(n));
+
+/** Lot d'une ligne d'inventaire : numéro du fichier, sinon « Sans péremption », sinon date. */
+const libelleLot = (l: LigneImportStock) =>
+  l.numeroLot || (l.sansPeremption ? "Sans péremption" : l.dateExpiration ? afficherDatePeremption(l.dateExpiration) : "-");
+
+/** Résultat d'un inventaire : attendu et écart ne se montrent qu'après l'enregistrement (D729), jamais de signe moins sur l'attendu (D717). */
+function EcartsInventaire({ lignes }: { lignes: LigneImportStock[] }) {
+  const acceptees = lignes.filter((l) => l.statut === "acceptee");
+  if (acceptees.length === 0) return null;
+  return (
+    <div className="w-full overflow-x-auto text-left">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="text-left text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+            <th className="py-2 pr-3">Médicament</th>
+            <th className="py-2 pr-3">Lot</th>
+            <th className="py-2 pr-3">Attendu (en unités)</th>
+            <th className="py-2 pr-3">Compté (en unités)</th>
+            <th className="py-2">Écart (en unités)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {acceptees.map((l) => (
+            <tr key={l.ligne} className="border-b border-slate-100 dark:border-slate-800/60 align-top">
+              <td className="py-2 pr-3 text-slate-900 dark:text-white">{l.medicamentNom ?? l.nom}</td>
+              <td className="py-2 pr-3 text-slate-700 dark:text-slate-300">
+                {libelleLot(l)}
+                {l.nouveauLot && <span className="block text-xs">nouveau lot</span>}
+              </td>
+              <td className="py-2 pr-3 text-slate-900 dark:text-white">
+                {Math.max(l.quantiteTheorique ?? 0, 0)}
+                {(l.quantiteARegulariser ?? 0) > 0 && (
+                  <span className="block text-xs text-amber-700 dark:text-amber-300">{l.quantiteARegulariser} à régulariser</span>
+                )}
+              </td>
+              <td className="py-2 pr-3 text-slate-900 dark:text-white">{l.quantiteComptee ?? l.quantite}</td>
+              <td className="py-2 text-slate-900 dark:text-white">
+                {typeof l.ecart === "number" ? entierSigne(l.ecart) : "-"}
+                {l.sousTolerance && <span className="block text-xs text-slate-700 dark:text-slate-300">dans la tolérance</span>}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+/** Colonnes de l'aperçu du stock : celles de la livraison ou celles de l'inventaire (PF07d). */
+function colonnesImportStock(rapport: RapportImport<LigneImportStock>, mode?: ModeImportStock): ColonneApercu<LigneImportStock>[] {
+  const medicament: ColonneApercu<LigneImportStock> = { titre: "Médicament reconnu", rendu: (l) => l.medicamentNom };
+
+  if (mode === "inventaire") {
+    return [
+      medicament,
+      {
+        titre: "Lot",
+        rendu: (l) => libelleLot(l),
+        secondaire: true,
+      },
+      // Inventaire à l'aveugle (D729) : l'aperçu ne montre que ce que dit le fichier, jamais l'attendu ni l'écart
+      // Le fichier compte des boîtes, le serveur renvoie des unités : le titre le dit
+      { titre: "Compté (en unités)", rendu: (l) => l.quantiteComptee ?? "-" },
+    ];
+  }
+
+  // Le coût d'une boîte n'est transmis qu'à qui a le droit de le voir (D698) : pas de colonne sans la clé
+  const avecCout = rapport.lignes.some((l) => "coutAchatBoite" in l);
+  return [
+    medicament,
+    { titre: "Boîtes", rendu: (l) => l.quantite },
+    { titre: "Unités reçues", rendu: (l) => l.unitesRecues ?? "-" },
+    {
+      titre: "Péremption",
+      rendu: (l) => (l.sansPeremption ? "Sans péremption" : l.dateExpiration ? afficherDatePeremption(l.dateExpiration) : "-"),
+      secondaire: true,
+    },
+    { titre: "Lot", rendu: (l) => l.numeroLot || "-", secondaire: true },
+    ...(avecCout
+      ? [{ titre: "Coût d'une boîte", rendu: (l: LigneImportStock) => (typeof l.coutAchatBoite === "number" ? formaterGNF(l.coutAchatBoite) : "Inconnu"), secondaire: true }]
+      : []),
+    { titre: "Stock avant → après", rendu: renduEvolutionStock },
+  ];
 }
 
 interface ImportStockModalProps {
@@ -618,11 +755,13 @@ interface ImportStockModalProps {
   structureId: string;
   /** Recharge la liste du stock après un import réussi */
   onSuccess: () => void;
+  /** Modes que l'utilisateur a le droit d'utiliser (D695) ; livraison puis inventaire par défaut. */
+  modesPermis?: ModeImportStock[];
 }
 
 /** Import du stock depuis un fichier Excel : préparer, vérifier, terminé (F1). */
-export default function ImportStockModal({ isOpen, onClose, structureId, onSuccess }: ImportStockModalProps) {
-  return <ImportExcelModal isOpen={isOpen} onClose={onClose} onSuccess={onSuccess} config={configImportStock(structureId)} />;
+export default function ImportStockModal({ isOpen, onClose, structureId, onSuccess, modesPermis }: ImportStockModalProps) {
+  return <ImportExcelModal isOpen={isOpen} onClose={onClose} onSuccess={onSuccess} config={configImportStock(structureId, modesPermis)} />;
 }
 
 // ─── Import du catalogue des médicaments ────────────────────────

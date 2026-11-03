@@ -19,8 +19,8 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | PF07b | Détail d'une réception, sorties de stock | validé (D709, rapports/PF07b-chef.md du run) |
 | PF07c | Inventaire par lot | validé (D710, rapports/PF07c-chef.md du run) |
 | PF08 | Vente refusée au-delà du stock, « 0 » et « N à régulariser » (après PB20 ; D713, D722) | validé (test navigateur OK, 1cb3fee, rapports/PF08-chef.md du run) |
-| PF09 | Unité plaquette à l'écran, libellés accordés (après PB21 et PF08 ; D723 à D725) | contrôlé par le chef (rapports/PF09-chef.md du run), test navigateur à faire |
-| PF07d | Import Excel livraison et inventaire | à faire |
+| PF09 | Unité plaquette à l'écran, libellés accordés (après PB21 et PF08 ; D723 à D725) | validé (test navigateur OK, 8a2a159, rapports/PF09-chef.md du run) |
+| PF07d | Import Excel livraison et inventaire | contrôlé par le chef (D729, rapports/PF07d-chef.md du run), test navigateur à faire |
 | PF03a | Ma caisse : ouverture, comptage | à faire |
 | PF03b | Ma caisse : mouvements, fermeture | à faire |
 | PF04 | Annulation et ventes du jour | à faire |

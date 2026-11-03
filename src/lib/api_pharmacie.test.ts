@@ -89,8 +89,8 @@ describe("api_pharmacie, import Excel du stock", () => {
     expect((options?.body as FormData).get("mode")).toBe("livraison");
   });
 
-  it("apercuImportStock prend le mode « inventaire » par défaut", () => {
-    apercuImportStock("s1", fichier());
+  it("apercuImportStock envoie le mode « inventaire » quand il est choisi", () => {
+    apercuImportStock("s1", fichier(), "inventaire");
 
     const [, options] = mockedAuthFetch.mock.calls[0];
     expect((options?.body as FormData).get("mode")).toBe("inventaire");

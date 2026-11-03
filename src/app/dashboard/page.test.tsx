@@ -185,7 +185,7 @@ describe("Aperçu du tableau de bord", () => {
       prenom: "Ali",
       role: "PHARMACIEN",
       isActive: true,
-      permissions: ["stock:read", "stock:write", "catalogue:write", "chat:structure", "structure:read", "membre:read"],
+      permissions: ["stock:read", "stock:write", "reception:write", "catalogue:write", "chat:structure", "structure:read", "membre:read"],
       structureType: "PHARMACIE",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",

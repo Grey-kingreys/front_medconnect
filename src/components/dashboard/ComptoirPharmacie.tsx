@@ -19,6 +19,8 @@ export interface DroitsComptoir {
   peutVoirOrdonnances: boolean;
   /** Route /dashboard/stock autorisée. */
   peutVoirStock: boolean;
+  /** reception:write ou inventaire:write : l'import Excel du stock est ouvert. */
+  peutImporter?: boolean;
   /** Route /dashboard/membres autorisée. */
   peutVoirEquipe: boolean;
 }
@@ -196,6 +198,7 @@ export default function ComptoirPharmacie({
         titre="Votre stock"
         peutVoirStock={droits.peutVoirStock}
         peutVoirEquipe={droits.peutVoirEquipe}
+        peutImporter={droits.peutImporter}
       />
     </>
   );
