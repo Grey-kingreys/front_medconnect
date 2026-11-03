@@ -118,6 +118,7 @@ function badgeCaisse(etat: EtatCaisse): { texte: string; classe: string } {
 export default function NouvelleVentePage() {
   const { user, loading, profile } = useAuth();
   const peutVoirVentes = user ? estRouteAutorisee("/dashboard/ventes", lireContexteAcces(user, profile ?? null)) : false;
+  const peutVoirCaisse = user ? estRouteAutorisee("/dashboard/caisse", lireContexteAcces(user, profile ?? null)) : false;
   const structureId = user?.structureId;
   const userId = user?.id;
   const cleStock = structureId && userId ? cleStockagePanier(structureId, userId) : null;
@@ -238,7 +239,14 @@ export default function NouvelleVentePage() {
         </p>
       </div>
       {badge && (
-        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badge.classe}`}>{badge.texte}</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badge.classe}`}>{badge.texte}</span>
+          {peutVoirCaisse && (
+            <Link href="/dashboard/caisse" className={`text-xs font-semibold text-primary-700 dark:text-primary-400 underline ${FOCUS}`}>
+              Ma caisse
+            </Link>
+          )}
+        </div>
       )}
     </div>
   );

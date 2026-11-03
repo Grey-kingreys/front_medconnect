@@ -107,6 +107,15 @@ describe("raccourcis de la pharmacie", () => {
     expect(estRouteAutorisee("/dashboard/ventes", ctx)).toBe(true);
   });
 
+  it("montre Ma caisse au rôle Pharmacien qui a caisse:utiliser, pas sans ce droit ni en hôpital", () => {
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", [...PHARMACIEN, "vente:write", "caisse:utiliser"]);
+    expect(hrefs(sectionsMenu(vendeur))).toContain("/dashboard/caisse");
+    expect(estRouteAutorisee("/dashboard/caisse", vendeur)).toBe(true);
+    expect(raccourcis(vendeur).find((x) => x.href === "/dashboard/caisse")?.libelle).toBe("Ma caisse");
+    expect(estRouteAutorisee("/dashboard/caisse", contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN))).toBe(false);
+    expect(estRouteAutorisee("/dashboard/caisse", contexte("PHARMACIEN", "HOPITAL", ["caisse:utiliser"]))).toBe(false);
+  });
+
   it("n'ouvre pas Ventes du jour en hôpital, sans droit de lecture ni en repli", () => {
     const hopital = contexte("PHARMACIEN", "HOPITAL", ["vente:read", "vente:write"]);
     expect(hrefs(sectionsMenu(hopital))).not.toContain("/dashboard/ventes");

@@ -26,6 +26,7 @@ import {
   Syringe,
   Truck,
   Users,
+  Wallet,
 } from "lucide-react";
 import type { CodePermission, ContexteAcces, RoleUtilisateur } from "./acces";
 import type { StructureType } from "./api_admin";
@@ -386,6 +387,20 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
     raccourci: {
       description: { defaut: "Retrouvez les ventes, réimprimez un reçu" },
       degrade: "from-primary-500 to-cyan-500",
+      rolesRepli: [],
+    },
+  },
+  {
+    id: "caisse",
+    section: "activite",
+    href: "/dashboard/caisse",
+    icone: Wallet,
+    libelle: { defaut: "Ma caisse" },
+    acces: perm(["caisse:utiliser"], { typesStructure: P }),
+    rolesRepli: [],
+    raccourci: {
+      description: { defaut: "Ouvrez, comptez et fermez votre caisse" },
+      degrade: "from-emerald-500 to-teal-500",
       rolesRepli: [],
     },
   },

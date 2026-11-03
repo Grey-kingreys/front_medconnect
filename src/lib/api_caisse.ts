@@ -62,6 +62,12 @@ export interface SessionCaisse {
   comptageFermeture: ComptageCaisse | null;
 }
 
+export interface LigneComptage {
+  valeurFaciale: number;
+  nombre: number;
+}
+export type SessionCaisseOuverte = SessionCaisse & { cree: boolean; ouverteMaintenant: boolean };
+
 export function getReferentiels(structureId: string) {
   return authFetch<Referentiels>(`/pharmacie/${encodeURIComponent(structureId)}/referentiels`);
 }
@@ -77,5 +83,33 @@ export function assurerPosteWeb(structureId: string, utilisateurId: string) {
 export function getSessionCourante(structureId: string, posteId: string) {
   return authFetch<SessionCaisse | null>(
     `/pharmacie/${encodeURIComponent(structureId)}/caisse/sessions/courante?posteId=${encodeURIComponent(posteId)}`,
+  );
+}
+
+/** Ouvre la caisse du poste, avec ou sans comptage du fond. Rejouable avec le même `id` (D688). */
+export function ouvrirSession(
+  structureId: string,
+  corps: { id: string; posteId: string; comptage?: { coupures: LigneComptage[] } },
+) {
+  return authFetch<SessionCaisseOuverte>(`/pharmacie/${encodeURIComponent(structureId)}/caisse/sessions`, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
+/** Enregistre un comptage par coupure (fond à l'ouverture, caisse à la fermeture). */
+export function saisirComptage(
+  structureId: string,
+  sessionId: string,
+  corps: {
+    id: string;
+    moment: "OUVERTURE" | "FERMETURE";
+    coupures: LigneComptage[];
+    releves?: { mode: string; montant: number }[];
+  },
+) {
+  return authFetch<ComptageCaisse>(
+    `/pharmacie/${encodeURIComponent(structureId)}/caisse/sessions/${encodeURIComponent(sessionId)}/comptages`,
+    { method: "POST", body: JSON.stringify(corps) },
   );
 }
