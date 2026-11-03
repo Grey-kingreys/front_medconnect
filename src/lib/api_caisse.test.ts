@@ -92,7 +92,7 @@ describe("api_caisse", () => {
   it("lit les sommes arrivées après une clôture dans data.anomalies", async () => {
     mockedAuthFetch.mockResolvedValue({ data: { anomalies: [{ id: "a1" }], total: 21 }, message: "ok", success: true });
     const liste = await listerRemonteesApresCloture("s1");
-    expect(mockedAuthFetch).toHaveBeenCalledWith("/pharmacie/s1/anomalies?type=REMONTEE_APRES_CLOTURE&statut=OUVERTE");
+    expect(mockedAuthFetch).toHaveBeenCalledWith("/pharmacie/s1/anomalies?statut=OUVERTE&type=REMONTEE_APRES_CLOTURE");
     expect(liste).toEqual({ anomalies: [{ id: "a1" }], total: 21 });
   });
 

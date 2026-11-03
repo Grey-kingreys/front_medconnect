@@ -352,7 +352,7 @@ describe("page Clôture de caisse", () => {
     render(<CloturesPage />);
     expect(await screen.findByText("Sommes arrivées après une clôture (toutes journées)")).toBeTruthy();
     expect(screen.getByText("Une vente de 25 000 GNF est arrivée après la clôture du poste Comptoir principal.")).toBeTruthy();
-    expect(screen.getByRole("link", { name: "anomalies" }).getAttribute("href")).toBe("/dashboard/anomalies");
+    expect(screen.getByRole("link", { name: "anomalies" }).getAttribute("href")).toBe("/dashboard/anomalies?type=REMONTEE_APRES_CLOTURE");
     expect(screen.queryByText(/autres, à voir dans les anomalies/)).toBeNull();
   });
 

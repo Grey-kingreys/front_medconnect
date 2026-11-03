@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
 import { getMyStock } from "@/lib/api_pharmacie";
+import { listerAnomalies } from "@/lib/api_pilotage";
 import { getMyStructure } from "@/lib/api_structure";
 import type { StatutVente, VenteResume } from "@/lib/api_ventes";
 import { listerVentes } from "@/lib/api_ventes";
@@ -11,6 +12,7 @@ import PilotagePharmacie, { liensPilotage, type DroitsPilotage } from "./Pilotag
 vi.mock("@/lib/api_ventes", () => ({ listerVentes: vi.fn() }));
 vi.mock("@/lib/api_structure", () => ({ getMyStructure: vi.fn() }));
 vi.mock("@/lib/api_pharmacie", () => ({ getMyStock: vi.fn() }));
+vi.mock("@/lib/api_pilotage", () => ({ listerAnomalies: vi.fn() }));
 
 const reponse = (data: unknown) => ({ data, message: "ok", success: true }) as never;
 
@@ -20,6 +22,7 @@ const DROITS: DroitsPilotage = {
   peutVoirVentes: true,
   peutAnnuler: true,
   peutVoirStock: true,
+  peutVoirAnomalies: false,
 };
 
 const vente = (id: string, statut: StatutVente): VenteResume => ({
@@ -155,6 +158,22 @@ describe("Pilotage de la pharmacie", () => {
     afficher({ peutModifier: false });
     expect(screen.queryByRole("link", { name: "Modifier ma pharmacie" })).toBeNull();
     expect(screen.getByRole("link", { name: "Équipe" })).toBeTruthy();
+  });
+
+  it("affiche la carte Anomalies à traiter avec un lien vers la file", async () => {
+    vi.mocked(listerAnomalies).mockResolvedValue(reponse({ anomalies: [], page: 1, parPage: 20, total: 4, ouvertes: 4 }));
+    afficher({ peutVoirAnomalies: true });
+    await waitFor(() => expect(groupe("Anomalies à traiter").getByText("4")).toBeTruthy());
+    expect(groupe("Anomalies à traiter").getByText("Ouvrez la file pour les traiter")).toBeTruthy();
+    const liens = screen.getAllByRole("link").filter((l) => l.getAttribute("href") === "/dashboard/anomalies");
+    expect(liens.length).toBeGreaterThanOrEqual(1);
+    expect(listerAnomalies).toHaveBeenCalledWith("s1");
+  });
+
+  it("n'affiche pas la carte des anomalies sans le droit", () => {
+    afficher();
+    expect(screen.queryByRole("group", { name: "Anomalies à traiter" })).toBeNull();
+    expect(listerAnomalies).not.toHaveBeenCalled();
   });
 
   it("construit les raccourcis selon les droits", () => {

@@ -2,8 +2,9 @@
 
 import { useEffect, useId, useState, type ComponentType, type ReactNode } from "react";
 import Link from "next/link";
-import { Ban, Building2, Receipt, Users, Wallet } from "lucide-react";
+import { AlertTriangle, Ban, Building2, Receipt, Users, Wallet } from "lucide-react";
 import { ApiError } from "@/lib/api_auth";
+import { listerAnomalies } from "@/lib/api_pilotage";
 import { listerVentes } from "@/lib/api_ventes";
 import { getMyStructure } from "@/lib/api_structure";
 import { formaterGNF } from "@/lib/format_gnf";
@@ -23,6 +24,8 @@ export interface DroitsPilotage {
   peutVoirStock: boolean;
   /** reception:write ou inventaire:write : l'import Excel du stock est ouvert. */
   peutImporter?: boolean;
+  /** Route /dashboard/anomalies autorisée. */
+  peutVoirAnomalies: boolean;
 }
 
 export interface LienVue {
@@ -37,6 +40,7 @@ export function liensPilotage(d: DroitsPilotage): LienVue[] {
   if (d.peutModifier) liens.push({ href: "/dashboard/structure", libelle: "Modifier ma pharmacie", icone: Building2 });
   if (d.peutVoirEquipe) liens.push({ href: "/dashboard/membres", libelle: "Équipe", icone: Users });
   if (d.peutVoirVentes) liens.push({ href: "/dashboard/ventes", libelle: "Ventes du jour", icone: Receipt });
+  if (d.peutVoirAnomalies) liens.push({ href: "/dashboard/anomalies", libelle: "Anomalies", icone: AlertTriangle });
   return liens;
 }
 
@@ -48,6 +52,11 @@ type EtatVentes =
 type EtatEquipe =
   | { statut: "chargement" }
   | { statut: "pret"; actifs: number; total: number }
+  | { statut: "erreur" }
+  | { statut: "masque" };
+type EtatAnomalies =
+  | { statut: "chargement" }
+  | { statut: "pret"; ouvertes: number }
   | { statut: "erreur" }
   | { statut: "masque" };
 
@@ -69,7 +78,25 @@ export default function PilotagePharmacie({
   const [essaiVentes, setEssaiVentes] = useState(0);
   const [etatEquipe, setEtatEquipe] = useState<EtatEquipe>({ statut: "chargement" });
   const [essaiEquipe, setEssaiEquipe] = useState(0);
-  const { peutVoirVentes, peutVoirEquipe } = droits;
+  const [etatAnomalies, setEtatAnomalies] = useState<EtatAnomalies>({ statut: "chargement" });
+  const [essaiAnomalies, setEssaiAnomalies] = useState(0);
+  const { peutVoirVentes, peutVoirEquipe, peutVoirAnomalies } = droits;
+
+  useEffect(() => {
+    if (!peutVoirAnomalies || !structureId) return;
+    let actif = true;
+    listerAnomalies(structureId)
+      .then((res) => {
+        if (actif) setEtatAnomalies({ statut: "pret", ouvertes: res.data.ouvertes });
+      })
+      .catch((err: unknown) => {
+        if (!actif) return;
+        setEtatAnomalies(err instanceof ApiError && err.status === 403 ? { statut: "masque" } : { statut: "erreur" });
+      });
+    return () => {
+      actif = false;
+    };
+  }, [structureId, peutVoirAnomalies, essaiAnomalies]);
 
   useEffect(() => {
     if (!peutVoirVentes || !structureId) return;
@@ -114,9 +141,15 @@ export default function PilotagePharmacie({
     setEssaiEquipe((n) => n + 1);
   };
 
+  const reessayerAnomalies = () => {
+    setEtatAnomalies({ statut: "chargement" });
+    setEssaiAnomalies((n) => n + 1);
+  };
+
+  const anomalies: EtatAnomalies = !peutVoirAnomalies ? { statut: "masque" } : !structureId ? { statut: "erreur" } : etatAnomalies;
   const ventes: EtatVentes = !peutVoirVentes ? { statut: "masque" } : !structureId ? { statut: "erreur" } : etatVentes;
   const equipe: EtatEquipe = !peutVoirEquipe ? { statut: "masque" } : etatEquipe;
-  const occupe = ventes.statut === "chargement" || equipe.statut === "chargement";
+  const occupe = ventes.statut === "chargement" || equipe.statut === "chargement" || anomalies.statut === "chargement";
   const liens = liensPilotage(droits);
 
   const cartes: ReactNode[] = [];
@@ -169,6 +202,48 @@ export default function PilotagePharmacie({
         <div key="aucune" className={`sm:col-span-2 lg:col-span-3 ${CLASSES_BLOC}`}>
           <p className="text-sm text-slate-600 dark:text-slate-400">Aucune vente enregistrée aujourd&apos;hui pour le moment.</p>
         </div>,
+      );
+    }
+  }
+
+  if (anomalies.statut !== "masque") {
+    const COULEUR = "text-amber-600 dark:text-amber-400";
+    if (anomalies.statut === "pret") {
+      cartes.push(
+        <Link
+          key="anomalies"
+          href="/dashboard/anomalies"
+          className="block rounded-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+        >
+          <Carte
+            libelle="Anomalies à traiter"
+            icone={AlertTriangle}
+            couleur={COULEUR}
+            sousTexte={anomalies.ouvertes === 0 ? "Tout est en ordre" : "Ouvrez la file pour les traiter"}
+          >
+            <Valeur>{anomalies.ouvertes.toLocaleString("fr-FR")}</Valeur>
+          </Carte>
+        </Link>,
+      );
+    } else {
+      cartes.push(
+        <Carte key="anomalies" libelle="Anomalies à traiter" icone={AlertTriangle} couleur={COULEUR}>
+          {anomalies.statut === "chargement" ? (
+            <Chargement />
+          ) : (
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1 h-8 flex items-center gap-2">
+              Indisponible{" "}
+              <button
+                type="button"
+                onClick={reessayerAnomalies}
+                aria-label="Réessayer de charger les anomalies"
+                className="text-primary-700 dark:text-primary-400 underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 rounded"
+              >
+                Réessayer
+              </button>
+            </p>
+          )}
+        </Carte>,
       );
     }
   }

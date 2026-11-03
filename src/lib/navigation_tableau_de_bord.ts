@@ -6,6 +6,7 @@
 import type { ComponentType } from "react";
 import {
   Activity,
+  AlertTriangle,
   Bot,
   Building2,
   Calendar,
@@ -412,6 +413,15 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
     icone: CalendarCheck,
     libelle: { defaut: "Clôture de caisse" },
     acces: perm(["cloture:gerer"], { typesStructure: P }),
+    rolesRepli: [],
+  },
+  {
+    id: "anomalies",
+    section: "activite",
+    href: "/dashboard/anomalies",
+    icone: AlertTriangle,
+    libelle: { defaut: "Anomalies" },
+    acces: perm(["anomalie:gerer"], { typesStructure: P }),
     rolesRepli: [],
   },
   {

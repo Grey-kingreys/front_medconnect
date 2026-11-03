@@ -153,6 +153,15 @@ describe("raccourcis de la pharmacie", () => {
     expect(estRouteAutorisee("/dashboard/clotures", vendeur)).toBe(false);
   });
 
+  it("montre Anomalies avec anomalie:gerer et la refuse au rôle Pharmacien", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "anomalie:gerer"]);
+    expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/anomalies");
+    expect(estRouteAutorisee("/dashboard/anomalies", titulaire)).toBe(true);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(vendeur))).not.toContain("/dashboard/anomalies");
+    expect(estRouteAutorisee("/dashboard/anomalies", vendeur)).toBe(false);
+  });
+
   it("garde la saisie et le détail d'une réception sous reception:write", () => {
     const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "reception:write"]);
     const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);

@@ -579,7 +579,7 @@ export default function CloturesPage() {
           )}
           <p className="text-sm text-slate-700 dark:text-slate-300">
             Ces sommes ne figurent dans le total d&apos;aucune clôture. Traitez-les dans les{" "}
-            <Link href="/dashboard/anomalies" className={LIEN}>
+            <Link href="/dashboard/anomalies?type=REMONTEE_APRES_CLOTURE" className={LIEN}>
               anomalies
             </Link>
             .

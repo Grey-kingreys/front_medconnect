@@ -2,6 +2,7 @@
  * Caisse d'une pharmacie. Contrat aligné sur back_medconnect (orch/pharmacie-t1-back, CLAUDE.md puces PB05 et PB10).
  */
 import { authDownload, authFetch } from "./api_auth";
+import { listerAnomalies } from "./api_pilotage";
 
 export interface ModePaiement {
   code: string;
@@ -261,10 +262,8 @@ export async function exporterCloture(structureId: string, jour: string): Promis
 export async function listerRemonteesApresCloture(
   structureId: string,
 ): Promise<{ anomalies: RemonteeApresCloture[]; total: number }> {
-  const res = await authFetch<{ anomalies: RemonteeApresCloture[]; total?: number }>(
-    `/pharmacie/${encodeURIComponent(structureId)}/anomalies?type=REMONTEE_APRES_CLOTURE&statut=OUVERTE`,
-  );
-  const { anomalies, total } = res.data;
+  const res = await listerAnomalies(structureId, { type: "REMONTEE_APRES_CLOTURE", statut: "OUVERTE" });
+  const { anomalies, total } = res.data as { anomalies: RemonteeApresCloture[]; total?: number };
   // Le serveur pagine : `total` dit combien d'anomalies existent, pas seulement combien sont renvoyées.
   return { anomalies, total: typeof total === "number" ? total : anomalies.length };
 }
