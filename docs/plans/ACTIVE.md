@@ -18,6 +18,8 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | PF07a | Réception, livraison, fournisseurs | validé (D708, rapports/PF07a-chef.md du run) |
 | PF07b | Détail d'une réception, sorties de stock | validé (D709, rapports/PF07b-chef.md du run) |
 | PF07c | Inventaire par lot | validé (D710, rapports/PF07c-chef.md du run) |
+| PF08 | Vente refusée au-delà du stock, « 0 » et « N à régulariser » (après PB20 ; D713, D722) | fiche prête |
+| PF09 | Unité plaquette à l'écran, libellés accordés (après PB21 et PF08 ; D723 à D725) | fiche prête |
 | PF07d | Import Excel livraison et inventaire | à faire |
 | PF03a | Ma caisse : ouverture, comptage | à faire |
 | PF03b | Ma caisse : mouvements, fermeture | à faire |
