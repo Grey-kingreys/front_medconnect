@@ -99,6 +99,22 @@ const remplirLigne = (ligne: number, recherche: string, quantite: string, peremp
   fireEvent.blur(screen.getByLabelText(`Péremption, ligne ${ligne}`));
 };
 
+describe("champ Quantité", () => {
+  it("accepte la saisie et garde une largeur fixe", async () => {
+    render(<NouvelleReceptionPage />);
+    await attendrePage();
+    const champ = screen.getByLabelText("Quantité, ligne 1") as HTMLInputElement;
+    saisir("Quantité, ligne 1", "12");
+    expect(champ.value).toBe("12");
+    saisir("Quantité, ligne 1", "123456");
+    expect(champ.value).toBe("123456");
+    expect(champ.className).toContain("w-20");
+    expect(champ.className).toContain("shrink-0");
+    expect(champ.className).not.toContain("min-w-0");
+    expect(champ.className).not.toContain("w-full");
+  });
+});
+
 const enregistrer = () => fireEvent.click(screen.getByRole("button", { name: "Enregistrer la réception" }));
 
 const attendrePage = async () => {

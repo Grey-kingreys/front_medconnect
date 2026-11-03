@@ -13,8 +13,11 @@ import {
   CorpsFiche,
 } from "@/lib/api_pharmacie";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { useAuth } from "@/hooks/useAuth";
 import { ALERTE_ATTENTION, ALERTE_ERREUR, BOUTON_PRIMAIRE } from "@/components/pharmacie/classes";
 import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { manqueVenteAuDetail } from "@/lib/caisse/regles/prix";
+import { formaterGNF } from "@/lib/format_gnf";
 import { afficherDatePeremption, lireDatePeremption } from "@/lib/date_peremption";
 import { codeErreur, estErreurReseau } from "@/lib/erreurs_api";
 
@@ -183,6 +186,9 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
   const [isCreatingNew, setIsCreatingNew] = useState(false);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { profile } = useAuth();
+  // La date d'un lot se corrige depuis la réception : la phrase n'est montrée qu'à qui peut y accéder.
+  const peutCorrigerParReception = profile?.permissions?.includes("reception:write") ?? false;
 
   const [form, setForm] = useState<FormState>(formVide);
 
@@ -485,6 +491,12 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
   const dateLue = departPositif && !form.sansPeremption && form.datePeremption.trim() !== "" ? lireDatePeremption(form.datePeremption) : null;
   const pluriel = LIBELLES_UNITE_MINIMALE[form.unite].pluriel;
   const singulier = LIBELLES_UNITE_MINIMALE[form.unite].singulier;
+  const valeurOuNull = (e: Entier) => (e.etat === "ok" ? e.valeur : null);
+  const prixBoiteLu = valeurOuNull(lireEntier(form.prixBoite));
+  const manqueDetail = form.deconditionnable
+    ? manqueVenteAuDetail(prixBoiteLu, valeurOuNull(lireEntier(form.prixUnite)), valeurOuNull(coefficientLu))
+    : null;
+  const lotsEnStock = (editItem?.lots ?? []).filter((l) => l.quantite > 0);
   const unitesEnPlus = (editItem?.quantite ?? 0) * coefficientCourant;
 
   return (
@@ -650,6 +662,33 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
               </div>
             )}
 
+            {/* Lots en stock (modification) : lecture seule, la date se corrige par lot */}
+            {editItem && (
+              <div className="space-y-2">
+                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Lots en stock</h3>
+                {lotsEnStock.length === 0 ? (
+                  <p className={AIDE}>Aucun lot en stock.</p>
+                ) : (
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                    {lotsEnStock.map((lot) => (
+                      <li key={lot.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
+                        <span className="font-medium text-slate-900 dark:text-white">{lot.numeroLot ?? "Sans numéro"}</span>
+                        <span className="text-slate-600 dark:text-slate-400">
+                          {lot.dateExpiration ? afficherDatePeremption(lot.dateExpiration) : "Sans date"}
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {formaterQuantite(lot.quantite, lot.coefficientReception ?? coefficientAvant, editItem.uniteMinimale ?? "UNITE")}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {peutCorrigerParReception && (
+                  <p className={AIDE}>Pour corriger une date, ouvrez la réception du lot.</p>
+                )}
+              </div>
+            )}
+
             {/* Vente et prix */}
             <div className="space-y-4">
               <h3 className="text-sm font-bold text-slate-900 dark:text-white">Vente et prix</h3>
@@ -746,6 +785,13 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
               )}
 
               <p className={AIDE}>Les deux prix sont indépendants : changer l&apos;un ne change pas l&apos;autre.</p>
+
+              {manqueDetail && (
+                <p role="status" className={ALERTE_ATTENTION}>
+                  <AlertCircle className="w-5 h-5 shrink-0" aria-hidden="true" />
+                  {`Vendue au détail, cette boîte rapporte ${formaterGNF(manqueDetail.totalDetail)}, soit ${formaterGNF(manqueDetail.manque)} de moins que son prix de ${formaterGNF(prixBoiteLu ?? 0)}. Vérifiez vos prix.`}
+                </p>
+              )}
             </div>
 
             {/* Qualification (modification d'une fiche non confirmée) */}

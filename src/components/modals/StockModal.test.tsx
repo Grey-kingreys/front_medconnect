@@ -11,6 +11,11 @@ vi.mock("@/lib/api_pharmacie", () => ({
   modifierFiche: vi.fn(),
 }));
 
+const acces = vi.hoisted(() => ({ permissions: [] as string[] }));
+vi.mock("@/hooks/useAuth", () => ({
+  useAuth: () => ({ profile: { permissions: acces.permissions } }),
+}));
+
 const medicament = { id: "m1", nom: "Doliprane", categorie: "Antalgique", ordonnanceRequise: false, formes: [] };
 
 const fiche: StockMedicament = {
@@ -77,6 +82,108 @@ describe("StockModal", () => {
   afterEach(() => {
     cleanup();
     vi.clearAllMocks();
+    acces.permissions = [];
+  });
+
+  describe("avertissement de vente au détail moins chère", () => {
+    const saisir = (libelle: string, valeur: string) =>
+      fireEvent.change(screen.getByLabelText(libelle), { target: { value: valeur } });
+    const MESSAGE = /^Vendue au détail, cette boîte rapporte 15\s000\sGNF, soit 3\s000\sGNF de moins que son prix de 18\s000\sGNF\. Vérifiez vos prix\.$/;
+
+    it("affiche les montants pendant la saisie, puis disparaît quand le prix est corrigé", () => {
+      ouvrirModification(fiche);
+      expect(screen.queryByRole("status")).toBeNull();
+      saisir("Prix de la boîte (GNF)", "18000");
+      saisir("Nombre d'unités par boîte", "10");
+      saisir("Prix d'une unité (GNF)", "1500");
+      expect(screen.getByRole("status").textContent).toMatch(MESSAGE);
+
+      saisir("Prix d'une unité (GNF)", "1800");
+      expect(screen.queryByRole("status")).toBeNull();
+    });
+
+    it("est absent quand la vente à l'unité n'est pas cochée", () => {
+      ouvrirModification(fiche);
+      saisir("Prix de la boîte (GNF)", "18000");
+      saisir("Nombre d'unités par boîte", "10");
+      saisir("Prix d'une unité (GNF)", "1500");
+      expect(screen.getByRole("status")).toBeTruthy();
+      fireEvent.click(screen.getByLabelText("Se vend aussi à l'unité (boîte entamée)"));
+      expect(screen.queryByRole("status")).toBeNull();
+    });
+
+    it("ne bloque pas l'enregistrement", async () => {
+      vi.mocked(modifierFiche).mockResolvedValue(reponse({ avertissements: [], conversion: null }) as never);
+      vi.mocked(upsertStock).mockResolvedValue(reponse(nouvelleFiche) as never);
+      const { onSuccess } = ouvrirModification(fiche);
+      saisir("Prix de la boîte (GNF)", "18000");
+      saisir("Nombre d'unités par boîte", "10");
+      saisir("Prix d'une unité (GNF)", "1500");
+      expect(screen.getByRole("status").textContent).toMatch(MESSAGE);
+      fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+      expect(modifierFiche).toHaveBeenCalledWith("s1", "d1", {
+        prixUnitaire: 18000,
+        coefficientBoite: 10,
+        prixUnite: 1500,
+      });
+    });
+
+    it("s'affiche aussi à l'ajout", async () => {
+      await ouvrirAjout();
+      fireEvent.click(screen.getByLabelText("Se vend aussi à l'unité (boîte entamée)"));
+      saisir("Prix de la boîte (GNF)", "18000");
+      saisir("Nombre d'unités par boîte", "10");
+      saisir("Prix d'une unité (GNF)", "1500");
+      expect(screen.getByRole("status").textContent).toMatch(MESSAGE);
+    });
+  });
+
+  describe("lots en stock en modification", () => {
+    const ficheAvecLots: StockMedicament = {
+      ...fiche,
+      lots: [
+        { id: "l1", numeroLot: "A1", dateExpiration: "2027-06-30T00:00:00.000Z", quantite: 40, lotTechnique: false },
+        { id: "l2", numeroLot: null, dateExpiration: null, quantite: 20, lotTechnique: false, coefficientReception: 10 },
+        { id: "l3", numeroLot: "Z9", dateExpiration: "2026-01-01T00:00:00.000Z", quantite: 0, lotTechnique: false },
+      ],
+    };
+
+    it("liste les lots en lecture seule, sans champ de date", () => {
+      ouvrirModification(ficheAvecLots);
+      expect(screen.getByRole("heading", { name: "Lots en stock" })).toBeTruthy();
+      const lots = screen.getAllByRole("listitem");
+      expect(lots).toHaveLength(2);
+      expect(lots[0].textContent).toContain("A1");
+      expect(lots[0].textContent).toContain("30/06/2027");
+      expect(lots[0].textContent).toContain("2 boîtes");
+      expect(lots[1].textContent).toContain("Sans numéro");
+      expect(lots[1].textContent).toContain("Sans date");
+      expect(lots[1].textContent).toContain("2 boîtes");
+      expect(screen.queryByLabelText(/péremption/i)).toBeNull();
+      expect(screen.queryByDisplayValue("30/06/2027")).toBeNull();
+    });
+
+    it("n'affiche pas la phrase de correction sans la permission de réception", () => {
+      ouvrirModification(ficheAvecLots);
+      expect(screen.queryByText("Pour corriger une date, ouvrez la réception du lot.")).toBeNull();
+    });
+
+    it("affiche la phrase de correction avec la permission reception:write", () => {
+      acces.permissions = ["reception:write"];
+      ouvrirModification(ficheAvecLots);
+      expect(screen.getByText("Pour corriger une date, ouvrez la réception du lot.")).toBeTruthy();
+    });
+
+    it("dit qu'il n'y a aucun lot quand la fiche n'en a pas", () => {
+      ouvrirModification(fiche);
+      expect(screen.getByText("Aucun lot en stock.")).toBeTruthy();
+    });
+
+    it("n'affiche pas les lots à l'ajout", async () => {
+      await ouvrirAjout();
+      expect(screen.queryByRole("heading", { name: "Lots en stock" })).toBeNull();
+    });
   });
 
   it("refuse une quantité de départ sans date ni case, sans aucun appel", async () => {

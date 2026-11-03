@@ -43,6 +43,21 @@ function arrondiGnf(valeur: number): number {
 
 const estEntierMin = (valeur: number, minimum: number) => Number.isInteger(valeur) && valeur >= minimum;
 
+/**
+ * Vente au détail moins chère que la boîte : renvoie le total des unités et ce qu'il manque pour égaler la boîte.
+ * Null si une valeur n'est pas un entier positif ou si le détail rapporte au moins autant que la boîte.
+ */
+export function manqueVenteAuDetail(
+  prixBoite: number | null,
+  prixUnite: number | null,
+  unitesParBoite: number | null,
+): { totalDetail: number; manque: number } | null {
+  if (prixBoite === null || prixUnite === null || unitesParBoite === null) return null;
+  if (!estEntierMin(prixBoite, 1) || !estEntierMin(prixUnite, 1) || !estEntierMin(unitesParBoite, 1)) return null;
+  const totalDetail = prixUnite * unitesParBoite;
+  return totalDetail < prixBoite ? { totalDetail, manque: prixBoite - totalDetail } : null;
+}
+
 /** Calcule une ligne de vente : quantité en unités minimales, prix appliqué par unité minimale (affichage), montant de ligne (référence des totaux). Une entrée non entière est refusée sans exception. */
 export function calculerLigne(entree: EntreeLigne): ResultatLigne {
   const refus: RefusLigne = { ok: false, code: "PRIX_MANQUANT" };

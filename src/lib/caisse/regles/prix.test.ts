@@ -1,5 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { calculerLigne, type EntreeLigne } from "./prix";
+import { calculerLigne, manqueVenteAuDetail, type EntreeLigne } from "./prix";
+
+describe("manqueVenteAuDetail", () => {
+  it("renvoie null quand le détail égale le prix de la boîte", () => {
+    expect(manqueVenteAuDetail(15000, 1500, 10)).toBeNull();
+  });
+  it("renvoie null quand le détail rapporte plus que la boîte", () => {
+    expect(manqueVenteAuDetail(14000, 1500, 10)).toBeNull();
+  });
+  it("signale un détail inférieur, même d'un seul franc", () => {
+    expect(manqueVenteAuDetail(15001, 1500, 10)).toEqual({ totalDetail: 15000, manque: 1 });
+  });
+  it("calcule le total et le manque", () => {
+    expect(manqueVenteAuDetail(18000, 1500, 10)).toEqual({ totalDetail: 15000, manque: 3000 });
+  });
+  it("renvoie null si une valeur est vide ou à 0", () => {
+    expect(manqueVenteAuDetail(null, 1500, 10)).toBeNull();
+    expect(manqueVenteAuDetail(18000, null, 10)).toBeNull();
+    expect(manqueVenteAuDetail(18000, 1500, null)).toBeNull();
+    expect(manqueVenteAuDetail(0, 1500, 10)).toBeNull();
+    expect(manqueVenteAuDetail(18000, 0, 10)).toBeNull();
+    expect(manqueVenteAuDetail(18000, 1500, 0)).toBeNull();
+  });
+  it("gère une boîte d'une seule unité", () => {
+    expect(manqueVenteAuDetail(1000, 999, 1)).toEqual({ totalDetail: 999, manque: 1 });
+    expect(manqueVenteAuDetail(1000, 1000, 1)).toBeNull();
+  });
+});
 
 // Vecteurs de back_medconnect/src/pharmacie/domaine/prix.spec.ts (CA1, CA2, CA4, prix absents).
 const base: EntreeLigne = {

@@ -24,6 +24,8 @@ export interface LotFiche {
   dateExpiration: string | null;
   quantite: number;
   lotTechnique: boolean;
+  /** Unités par boîte à la réception du lot, quand le serveur la renvoie. */
+  coefficientReception?: number;
   /** Présent seulement avec `marge:read` : tester la présence de la clé (D698). */
   coutUnitaire?: number | null;
 }

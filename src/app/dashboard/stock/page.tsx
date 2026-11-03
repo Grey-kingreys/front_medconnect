@@ -30,6 +30,8 @@ import {
 import { calculerApercuStock } from "@/lib/apercu_pharmacie";
 import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { formaterGNF } from "@/lib/format_gnf";
+import { afficherDatePeremption } from "@/lib/date_peremption";
+import { jourConakry } from "../ventes/affichage";
 import StockModal from "@/components/modals/StockModal";
 import ImportStockModal from "@/components/modals/ImportStockModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
@@ -157,6 +159,7 @@ export default function StockPage() {
   }
 
   const valeurStock = calculerApercuStock(stockInfo.stocks, new Date()).valeur;
+  const aujourdhui = jourConakry(new Date());
   const classeFiltreActif = "bg-primary-500/10 text-primary-600 dark:text-primary-400";
   const classeFiltreInactif = "text-slate-500 hover:text-primary-500";
 
@@ -257,6 +260,7 @@ export default function StockPage() {
                 <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Produit</th>
                 <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Catégorie</th>
                 <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Quantité</th>
+                <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Péremption</th>
                 <th className="px-8 py-5 text-right text-xs font-black text-slate-400 uppercase tracking-widest">Prix (GNF)</th>
                 <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Statut</th>
                 <th className="px-8 py-5 text-right text-xs font-black text-slate-400 uppercase tracking-widest">Actions</th>
@@ -265,7 +269,7 @@ export default function StockPage() {
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
               {filteredStocks.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center">
+                  <td colSpan={7} className="px-8 py-20 text-center">
                     <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
                     <p className="text-slate-600 dark:text-slate-400 font-medium">
                       {stockInfo.stocks.length === 0
@@ -281,6 +285,10 @@ export default function StockPage() {
                   const coefficient = s.coefficientBoite ?? 1;
                   const unite = s.uniteMinimale ?? "UNITE";
                   const nom = s.medicament.nom;
+                  const jourPeremption = s.dateExpiration ? s.dateExpiration.slice(0, 10) : null;
+                  // Le jour même reste vendable : périmé seulement après le jour de péremption.
+                  const perime = jourPeremption !== null && jourPeremption < aujourdhui;
+                  const lotsEnStock = (s.lots ?? []).filter((l) => l.quantite > 0).length;
                   return (
                   <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
                     <td className="px-8 py-5">
@@ -306,6 +314,23 @@ export default function StockPage() {
                         </span>
                         {s.reliquat && s.reliquat.length > 0 && (
                           <span className="text-xs text-slate-600 dark:text-slate-400">boîte entamée</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-8 py-5">
+                      <div className="flex flex-col items-center gap-1">
+                        {jourPeremption === null ? (
+                          <span className="text-sm text-slate-600 dark:text-slate-400">Sans date</span>
+                        ) : (
+                          <span className={`text-sm font-bold ${perime ? "text-rose-700 dark:text-rose-300" : "text-slate-900 dark:text-white"}`}>
+                            {afficherDatePeremption(jourPeremption)}
+                            {perime && " Périmé"}
+                          </span>
+                        )}
+                        {lotsEnStock > 1 && (
+                          <span className="text-xs text-slate-600 dark:text-slate-400">
+                            {`+${lotsEnStock - 1} autre${lotsEnStock - 1 > 1 ? "s" : ""} lot${lotsEnStock - 1 > 1 ? "s" : ""}`}
+                          </span>
                         )}
                       </div>
                     </td>

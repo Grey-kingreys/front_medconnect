@@ -178,6 +178,79 @@ describe("Page du stock", () => {
     expect(listerLotsFiche).toHaveBeenCalledWith("s1", "d1");
   });
 
+  describe("colonne Péremption", () => {
+    beforeEach(() => {
+      // Seule la date est figée : les minuteurs de l'écran et des attentes restent réels.
+      vi.useFakeTimers({ toFake: ["Date"] });
+      vi.setSystemTime(new Date("2026-11-03T10:00:00.000Z"));
+    });
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    const lot = (id: string, dateExpiration: string | null, quantite = 20) => ({
+      id,
+      numeroLot: id.toUpperCase(),
+      dateExpiration,
+      quantite,
+      lotTechnique: false,
+    });
+    const ligne = (nom: string) => screen.getByText(nom).closest("tr") as HTMLElement;
+
+    it("affiche la date de péremption en JJ/MM/AAAA", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(
+        reponse([doliprane(40, { dateExpiration: "2027-06-30T00:00:00.000Z", lots: [lot("l1", "2027-06-30T00:00:00.000Z", 40)] })]),
+      );
+      render(<StockPage />);
+      await screen.findByText("Doliprane");
+      expect(screen.getByRole("columnheader", { name: "Péremption" })).toBeTruthy();
+      expect(ligne("Doliprane").textContent).toContain("30/06/2027");
+      expect(ligne("Doliprane").textContent).not.toContain("Périmé");
+      expect(ligne("Doliprane").textContent).not.toContain("autre");
+    });
+
+    it("affiche « Sans date » quand la fiche n'a aucune date", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40, { dateExpiration: undefined })]));
+      render(<StockPage />);
+      await screen.findByText("Doliprane");
+      expect(ligne("Doliprane").textContent).toContain("Sans date");
+    });
+
+    it("marque « Périmé » une date passée, en rose", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40, { dateExpiration: "2026-11-02T00:00:00.000Z" })]));
+      render(<StockPage />);
+      await screen.findByText("Doliprane");
+      expect(ligne("Doliprane").textContent).toContain("02/11/2026");
+      expect(ligne("Doliprane").textContent).toContain("Périmé");
+      expect(screen.getByText(/02\/11\/2026/).className).toContain("text-rose-700");
+    });
+
+    it("ne marque pas périmée une date du jour même", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40, { dateExpiration: "2026-11-03T00:00:00.000Z" })]));
+      render(<StockPage />);
+      await screen.findByText("Doliprane");
+      expect(ligne("Doliprane").textContent).toContain("03/11/2026");
+      expect(ligne("Doliprane").textContent).not.toContain("Périmé");
+    });
+
+    it("indique les autres lots en stock, sans compter les lots vides", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(
+        reponse([
+          doliprane(60, {
+            dateExpiration: "2027-01-31T00:00:00.000Z",
+            lots: [lot("l1", "2027-01-31T00:00:00.000Z"), lot("l2", "2027-05-31T00:00:00.000Z"), lot("l3", null), lot("l4", "2026-01-31T00:00:00.000Z", 0)],
+          }),
+          fiche("a", "Amlor", 20, { dateExpiration: "2027-02-28T00:00:00.000Z", lots: [lot("m1", "2027-02-28T00:00:00.000Z"), lot("m2", "2027-03-31T00:00:00.000Z")] }),
+        ]),
+      );
+      render(<StockPage />);
+      await screen.findByText("Doliprane");
+      expect(ligne("Doliprane").textContent).toContain("+2 autres lots");
+      expect(ligne("Amlor").textContent).toContain("+1 autre lot");
+      expect(ligne("Amlor").textContent).not.toContain("autres lots");
+    });
+  });
+
   it("propose de réessayer quand le chargement échoue", async () => {
     vi.mocked(getMyStock)
       .mockRejectedValueOnce(new ApiError("", 0))

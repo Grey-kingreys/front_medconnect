@@ -37,6 +37,9 @@ import { jourConakry } from "../../ventes/affichage";
 import { rechercherDansStock } from "../../vente/panier";
 
 const CHAMP_INVALIDE = CHAMP.replace("border-slate-200 dark:border-slate-800", "border-rose-500 dark:border-rose-500");
+// Quantité : largeur fixe qui ne se réduit jamais (6 chiffres tiennent), chiffres alignés à droite.
+const CHAMP_QUANTITE = CHAMP.replace("w-full px-4", "w-20 shrink-0 px-3 text-right");
+const CHAMP_QUANTITE_INVALIDE = CHAMP_INVALIDE.replace("w-full px-4", "w-20 shrink-0 px-3 text-right");
 const SELECT_UNITE = `px-3 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm text-slate-900 dark:text-white disabled:opacity-60 ${FOCUS}`;
 const ICONE = "w-4 h-4 text-slate-600 dark:text-slate-400";
 
@@ -750,11 +753,11 @@ export default function NouvelleReceptionPage() {
             <caption className="sr-only">Une ligne par médicament de la facture</caption>
             <thead>
               <tr className="text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-56">Médicament</th>
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-44">Quantité</th>
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-40">Péremption</th>
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-36">Lot (facultatif)</th>
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-44">Coût d&apos;achat d&apos;une boîte (GNF, facultatif)</th>
+                <th scope="col" className="py-2 pr-3 font-semibold min-w-48">Médicament</th>
+                <th scope="col" className="py-2 pr-3 font-semibold min-w-52">Quantité</th>
+                <th scope="col" className="py-2 pr-3 font-semibold min-w-32">Péremption</th>
+                <th scope="col" className="py-2 pr-3 font-semibold min-w-28">Lot (facultatif)</th>
+                <th scope="col" className="py-2 pr-3 font-semibold min-w-32">Coût d&apos;achat d&apos;une boîte (GNF, facultatif)</th>
                 <th scope="col" className="py-2 font-semibold"><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
@@ -858,7 +861,7 @@ export default function NouvelleReceptionPage() {
                             readOnly={verrouille}
                             onChange={(ev) => modifierLigne(l.cle, { quantite: ev.target.value }, "quantite")}
                             onKeyDown={(ev) => surToucheChamp(ev, l, "quantite")}
-                            className={`${e.quantite ? CHAMP_INVALIDE : CHAMP} min-w-0`}
+                            className={e.quantite ? CHAMP_QUANTITE_INVALIDE : CHAMP_QUANTITE}
                           />
                           {coefficient > 1 ? (
                             <select
