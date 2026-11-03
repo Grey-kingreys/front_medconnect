@@ -224,6 +224,7 @@ export default function DashboardPage() {
     peutAnnuler: contexte.permissions.has("vente:annuler"),
     peutVoirStock: estRouteAutorisee("/dashboard/stock", contexte),
     peutVoirAnomalies: estRouteAutorisee("/dashboard/anomalies", contexte),
+    peutVoirMarge: contexte.permissions.has("marge:read"),
   };
   const droitsComptoir: DroitsComptoir = {
     peutImporter,

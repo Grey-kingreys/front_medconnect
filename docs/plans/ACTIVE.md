@@ -26,7 +26,7 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | PF04 | Annulation et ventes du jour | contrôlé par le chef (rapports/PF04-chef.md du run), test navigateur à faire ; question au porteur : libellé d'une vente en plaquettes sur le reçu |
 | PF05 | Clôture journalière | contrôlé par le chef (rapports/PF05-chef.md du run), test navigateur à faire |
 | PF06a | File d'anomalies | contrôlé par le chef (rapports/PF06a-chef.md du run), test navigateur et build à faire |
-| PF06b | Alertes de péremption et marge | à faire |
+| PF06b | Alertes de péremption et marge | contrôlé par le chef (rapports/PF06b-chef.md du run), test navigateur et build à faire ; bilan : rapports/front-t1-chef.md du run |
 
 Arrêt obligatoire avant le desktop (PD01 à PD05) : le porteur teste d'abord.
 

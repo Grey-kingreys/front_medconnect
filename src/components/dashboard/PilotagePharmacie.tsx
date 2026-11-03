@@ -10,6 +10,8 @@ import { getMyStructure } from "@/lib/api_structure";
 import { formaterGNF } from "@/lib/format_gnf";
 import { resumerVentesDuJour, type ResumeVentesDuJour } from "@/lib/ventes_tableau_de_bord";
 import ApercuPharmacie, { Carte, Chargement, Valeur, pluriel } from "./ApercuPharmacie";
+import AlertesPeremption from "./AlertesPeremption";
+import MargePeriode from "./MargePeriode";
 
 export interface DroitsPilotage {
   /** structure:write ET route /dashboard/structure autorisée. */
@@ -26,6 +28,8 @@ export interface DroitsPilotage {
   peutImporter?: boolean;
   /** Route /dashboard/anomalies autorisée. */
   peutVoirAnomalies: boolean;
+  /** Permission marge:read : sans elle, le bloc Marge n'existe pas et rien n'est demandé au serveur. */
+  peutVoirMarge: boolean;
 }
 
 export interface LienVue {
@@ -324,6 +328,8 @@ export default function PilotagePharmacie({
           </div>
         )}
       </section>
+      {droits.peutVoirStock && <AlertesPeremption structureId={structureId} />}
+      {droits.peutVoirMarge && <MargePeriode structureId={structureId} />}
       <ApercuPharmacie
         structureId={structureId}
         titre="Votre stock"
