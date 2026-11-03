@@ -141,7 +141,7 @@ export default function PilotagePharmacie({
           libelle="Encaissé aujourd'hui"
           icone={Wallet}
           couleur="text-emerald-600 dark:text-emerald-400"
-          sousTexte="Ventes validées, sans les annulations"
+          sousTexte="Ventes du jour, annulations déduites"
         >
           <Valeur>{formaterGNF(r.totalJour)}</Valeur>
         </Carte>,

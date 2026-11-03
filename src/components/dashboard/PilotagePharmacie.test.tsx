@@ -31,6 +31,21 @@ const vente = (id: string, statut: StatutVente): VenteResume => ({
   nombreArticles: 1,
   vendeur: { id: "u1", nom: "Keita" },
   clientNom: null,
+  typePiece: "VENTE",
+  numeroTicket: Number(id),
+  jourMetier: "2026-10-22",
+  venteOrigine: null,
+  annulation: null,
+});
+
+/** Pièce d'annulation du jour : total négatif, sans numéro de ticket. */
+const pieceAnnulation = (id: string): VenteResume => ({
+  ...vente(id, "VALIDEE"),
+  numero: `A-V-${id}`,
+  total: -1000,
+  typePiece: "ANNULATION",
+  numeroTicket: null,
+  venteOrigine: { id: "origine", numero: "V-0" },
 });
 
 const journee = (surcharge: Record<string, unknown> = {}) =>
@@ -41,7 +56,7 @@ const journee = (surcharge: Record<string, unknown> = {}) =>
     page: 1,
     parPage: 50,
     totalPages: 1,
-    ventes: [vente("1", "VALIDEE"), vente("2", "ANNULEE"), vente("3", "ANNULEE"), vente("4", "VALIDEE")],
+    ventes: [vente("1", "VALIDEE"), pieceAnnulation("2"), pieceAnnulation("3"), vente("4", "VALIDEE")],
     ...surcharge,
   });
 

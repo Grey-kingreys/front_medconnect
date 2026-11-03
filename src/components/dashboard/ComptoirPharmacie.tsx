@@ -105,7 +105,7 @@ export default function ComptoirPharmacie({
             libelle="Montant de mes ventes"
             icone={Wallet}
             couleur="text-emerald-600 dark:text-emerald-400"
-            sousTexte="Ventes validées, sans les annulations"
+            sousTexte="Ventes du jour, annulations déduites"
           >
             <Valeur>{formaterGNF(r.total)}</Valeur>
           </Carte>
@@ -115,7 +115,7 @@ export default function ComptoirPharmacie({
             couleur="text-primary-600 dark:text-primary-400"
             sousTexte={
               r.annulees > 0
-                ? pluriel(r.annulees, "vente annulée, non comptée", "ventes annulées, non comptées")
+                ? pluriel(r.annulees, "annulation déduite", "annulations déduites")
                 : "Aujourd'hui"
             }
           >

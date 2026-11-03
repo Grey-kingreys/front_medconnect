@@ -73,7 +73,7 @@ describe("codeErreurVente", () => {
     expect(codeErreurVente(new ApiError("x", 409, { code: "SORTIE_MANUELLE_REQUISE" }))).toBe("SORTIE_MANUELLE_REQUISE");
   });
 
-  it.each(["STOCK_INTROUVABLE", "VENTE_DEJA_ANNULEE", "ANNULATION_HORS_DELAI"])("reconnaît %s", (code) => {
+  it.each(["STOCK_INTROUVABLE", "VENTE_DEJA_ANNULEE", "PIECE_NON_ANNULABLE", "JOURNEE_CLOTUREE"])("reconnaît %s", (code) => {
     expect(codeErreurVente(new ApiError("x", 409, { code }))).toBe(code);
   });
 

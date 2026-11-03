@@ -8,14 +8,12 @@ export type StatutVente = "VALIDEE" | "ANNULEE";
 export type UniteVente = "BOITE" | "UNITE";
 export type TypePiece = "VENTE" | "ANNULATION" | "REGULARISATION";
 
-// ANNULATION_HORS_DELAI n'est plus renvoyé par le serveur (PB12) ; retiré par PF04.
 export const CODES_ERREUR_VENTE = [
   "PRIX_MANQUANT",
   "ORDONNANCE_NON_CONFIRMEE",
   "STOCK_INTROUVABLE",
   "VALIDATION",
   "VENTE_DEJA_ANNULEE",
-  "ANNULATION_HORS_DELAI",
   "VENTE_UNITE_INTERDITE",
   "PRIX_UNITE_MANQUANT",
   "SORTIE_MANUELLE_REQUISE",
@@ -71,11 +69,10 @@ export interface LigneVente {
   prixUnitaire: number;
   quantite: number;
   sousTotal: number;
-  // Facultatifs pour que les fixtures existantes compilent ; toujours présents dans la réponse du serveur.
-  uniteAffichee?: UniteVente;
-  nombreAffiche?: number;
-  coefficientApplique?: number;
-  allocations?: AllocationVente[];
+  uniteAffichee: UniteVente;
+  nombreAffiche: number;
+  coefficientApplique: number;
+  allocations: AllocationVente[];
 }
 export interface PaiementVente {
   id: string;
@@ -120,18 +117,17 @@ export interface Vente {
   motifAnnulation: string | null;
   lignes: LigneVente[];
   pharmacie: PharmacieVente;
-  // Facultatifs pour que les fixtures existantes compilent ; toujours présents dans la réponse du serveur.
-  typePiece?: TypePiece;
+  typePiece: TypePiece;
   /** Numéro de ticket du poste (entier, null pour une pièce d'annulation) ; le numéro lisible est `numero`. */
-  numeroTicket?: number | null;
-  jourMetier?: string;
-  provisoire?: boolean;
-  poste?: { id: string; code: string };
-  session?: { id: string; ouverteAutomatiquement: boolean };
-  paiements?: PaiementVente[];
-  annulation?: AnnulationPiece | null;
-  venteOrigine?: { id: string; numero: string } | null;
-  motif?: string | null;
+  numeroTicket: number | null;
+  jourMetier: string;
+  provisoire: boolean;
+  poste: { id: string; code: string };
+  session: { id: string; ouverteAutomatiquement: boolean };
+  paiements: PaiementVente[];
+  annulation: AnnulationPiece | null;
+  venteOrigine: { id: string; numero: string } | null;
+  motif: string | null;
   /** Vrai quand la même clé a déjà servi : vente renvoyée sans second retrait du stock. */
   rejeu?: boolean;
 }
@@ -146,13 +142,12 @@ export interface VenteResume {
   nombreArticles: number;
   vendeur: VendeurVente;
   clientNom: string | null;
-  // Facultatifs pour que les fixtures existantes compilent ; toujours présents dans la réponse du serveur.
-  typePiece?: TypePiece;
+  typePiece: TypePiece;
   /** Numéro de ticket du poste (entier, null pour une pièce d'annulation) ; le numéro lisible est `numero`. */
-  numeroTicket?: number | null;
-  jourMetier?: string;
-  venteOrigine?: { id: string; numero: string } | null;
-  annulation?: { id: string; numero: string } | null;
+  numeroTicket: number | null;
+  jourMetier: string;
+  venteOrigine: { id: string; numero: string } | null;
+  annulation: { id: string; numero: string } | null;
 }
 export interface VentesDuJour {
   date: string;
