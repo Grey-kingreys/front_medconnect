@@ -430,6 +430,7 @@ export default function StockPage() {
           onSuccess={fetchData}
           editItem={selectedStock}
           fichesActives={stockInfo?.stocks}
+          onModifierFiche={setSelectedStock}
         />
       )}
 

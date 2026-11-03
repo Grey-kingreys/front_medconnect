@@ -14,7 +14,8 @@ import {
 } from "@/lib/api_pharmacie";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { useAuth } from "@/hooks/useAuth";
-import { ALERTE_ATTENTION, ALERTE_ERREUR, BOUTON_PRIMAIRE } from "@/components/pharmacie/classes";
+import Link from "next/link";
+import { ALERTE_ATTENTION, ALERTE_ERREUR, BOUTON_PRIMAIRE, FOCUS } from "@/components/pharmacie/classes";
 import { LIBELLES_UNITE_MINIMALE, aArticle, deOuD, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { manqueVenteAuDetail } from "@/lib/caisse/regles/prix";
 import { formaterGNF } from "@/lib/format_gnf";
@@ -29,6 +30,8 @@ interface StockModalProps {
   editItem?: StockMedicament | null; // Optional item to edit
   /** Fiches actives de la pharmacie : un médicament déjà présent ne se rajoute pas par cette fenêtre. */
   fichesActives?: StockMedicament[];
+  /** Bascule sur la fenêtre de modification de la fiche d'un médicament déjà en stock choisi à l'ajout. */
+  onModifierFiche?: (fiche: StockMedicament) => void;
 }
 
 type Conversion = "" | "MULTIPLIER" | "CONSERVER";
@@ -79,7 +82,10 @@ const libelleUnite = (unite: UniteMinimale) => {
 };
 
 const MESSAGE_DATE_REQUISE = "Indiquez la date de péremption, ou cochez « Sans date de péremption ».";
-const MESSAGE_DEJA_PRESENT = "Ce médicament est déjà dans votre stock. Pour ajouter des boîtes, utilisez « Réception ».";
+const MESSAGE_CHOISIR_MEDICAMENT = "Choisissez d'abord le médicament dans la liste, ou créez-le s'il n'y figure pas.";
+const MESSAGE_PAS_DE_DROIT_LIVRAISON = "Pour ajouter des boîtes, demandez au titulaire d'enregistrer la livraison.";
+// Filet de sécurité : la fiche existe côté serveur sans figurer dans la liste de la page (archivée, liste périmée).
+const MESSAGE_FICHE_EXISTANTE = "Ce médicament a déjà une fiche dans votre stock. Rien n'a été modifié.";
 const MESSAGE_RESEAU = "L'enregistrement n'a peut-être pas abouti. Vérifiez votre connexion puis appuyez sur Réessayer.";
 const MESSAGE_CHOIX_CONVERSION = "Indiquez si le stock actuel compte des boîtes ou des unités.";
 const MESSAGE_PAR_DEFAUT = "Une erreur est survenue";
@@ -185,14 +191,18 @@ interface Etapes {
   ecartPct?: number;
 }
 
-/** Message du refus d'ajout d'un médicament déjà en stock, partagé par la recherche et la lecture de la réponse. */
+/** Refus d'ajout d'une fiche que le serveur dit déjà présente (lecture de la réponse). */
 class DejaPresentError extends Error {
   constructor() {
-    super(MESSAGE_DEJA_PRESENT);
+    super(MESSAGE_FICHE_EXISTANTE);
   }
 }
 
-export default function StockModal({ isOpen, onClose, structureId, onSuccess, editItem, fichesActives }: StockModalProps) {
+/** Fiche active de la pharmacie pour ce médicament du catalogue, s'il y en a une. */
+const ficheDuMedicament = (fiches: StockMedicament[] | undefined, med: Medicament) =>
+  fiches?.find((f) => f.medicamentId === med.id || f.medicament.id === med.id);
+
+export default function StockModal({ isOpen, onClose, structureId, onSuccess, editItem, fichesActives, onModifierFiche }: StockModalProps) {
   const [search, setSearch] = useState("");
   const [catalogue, setCatalogue] = useState<Medicament[]>([]);
   const [loadingCatalogue, setLoadingCatalogue] = useState(false);
@@ -202,8 +212,8 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { profile } = useAuth();
-  // La date d'un lot se corrige depuis la réception : la phrase n'est montrée qu'à qui peut y accéder.
-  const peutCorrigerParReception = profile?.permissions?.includes("reception:write") ?? false;
+  // Livraison et date d'un lot passent par la réception : les liens ne sont montrés qu'à qui peut y accéder.
+  const peutEnregistrerReception = profile?.permissions?.includes("reception:write") ?? false;
 
   const [form, setForm] = useState<FormState>(formVide);
 
@@ -216,6 +226,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
   const [avertissementEcart, setAvertissementEcart] = useState<number | null>(null);
   const etapes = useRef<Etapes>({});
   const envoiRef = useRef(false);
+  const derniereRecherche = useRef(0);
   const { dialogProps, titleId } = useDialogA11y({ isOpen, onClose, closeOnEscape: !saving });
 
   const maj = (patch: Partial<FormState>) => setForm((f) => ({ ...f, ...patch }));
@@ -256,6 +267,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
   }, [editItem, isOpen]);
 
   const searchCatalogue = useCallback(async (q: string) => {
+    const recherche = ++derniereRecherche.current;
     if (q.length < 2) {
       setCatalogue([]);
       return;
@@ -263,6 +275,8 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     setLoadingCatalogue(true);
     try {
       const res = await getCatalogue(q);
+      // Réponse périmée : la fenêtre a été rouverte, ou un médicament a été choisi entre-temps.
+      if (recherche !== derniereRecherche.current) return;
       setCatalogue(res.data);
       setShowDropdown(true);
     } catch (err) {
@@ -292,12 +306,8 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
   const handleSelectMed = (med: Medicament) => {
     etapes.current = {};
+    derniereRecherche.current++;
     setError("");
-    if (!editItem && fichesActives?.some((f) => f.medicamentId === med.id || f.medicament.id === med.id)) {
-      setShowDropdown(false);
-      setError(MESSAGE_DEJA_PRESENT);
-      return;
-    }
     setSelectedMed(med);
     setSearch(med.nom);
     setShowDropdown(false);
@@ -306,6 +316,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
   const handleStartCreate = () => {
     etapes.current = {};
+    derniereRecherche.current++;
     setIsCreatingNew(true);
     setShowDropdown(false);
     setSelectedMed(null);
@@ -437,8 +448,8 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     if (envoiRef.current) return;
     setError("");
 
-    if (!selectedMed && !isCreatingNew) {
-      setError("Veuillez sélectionner un médicament ou en créer un nouveau.");
+    // Sans bouton d'envoi, Entrée dans la recherche soumet quand même le formulaire : rien à envoyer sans saisie affichée (D731).
+    if (!editItem && ((!selectedMed && !isCreatingNew) || (selectedMed && ficheDuMedicament(fichesActives, selectedMed)))) {
       return;
     }
 
@@ -489,9 +500,12 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
   };
 
   const reset = () => {
+    derniereRecherche.current++;
     setSelectedMed(null);
     setIsCreatingNew(false);
     setSearch("");
+    setCatalogue([]);
+    setShowDropdown(false);
     setForm(formVide());
   };
 
@@ -527,6 +541,9 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     : null;
   const lotsEnStock = (editItem?.lots ?? []).filter((l) => l.quantite > 0);
   const unitesEnPlus = (editItem?.quantite ?? 0) * coefficientCourant;
+  // Ajout : médicament choisi qui a déjà une fiche active. Le reste de la fenêtre n'apparaît qu'après un choix valable.
+  const ficheExistante = !editItem && selectedMed ? ficheDuMedicament(fichesActives, selectedMed) : undefined;
+  const afficherSaisie = !!editItem || ((!!selectedMed || isCreatingNew) && !ficheExistante);
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
@@ -613,6 +630,11 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                         <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{med.nom}</p>
                         <p className="text-[10px] text-slate-600 dark:text-slate-400 uppercase tracking-widest">{med.nomGenerique || med.categorie}</p>
                       </div>
+                      {ficheDuMedicament(fichesActives, med) && (
+                        <span className="shrink-0 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-bold">
+                          Déjà en stock
+                        </span>
+                      )}
                     </button>
                   ))}
 
@@ -632,6 +654,37 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                       </div>
                     </button>
                   )}
+                </div>
+              )}
+              {!editItem && !selectedMed && !isCreatingNew && (
+                <p className={AIDE}>{MESSAGE_CHOISIR_MEDICAMENT}</p>
+              )}
+
+              {/* Médicament déjà en stock : pas de saisie, deux issues */}
+              {ficheExistante && selectedMed && (
+                <div role="status" className={`${ALERTE_ATTENTION} items-start mt-2`}>
+                  <Info className="w-5 h-5 shrink-0 mt-0.5" aria-hidden="true" />
+                  <div className="space-y-2">
+                    <p>{`${selectedMed.nom} est déjà dans votre stock.`}</p>
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                      {peutEnregistrerReception ? (
+                        <Link href="/dashboard/receptions/nouvelle" className={`font-bold underline ${FOCUS}`}>
+                          Enregistrer une livraison
+                        </Link>
+                      ) : (
+                        <span>{MESSAGE_PAS_DE_DROIT_LIVRAISON}</span>
+                      )}
+                      {onModifierFiche && (
+                        <button
+                          type="button"
+                          onClick={() => onModifierFiche(ficheExistante)}
+                          className={`font-bold underline ${FOCUS}`}
+                        >
+                          Modifier ce médicament
+                        </button>
+                      )}
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -679,6 +732,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
               </div>
             )}
 
+            {afficherSaisie && (<>
             {/* Stock actuel (modification) : la quantité ne se change plus ici */}
             {editItem && (
               <div className="space-y-1">
@@ -715,7 +769,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     ))}
                   </ul>
                 )}
-                {peutCorrigerParReception && (
+                {peutEnregistrerReception && (
                   <p className={AIDE}>Pour corriger une date, ouvrez la réception du lot.</p>
                 )}
               </div>
@@ -951,6 +1005,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                 className={SAISIE}
               />
             </div>
+            </>)}
 
             </fieldset>
 
@@ -970,14 +1025,16 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
               >
                 Annuler
               </button>
+              {afficherSaisie && (
               <button
                 type="submit"
-                disabled={saving || (!selectedMed && !isCreatingNew)}
+                disabled={saving}
                 className={`flex-[2] py-4 text-white rounded-2xl font-bold shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${editItem ? 'bg-amber-700 hover:bg-amber-800 shadow-amber-500/20' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-500/20'}`}
               >
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <Save className="w-5 h-5" aria-hidden="true" />}
                 {saving ? "Enregistrement..." : (verrou ? "Réessayer" : (editItem ? "Mettre à jour" : (isCreatingNew ? "Créer et ajouter" : "Ajouter au stock")))}
               </button>
+              )}
             </div>
           </form>
           )}

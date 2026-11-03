@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
 import { createMedicament, getCatalogue, modifierFiche, upsertStock, type StockMedicament } from "@/lib/api_pharmacie";
@@ -388,7 +388,7 @@ describe("StockModal", () => {
       soumettre();
 
       expect(
-        await screen.findByText("Ce médicament est déjà dans votre stock. Pour ajouter des boîtes, utilisez « Réception »."),
+        await screen.findByText("Ce médicament a déjà une fiche dans votre stock. Rien n'a été modifié."),
       ).toBeTruthy();
       expect(upsertStock).toHaveBeenCalledTimes(1);
       // Seulement l'identifiant : ni prix, ni notes, ni quantité sur une fiche existante
@@ -408,7 +408,7 @@ describe("StockModal", () => {
     soumettre();
 
     expect(
-      await screen.findByText("Ce médicament est déjà dans votre stock. Pour ajouter des boîtes, utilisez « Réception »."),
+      await screen.findByText("Ce médicament a déjà une fiche dans votre stock. Rien n'a été modifié."),
     ).toBeTruthy();
     expect(upsertStock).toHaveBeenCalledTimes(1);
     expect(vi.mocked(upsertStock).mock.calls[0][1]).toEqual({ medicamentId: "m1" });
@@ -503,13 +503,125 @@ describe("StockModal", () => {
     expect(vi.mocked(upsertStock).mock.calls.at(-1)![1]).toMatchObject({ quantite: 30 });
   });
 
-  it("ajout : un médicament déjà présent dans la liste de la page est refusé dès la recherche", async () => {
-    await ouvrirAjout({ fichesActives: [fiche] });
+  it("ajout : tant qu'aucun médicament n'est choisi, seul le champ de recherche s'affiche", () => {
+    render(<StockModal isOpen onClose={vi.fn()} structureId="s1" onSuccess={vi.fn()} editItem={null} />);
+    expect(screen.getByText("Choisissez d'abord le médicament dans la liste, ou créez-le s'il n'y figure pas.")).toBeTruthy();
+    expect(screen.queryByLabelText("Prix de la boîte (GNF)")).toBeNull();
+    expect(screen.queryByLabelText("Notes")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ajouter au stock" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Annuler" })).toBeTruthy();
+  });
 
-    expect(
-      await screen.findByText("Ce médicament est déjà dans votre stock. Pour ajouter des boîtes, utilisez « Réception »."),
-    ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Ajouter au stock" })).toBeDisabled();
+  it("ajout : un nom tapé sans choix ne montre pas la saisie", async () => {
+    await ouvrirAjout();
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "Doli" } });
+    expect(screen.queryByLabelText("Prix de la boîte (GNF)")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Ajouter au stock" })).toBeNull();
+  });
+
+  it("ajout : un médicament déjà en stock porte la mention dans la liste et reste cliquable", async () => {
+    vi.mocked(getCatalogue).mockResolvedValue(reponse([medicament]));
+    render(<StockModal isOpen onClose={vi.fn()} structureId="s1" onSuccess={vi.fn()} editItem={null} fichesActives={[fiche]} />);
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "Dolip" } });
+    await screen.findByText("Doliprane", {}, { timeout: 3000 });
+    expect(screen.getByText("Déjà en stock")).toBeTruthy();
+  });
+
+  it("ajout : choisir un médicament déjà en stock affiche l'encadré, sans saisie ni écriture", async () => {
+    acces.permissions = ["reception:write"];
+    const onModifierFiche = vi.fn();
+    vi.mocked(getCatalogue).mockResolvedValue(reponse([medicament]));
+    render(
+      <StockModal isOpen onClose={vi.fn()} structureId="s1" onSuccess={vi.fn()} editItem={null} fichesActives={[fiche]} onModifierFiche={onModifierFiche} />,
+    );
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "Dolip" } });
+    fireEvent.click(await screen.findByText("Doliprane", {}, { timeout: 3000 }));
+
+    expect(screen.getByText("Doliprane est déjà dans votre stock.")).toBeTruthy();
+    expect((screen.getByLabelText("Médicament") as HTMLInputElement).value).toBe("Doliprane");
+    expect(screen.getByRole("link", { name: "Enregistrer une livraison" }).getAttribute("href")).toBe("/dashboard/receptions/nouvelle");
+    expect(screen.queryByRole("button", { name: "Ajouter au stock" })).toBeNull();
+    expect(screen.queryByLabelText("Prix de la boîte (GNF)")).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Modifier ce médicament" }));
+    expect(onModifierFiche).toHaveBeenCalledWith(fiche);
+    expect(upsertStock).not.toHaveBeenCalled();
+    expect(modifierFiche).not.toHaveBeenCalled();
+
+    // Effacer le texte retire l'encadré
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "" } });
+    expect(screen.queryByText("Doliprane est déjà dans votre stock.")).toBeNull();
+  });
+
+  it("ajout : sans le droit de réception, l'encadré demande au titulaire d'enregistrer la livraison", async () => {
+    vi.mocked(getCatalogue).mockResolvedValue(reponse([medicament]));
+    render(<StockModal isOpen onClose={vi.fn()} structureId="s1" onSuccess={vi.fn()} editItem={null} fichesActives={[fiche]} />);
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "Dolip" } });
+    fireEvent.click(await screen.findByText("Doliprane", {}, { timeout: 3000 }));
+
+    expect(screen.queryByRole("link", { name: "Enregistrer une livraison" })).toBeNull();
+    expect(screen.getByText("Pour ajouter des boîtes, demandez au titulaire d'enregistrer la livraison.")).toBeTruthy();
+  });
+
+  it("ajout : la touche Entrée sans saisie affichée n'envoie rien", async () => {
+    vi.mocked(getCatalogue).mockResolvedValue(reponse([medicament]));
+    render(<StockModal isOpen onClose={vi.fn()} structureId="s1" onSuccess={vi.fn()} editItem={null} fichesActives={[fiche]} />);
+    const formulaire = screen.getByLabelText("Médicament").closest("form") as HTMLFormElement;
+    fireEvent.submit(formulaire);
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "Dolip" } });
+    fireEvent.click(await screen.findByText("Doliprane", {}, { timeout: 3000 }));
+    fireEvent.submit(formulaire);
+    await waitFor(() => expect(screen.getByText("Doliprane est déjà dans votre stock.")).toBeTruthy());
+    expect(upsertStock).not.toHaveBeenCalled();
+    expect(modifierFiche).not.toHaveBeenCalled();
+  });
+
+  it("ajout : à la réouverture, la liste de la recherche précédente ne réapparaît pas", async () => {
+    vi.mocked(getCatalogue).mockResolvedValue(reponse([medicament]));
+    const proprietes = { onClose: vi.fn(), structureId: "s1", onSuccess: vi.fn(), editItem: null };
+    const { rerender } = render(<StockModal isOpen {...proprietes} />);
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "Dolip" } });
+    await screen.findByText("Doliprane", {}, { timeout: 3000 });
+
+    rerender(<StockModal isOpen={false} {...proprietes} />);
+    rerender(<StockModal isOpen {...proprietes} />);
+
+    expect(screen.queryByText("Doliprane")).toBeNull();
+    expect((screen.getByLabelText("Médicament") as HTMLInputElement).value).toBe("");
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "D" } });
+    fireEvent.focus(screen.getByLabelText("Médicament"));
+    expect(screen.queryByText("Doliprane")).toBeNull();
+  });
+
+  it("ajout : une réponse de recherche arrivée après la fermeture ne rouvre pas la liste", async () => {
+    let repondre: (valeur: ReturnType<typeof reponse<(typeof medicament)[]>>) => void = () => {};
+    vi.mocked(getCatalogue).mockImplementation(
+      () => new Promise((resolve) => { repondre = resolve as typeof repondre; }) as never,
+    );
+    const proprietes = { onClose: vi.fn(), structureId: "s1", onSuccess: vi.fn(), editItem: null };
+    const { rerender } = render(<StockModal isOpen {...proprietes} />);
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "Dolip" } });
+    await waitFor(() => expect(getCatalogue).toHaveBeenCalledTimes(1), { timeout: 3000 });
+
+    rerender(<StockModal isOpen={false} {...proprietes} />);
+    rerender(<StockModal isOpen {...proprietes} />);
+    await act(async () => {
+      repondre(reponse([medicament]));
+      await Promise.resolve();
+    });
+
+    expect(screen.queryByText("Doliprane")).toBeNull();
+  });
+
+  it("ajout : une fiche à quantité 0 avec une part à régulariser reste déjà en stock", async () => {
+    const aRegulariser: StockMedicament = { ...fiche, quantite: 0, quantiteARegulariser: 1 };
+    vi.mocked(getCatalogue).mockResolvedValue(reponse([medicament]));
+    render(<StockModal isOpen onClose={vi.fn()} structureId="s1" onSuccess={vi.fn()} editItem={null} fichesActives={[aRegulariser]} />);
+    fireEvent.change(screen.getByLabelText("Médicament"), { target: { value: "Dolip" } });
+    fireEvent.click(await screen.findByText("Doliprane", {}, { timeout: 3000 }));
+    expect(screen.getByText("Doliprane est déjà dans votre stock.")).toBeTruthy();
     expect(upsertStock).not.toHaveBeenCalled();
   });
 
