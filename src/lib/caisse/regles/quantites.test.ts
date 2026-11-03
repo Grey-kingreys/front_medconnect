@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { boitesVersUm, formaterARegulariser, formaterQuantite, umVersBoites } from "./quantites";
+import {
+  LIBELLES_UNITE_MINIMALE,
+  aArticle,
+  boitesVersUm,
+  deOuD,
+  formaterARegulariser,
+  formaterQuantite,
+  umVersBoites,
+} from "./quantites";
 
 // Vecteurs de back_medconnect/src/pharmacie/domaine/quantites.spec.ts (boitesVersUm, umVersBoites) et prix.spec.ts (CA2).
 describe("quantités de la caisse", () => {
@@ -17,6 +25,36 @@ describe("quantités de la caisse", () => {
     expect(formaterQuantite(40, 20, "COMPRIME")).toBe("2 boîtes");
     expect(formaterQuantite(1, 1, "UNITE")).toBe("1 boîte");
     expect(formaterQuantite(0, 1, "UNITE")).toBe("0 boîte");
+  });
+
+  it("formate les plaquettes, au singulier pour une seule", () => {
+    expect(formaterQuantite(26, 10, "PLAQUETTE")).toBe("2 boîtes et 6 plaquettes");
+    expect(formaterQuantite(21, 10, "PLAQUETTE")).toBe("2 boîtes et 1 plaquette");
+    expect(formaterQuantite(1, 10, "PLAQUETTE")).toBe("1 plaquette");
+  });
+
+  it("accorde l'article de chaque unité (D725)", () => {
+    expect(LIBELLES_UNITE_MINIMALE.PLAQUETTE.article).toBe("la plaquette");
+    expect(LIBELLES_UNITE_MINIMALE.COMPRIME.article).toBe("le comprimé");
+    expect(LIBELLES_UNITE_MINIMALE.AMPOULE.article).toBe("l'ampoule");
+    expect(LIBELLES_UNITE_MINIMALE.UNITE.article).toBe("l'unité");
+    expect(LIBELLES_UNITE_MINIMALE.GELULE.article).toBe("la gélule");
+    expect(LIBELLES_UNITE_MINIMALE.ML.article).toBe("le ml");
+    expect(LIBELLES_UNITE_MINIMALE.SACHET.article).toBe("le sachet");
+    expect(LIBELLES_UNITE_MINIMALE.GRAMME.article).toBe("le gramme");
+  });
+
+  it("deOuD met « d' » devant une voyelle ou un h muet, « de » sinon", () => {
+    expect(deOuD("plaquettes")).toBe("de plaquettes");
+    expect(deOuD("ampoules")).toBe("d'ampoules");
+    expect(deOuD("unités")).toBe("d'unités");
+    expect(deOuD("ml")).toBe("de ml");
+  });
+
+  it("aArticle donne « à la plaquette », « à l'unité » et « au comprimé »", () => {
+    expect(aArticle("la plaquette")).toBe("à la plaquette");
+    expect(aArticle("l'unité")).toBe("à l'unité");
+    expect(aArticle("le comprimé")).toBe("au comprimé");
   });
 
   it("affiche 0 pour un stock négatif", () => {

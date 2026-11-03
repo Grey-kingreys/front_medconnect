@@ -19,7 +19,7 @@ import {
 import { estErreurReseau } from "@/lib/erreurs_api";
 import { sourceEnLigne } from "@/lib/caisse/source_en_ligne";
 import type { EtatCaisse } from "@/lib/caisse/source";
-import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, aArticle, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { MSG_TELEPHONE_INVALIDE, AIDE_TELEPHONE } from "@/lib/erreur_telephone";
 import { lireContexteAcces } from "@/lib/acces";
 import { formaterGNF } from "@/lib/format_gnf";
@@ -666,7 +666,7 @@ export default function NouvelleVentePage() {
                         Reste : {formaterQuantite(s.quantite, coefficient, s.uniteMinimale ?? "UNITE")}
                         {aRegulariser !== null && `, ${aRegulariser}`}
                         {prixBoite !== null && ` · ${formaterGNF(prixBoite)}`}
-                        {prixUnite !== null && ` · ${formaterGNF(prixUnite)} le ${libelleUnite.singulier}`}
+                        {prixUnite !== null && ` · ${formaterGNF(prixUnite)} ${libelleUnite.article}`}
                         {s.medicament.ordonnanceRequise && " · Sur ordonnance"}
                       </p>
                       {avertissement !== null && (
@@ -877,13 +877,12 @@ export default function NouvelleVentePage() {
             )}
             {panier.lignes.length > 0 && (
               <p className="text-xs text-slate-600 dark:text-slate-400">
-                F2 : passer de la boîte à l&apos;unité pour la dernière ligne
+                {`F2 : passer de la boîte ${aArticle(libelleReliquat?.article ?? "l'unité")} pour la dernière ligne`}
               </p>
             )}
             {unitesReliquat > 0 && libelleReliquat && (
               <p className="text-sm text-slate-700 dark:text-slate-300">
-                Boîte entamée : {unitesReliquat} {unitesReliquat > 1 ? libelleReliquat.pluriel : libelleReliquat.singulier}{" "}
-                {unitesReliquat > 1 ? "restants" : "restant"}
+                {`Boîte entamée : il reste ${unitesReliquat.toLocaleString("fr-FR")} ${unitesReliquat > 1 ? libelleReliquat.pluriel : libelleReliquat.singulier}`}
               </p>
             )}
             {panierPlein(panier) && (

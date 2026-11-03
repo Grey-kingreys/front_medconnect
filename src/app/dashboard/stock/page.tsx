@@ -343,7 +343,7 @@ export default function StockPage() {
                       <div>{typeof s.prixUnitaire === "number" ? formaterGNF(s.prixUnitaire) : "Non renseigné"}</div>
                       {typeof s.prixUnite === "number" && (
                         <div className="text-xs font-normal">
-                          {formaterGNF(s.prixUnite)} le {LIBELLES_UNITE_MINIMALE[unite].singulier}
+                          {formaterGNF(s.prixUnite)} {LIBELLES_UNITE_MINIMALE[unite].article}
                         </div>
                       )}
                     </td>

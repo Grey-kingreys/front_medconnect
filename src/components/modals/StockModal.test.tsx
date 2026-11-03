@@ -94,21 +94,21 @@ describe("StockModal", () => {
       ouvrirModification(fiche);
       expect(screen.queryByRole("status")).toBeNull();
       saisir("Prix de la boîte (GNF)", "18000");
-      saisir("Nombre d'unités par boîte", "10");
-      saisir("Prix d'une unité (GNF)", "1500");
+      saisir("Nombre de comprimés par boîte", "10");
+      saisir("Prix d'un comprimé (GNF)", "1500");
       expect(screen.getByRole("status").textContent).toMatch(MESSAGE);
 
-      saisir("Prix d'une unité (GNF)", "1800");
+      saisir("Prix d'un comprimé (GNF)", "1800");
       expect(screen.queryByRole("status")).toBeNull();
     });
 
     it("est absent quand la vente à l'unité n'est pas cochée", () => {
       ouvrirModification(fiche);
       saisir("Prix de la boîte (GNF)", "18000");
-      saisir("Nombre d'unités par boîte", "10");
-      saisir("Prix d'une unité (GNF)", "1500");
+      saisir("Nombre de comprimés par boîte", "10");
+      saisir("Prix d'un comprimé (GNF)", "1500");
       expect(screen.getByRole("status")).toBeTruthy();
-      fireEvent.click(screen.getByLabelText("Se vend aussi à l'unité (boîte entamée)"));
+      fireEvent.click(screen.getByLabelText("Se vend aussi au comprimé (boîte entamée)"));
       expect(screen.queryByRole("status")).toBeNull();
     });
 
@@ -117,8 +117,8 @@ describe("StockModal", () => {
       vi.mocked(upsertStock).mockResolvedValue(reponse(nouvelleFiche) as never);
       const { onSuccess } = ouvrirModification(fiche);
       saisir("Prix de la boîte (GNF)", "18000");
-      saisir("Nombre d'unités par boîte", "10");
-      saisir("Prix d'une unité (GNF)", "1500");
+      saisir("Nombre de comprimés par boîte", "10");
+      saisir("Prix d'un comprimé (GNF)", "1500");
       expect(screen.getByRole("status").textContent).toMatch(MESSAGE);
       fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
       await waitFor(() => expect(onSuccess).toHaveBeenCalled());
@@ -260,7 +260,7 @@ describe("StockModal", () => {
     expect(screen.getByText("Stock actuel : 0 boîte")).toBeTruthy();
     expect(screen.getByText("1 boîte à régulariser")).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Nombre d'unités par boîte"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "20" } });
     // Le choix de conversion apparaît bien que la quantité soit 0.
     expect(screen.getByLabelText(/^des boîtes : les convertir en unités/)).toBeTruthy();
     expect(screen.getByText(/Le stock actuel de 0 boîte, avec 1 boîte à régulariser, compte/)).toBeTruthy();
@@ -280,7 +280,7 @@ describe("StockModal", () => {
 
   it("fiche à stock 0 sans part à régulariser : aucun choix de conversion", () => {
     ouvrirModification({ ...ficheNonQualifiee, quantite: 0 });
-    fireEvent.change(screen.getByLabelText("Nombre d'unités par boîte"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "20" } });
     expect(screen.queryByLabelText(/^des boîtes : les convertir en unités/)).toBeNull();
   });
 
@@ -289,7 +289,7 @@ describe("StockModal", () => {
     const { onClose } = ouvrirModification(ficheNonQualifiee);
     expect(screen.getByText(/pas encore confirmé/)).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Nombre d'unités par boîte"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "20" } });
     fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
     expect(await screen.findByText("Indiquez si le stock actuel compte des boîtes ou des unités.")).toBeTruthy();
     expect(modifierFiche).not.toHaveBeenCalled();
@@ -308,8 +308,8 @@ describe("StockModal", () => {
   it("décocher la vente à l'unité envoie deconditionnable false et prixUnite null", async () => {
     vi.mocked(modifierFiche).mockResolvedValue(reponse({ avertissements: [], conversion: null }) as never);
     const { onClose } = ouvrirModification(fiche);
-    fireEvent.click(screen.getByLabelText("Se vend aussi à l'unité (boîte entamée)"));
-    expect(screen.queryByLabelText("Prix d'une unité (GNF)")).toBeNull();
+    fireEvent.click(screen.getByLabelText("Se vend aussi au comprimé (boîte entamée)"));
+    expect(screen.queryByLabelText("Prix d'un comprimé (GNF)")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
@@ -321,12 +321,12 @@ describe("StockModal", () => {
       reponse({ avertissements: [{ code: "ECART_PRIX", ecartPct: 32 }], conversion: null }) as never,
     );
     const { onClose, onSuccess } = ouvrirModification(fiche);
-    fireEvent.change(screen.getByLabelText("Prix d'une unité (GNF)"), { target: { value: "300" } });
+    fireEvent.change(screen.getByLabelText("Prix d'un comprimé (GNF)"), { target: { value: "300" } });
     fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
 
     expect(
       await screen.findByText(
-        "Enregistré. Le prix d'une unité s'écarte de 32 % du prix de la boîte divisé par le nombre d'unités : vérifiez qu'il n'y a pas d'erreur.",
+        "Enregistré. Le prix d'un comprimé s'écarte de 32 % du prix de la boîte divisé par le nombre de comprimés : vérifiez qu'il n'y a pas d'erreur.",
       ),
     ).toBeTruthy();
     const dialogue = screen.getByRole("dialog");
@@ -346,7 +346,7 @@ describe("StockModal", () => {
       }),
     );
     const { onClose, onSuccess } = ouvrirModification(ficheNonQualifiee);
-    fireEvent.change(screen.getByLabelText("Nombre d'unités par boîte"), { target: { value: "20" } });
+    fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "20" } });
     fireEvent.click(screen.getByLabelText(/^des boîtes : les convertir en unités/));
     fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
 
@@ -511,5 +511,154 @@ describe("StockModal", () => {
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Ajouter au stock" })).toBeDisabled();
     expect(upsertStock).not.toHaveBeenCalled();
+  });
+
+  describe("unité plaquette (D723, D725)", () => {
+    const choisirUnite = (valeur: string) =>
+      fireEvent.change(screen.getByLabelText("Unité de vente au détail"), { target: { value: valeur } });
+    const AIDE_STOCK = "Ce médicament a du stock : pour changer d'unité, comptez-le d'abord à 0 par un inventaire.";
+    const AIDE_NOMBRE =
+      "Indiquez aussi combien de plaquettes contient la boîte : après l'enregistrement, ce nombre ne pourra plus convertir le stock.";
+    const ficheReprise: StockMedicament = { ...ficheNonQualifiee, uniteMinimale: "UNITE", quantite: 12 };
+
+    it("propose « Plaquette » après « Ampoule » et accorde les libellés de la fiche", async () => {
+      await ouvrirAjout();
+      const options = within(screen.getByLabelText("Unité de vente au détail")).getAllByRole("option");
+      const noms = options.map((o) => o.textContent);
+      expect(noms).toContain("Plaquette");
+      expect(noms.indexOf("Plaquette")).toBe(noms.indexOf("Ampoule") + 1);
+
+      expect(screen.getByLabelText("Nombre d'unités par boîte")).toBeTruthy();
+      choisirUnite("PLAQUETTE");
+      expect(screen.getByLabelText("Nombre de plaquettes par boîte")).toBeTruthy();
+      expect(screen.getByLabelText("Écart toléré à l'inventaire (en plaquettes)")).toBeTruthy();
+      expect(screen.getByLabelText("Se vend aussi à la plaquette (boîte entamée)")).toBeTruthy();
+      fireEvent.click(screen.getByLabelText("Se vend aussi à la plaquette (boîte entamée)"));
+      expect(screen.getByLabelText("Prix d'une plaquette (GNF)")).toBeTruthy();
+
+      choisirUnite("AMPOULE");
+      expect(screen.getByLabelText("Nombre d'ampoules par boîte")).toBeTruthy();
+      expect(screen.getByLabelText("Prix d'une ampoule (GNF)")).toBeTruthy();
+      expect(screen.getByLabelText("Se vend aussi à l'ampoule (boîte entamée)")).toBeTruthy();
+    });
+
+    it("envoie uniteMinimale PLAQUETTE, le nombre par boîte et le prix de la plaquette", async () => {
+      const { onSuccess } = await ouvrirAjout();
+      fireEvent.change(screen.getByLabelText("Prix de la boîte (GNF)"), { target: { value: "25000" } });
+      choisirUnite("PLAQUETTE");
+      fireEvent.change(screen.getByLabelText("Nombre de plaquettes par boîte"), { target: { value: "10" } });
+      fireEvent.click(screen.getByLabelText("Se vend aussi à la plaquette (boîte entamée)"));
+      fireEvent.change(screen.getByLabelText("Prix d'une plaquette (GNF)"), { target: { value: "3000" } });
+      soumettre();
+
+      await waitFor(() => expect(onSuccess).toHaveBeenCalled());
+      expect(modifierFiche).toHaveBeenCalledWith("s1", "st1", {
+        qualifie: true,
+        prixUnitaire: 25000,
+        uniteMinimale: "PLAQUETTE",
+        coefficientBoite: 10,
+        deconditionnable: true,
+        prixUnite: 3000,
+      });
+    });
+
+    it("dit le nombre attendu dans l'erreur de saisie, accordé à l'unité", async () => {
+      await ouvrirAjout();
+      choisirUnite("PLAQUETTE");
+      fireEvent.change(screen.getByLabelText("Nombre de plaquettes par boîte"), { target: { value: "0" } });
+      soumettre();
+      expect(
+        await screen.findByText("Nombre de plaquettes par boîte : indiquez un nombre entier d'au moins 1."),
+      ).toBeTruthy();
+      expect(modifierFiche).not.toHaveBeenCalled();
+    });
+
+    it("fiche avec stock, unité changée : aide « comptez-le d'abord à 0 », sélecteur actif", () => {
+      ouvrirModification(fiche);
+      expect(screen.queryByText(AIDE_STOCK)).toBeNull();
+      const choix = screen.getByLabelText("Unité de vente au détail");
+      expect(choix).not.toBeDisabled();
+      choisirUnite("PLAQUETTE");
+      expect(screen.getByText(AIDE_STOCK)).toBeTruthy();
+      expect(choix.getAttribute("aria-describedby")).toBe("stock-aide-unite");
+      choisirUnite("COMPRIME");
+      expect(screen.queryByText(AIDE_STOCK)).toBeNull();
+    });
+
+    it("fiche sans stock, unité changée : pas d'aide", () => {
+      ouvrirModification({ ...fiche, quantite: 0 });
+      choisirUnite("PLAQUETTE");
+      expect(screen.queryByText(AIDE_STOCK)).toBeNull();
+    });
+
+    it("409 UNITE_CHANGEMENT_AVEC_STOCK : message du serveur au bandeau, fenêtre ouverte, saisie gardée", async () => {
+      vi.mocked(modifierFiche).mockRejectedValue(
+        new ApiError("Ce médicament a du stock en comprimés : comptez-le d'abord à 0 par un inventaire, puis changez l'unité.", 409, {
+          code: "UNITE_CHANGEMENT_AVEC_STOCK",
+        }),
+      );
+      const { onClose, onSuccess } = ouvrirModification(fiche);
+      choisirUnite("PLAQUETTE");
+      fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "Étagère 2" } });
+      fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
+
+      const bandeau = await screen.findByRole("alert");
+      expect(bandeau.textContent).toBe(
+        "Ce médicament a du stock en comprimés : comptez-le d'abord à 0 par un inventaire, puis changez l'unité.",
+      );
+      expect(screen.getByRole("dialog")).toBeTruthy();
+      expect((screen.getByLabelText("Unité de vente au détail") as HTMLSelectElement).value).toBe("PLAQUETTE");
+      expect((screen.getByLabelText("Notes") as HTMLInputElement).value).toBe("Étagère 2");
+      expect(onClose).not.toHaveBeenCalled();
+      expect(onSuccess).not.toHaveBeenCalled();
+      expect(screen.getByRole("button", { name: "Mettre à jour" })).not.toBeDisabled();
+    });
+
+    it("reprise non qualifiée en « Unité » à 1 par boîte avec stock : l'unité peut changer, l'aide demande le nombre", async () => {
+      vi.mocked(modifierFiche).mockResolvedValue(reponse({ avertissements: [], conversion: null }) as never);
+      const { onClose } = ouvrirModification(ficheReprise);
+      expect(screen.queryByText(AIDE_NOMBRE)).toBeNull();
+
+      choisirUnite("PLAQUETTE");
+      expect(screen.getByText(AIDE_NOMBRE)).toBeTruthy();
+      expect(screen.queryByText(AIDE_STOCK)).toBeNull();
+      expect(screen.getByLabelText("Nombre de plaquettes par boîte").getAttribute("aria-describedby")).toBe("stock-aide-nombre");
+
+      // Le choix de conversion apparaît dès que le nombre change, et l'aide disparaît.
+      fireEvent.change(screen.getByLabelText("Nombre de plaquettes par boîte"), { target: { value: "10" } });
+      expect(screen.queryByText(AIDE_NOMBRE)).toBeNull();
+      expect(screen.getByLabelText(/^des boîtes : les convertir en unités \(12 boîtes deviennent 120 plaquettes\)/)).toBeTruthy();
+      fireEvent.change(screen.getByLabelText("Nombre de plaquettes par boîte"), { target: { value: "1" } });
+      expect(screen.getByText(AIDE_NOMBRE)).toBeTruthy();
+
+      // Revenir à « Unité » : plus d'unité changée, plus d'aide.
+      choisirUnite("UNITE");
+      expect(screen.queryByText(AIDE_NOMBRE)).toBeNull();
+
+      // L'enregistrement n'est pas bloqué par l'aide.
+      choisirUnite("PLAQUETTE");
+      fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
+      await waitFor(() => expect(onClose).toHaveBeenCalled());
+      expect(modifierFiche).toHaveBeenCalledWith("s1", "d1", { uniteMinimale: "PLAQUETTE" });
+    });
+
+    it("reprise en « Unité » à 1 sans stock ou unité d'origine autre : pas d'aide sur le nombre", () => {
+      ouvrirModification({ ...ficheReprise, quantite: 0 });
+      choisirUnite("PLAQUETTE");
+      expect(screen.queryByText(AIDE_NOMBRE)).toBeNull();
+      cleanup();
+      ouvrirModification(ficheNonQualifiee);
+      choisirUnite("PLAQUETTE");
+      expect(screen.queryByText(AIDE_NOMBRE)).toBeNull();
+      expect(screen.getByText(AIDE_STOCK)).toBeTruthy();
+    });
+
+    it("fiche qualifiée dont le nombre change : comportement inchangé, aucune aide d'unité", () => {
+      ouvrirModification(fiche);
+      fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "30" } });
+      expect(screen.queryByText(AIDE_STOCK)).toBeNull();
+      expect(screen.queryByText(AIDE_NOMBRE)).toBeNull();
+      expect(screen.getByText("S'applique aux prochaines réceptions et aux ventes à la boîte.")).toBeTruthy();
+    });
   });
 });

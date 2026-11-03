@@ -32,15 +32,30 @@ export function umVersBoites(quantiteUm: number, coefficientBoite: number): Boit
   return { boites: boites === 0 ? 0 : boites, unites: unites === 0 ? 0 : unites };
 }
 
-export const LIBELLES_UNITE_MINIMALE: Record<UniteMinimale, { singulier: string; pluriel: string }> = {
-  COMPRIME: { singulier: "comprimé", pluriel: "comprimés" },
-  GELULE: { singulier: "gélule", pluriel: "gélules" },
-  ML: { singulier: "ml", pluriel: "ml" },
-  SACHET: { singulier: "sachet", pluriel: "sachets" },
-  GRAMME: { singulier: "gramme", pluriel: "grammes" },
-  AMPOULE: { singulier: "ampoule", pluriel: "ampoules" },
-  UNITE: { singulier: "unité", pluriel: "unités" },
+/** Libellés d'une unité : mot, article défini (« la plaquette ») et article indéfini (« une plaquette », D725). */
+export const LIBELLES_UNITE_MINIMALE: Record<
+  UniteMinimale,
+  { singulier: string; pluriel: string; article: string; unArticle: string }
+> = {
+  COMPRIME: { singulier: "comprimé", pluriel: "comprimés", article: "le comprimé", unArticle: "un" },
+  GELULE: { singulier: "gélule", pluriel: "gélules", article: "la gélule", unArticle: "une" },
+  ML: { singulier: "ml", pluriel: "ml", article: "le ml", unArticle: "un" },
+  SACHET: { singulier: "sachet", pluriel: "sachets", article: "le sachet", unArticle: "un" },
+  GRAMME: { singulier: "gramme", pluriel: "grammes", article: "le gramme", unArticle: "un" },
+  AMPOULE: { singulier: "ampoule", pluriel: "ampoules", article: "l'ampoule", unArticle: "une" },
+  PLAQUETTE: { singulier: "plaquette", pluriel: "plaquettes", article: "la plaquette", unArticle: "une" },
+  UNITE: { singulier: "unité", pluriel: "unités", article: "l'unité", unArticle: "une" },
 };
+
+/** « de plaquettes », « d'ampoules », « d'unités » : « d' » devant une voyelle ou un h muet. */
+export function deOuD(mot: string): string {
+  return /^[aeiouyhàâäéèêëîïôöùûü]/i.test(mot) ? `d'${mot}` : `de ${mot}`;
+}
+
+/** « à la plaquette », « à l'unité », « au comprimé » : l'article défini de l'unité précédé de « à ». */
+export function aArticle(article: string): string {
+  return article.startsWith("le ") ? `au ${article.slice(3)}` : `à ${article}`;
+}
 
 const nombre = (n: number) => n.toLocaleString("fr-FR");
 const boiteAvecNombre = (n: number) => `${nombre(n)} ${n > 1 ? "boîtes" : "boîte"}`;

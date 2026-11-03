@@ -305,7 +305,7 @@ describe("Nouvelle vente", () => {
     expect(screen.queryByText(/Boîte entamée/)).toBeNull();
     ajouter("Doliprane 500 mg");
 
-    expect(screen.getByText("Boîte entamée : 6 comprimés restants")).toBeInTheDocument();
+    expect(screen.getByText("Boîte entamée : il reste 6 comprimés")).toBeInTheDocument();
     verifierTermes();
   });
 
@@ -316,13 +316,42 @@ describe("Nouvelle vente", () => {
 
     expect(screen.getByRole("button", { name: "Comprimés" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Boîte" })).toHaveAttribute("aria-pressed", "false");
-    expect(screen.getByText("F2 : passer de la boîte à l'unité pour la dernière ligne")).toBeInTheDocument();
+    expect(screen.getByText("F2 : passer de la boîte au comprimé pour la dernière ligne")).toBeInTheDocument();
 
     fireEvent.keyDown(document.body, { key: "F2" });
 
     expect(screen.getByRole("button", { name: "Boîte" })).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByRole("button", { name: "Comprimés" })).toHaveAttribute("aria-pressed", "false");
     expect(screen.getByText("Total").parentElement?.textContent).toBe(`Total${formaterGNF(3500)}`);
+  });
+
+  it("fiche en plaquettes : bouton « Plaquettes », prix « la plaquette », boîte entamée et total exacts", async () => {
+    chargerStock.mockResolvedValue([
+      stock("sp", "Paracétamol 500 mg", {
+        quantite: 29,
+        quantiteVendable: 29,
+        prixUnitaire: 25000,
+        prixUnite: 3000,
+        coefficientBoite: 10,
+        uniteMinimale: "PLAQUETTE",
+        deconditionnable: true,
+        reliquat: [{ lotId: "l1", unitesRestantes: 9 }],
+      }),
+    ]);
+    render(<NouvelleVentePage />);
+    const ligneListe = (await screen.findByText("Paracétamol 500 mg")).closest("li") as HTMLElement;
+    expect(ligneListe.textContent).toContain("Reste : 2 boîtes et 9 plaquettes");
+    expect(ligneListe.textContent).toContain(`${formaterGNF(3000)} la plaquette`);
+    ajouter("Paracétamol 500 mg");
+
+    expect(screen.getByRole("button", { name: "Plaquettes" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Boîte entamée : il reste 9 plaquettes")).toBeInTheDocument();
+    expect(screen.getByText("F2 : passer de la boîte à la plaquette pour la dernière ligne")).toBeInTheDocument();
+    expect(screen.getByText("Total").parentElement?.textContent).toBe(`Total${formaterGNF(3000)}`);
+
+    fireEvent.click(screen.getByRole("button", { name: "Augmenter la quantité de Paracétamol 500 mg" }));
+    expect(screen.getByText("Total").parentElement?.textContent).toBe(`Total${formaterGNF(6000)}`);
+    verifierTermes();
   });
 
   it("désactive l'unité quand la fiche ne se vend qu'à la boîte", async () => {

@@ -16,7 +16,7 @@ export interface Medicament {
   formes: string[];
 }
 
-export type UniteMinimale = "COMPRIME" | "GELULE" | "ML" | "SACHET" | "GRAMME" | "AMPOULE" | "UNITE";
+export type UniteMinimale = "COMPRIME" | "GELULE" | "ML" | "SACHET" | "GRAMME" | "AMPOULE" | "PLAQUETTE" | "UNITE";
 
 export interface LotFiche {
   id: string;

@@ -90,6 +90,23 @@ describe("Page du stock", () => {
     expect(ligne.textContent).not.toMatch(/-\d/);
   });
 
+  it("fiche en plaquettes : le prix s'écrit « la plaquette » et le stock se dit en plaquettes", async () => {
+    vi.mocked(getMyStock).mockResolvedValue(
+      reponse([
+        fiche("pl", "Paracétamol", 26, {
+          coefficientBoite: 10,
+          uniteMinimale: "PLAQUETTE",
+          deconditionnable: true,
+          prixUnite: 3000,
+        }),
+      ]),
+    );
+    render(<StockPage />);
+    expect(await screen.findByText("2 boîtes et 6 plaquettes")).toBeTruthy();
+    const ligne = screen.getByText("Paracétamol").closest("tr") as HTMLElement;
+    expect(ligne.textContent).toMatch(/3\s000\sGNF la plaquette/);
+  });
+
   it("fiche à coefficient 20 : la part à régulariser se dit en boîtes et unités", async () => {
     vi.mocked(getMyStock).mockResolvedValue(
       reponse([doliprane(0, { quantiteARegulariser: 43 })], { rupture: [{ id: "d1", nom: "Doliprane" }] }),

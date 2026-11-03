@@ -18,7 +18,7 @@ import {
   type StockMedicament,
 } from "@/lib/api_pharmacie";
 import { ApiError } from "@/lib/api_auth";
-import { LIBELLES_UNITE_MINIMALE } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, deOuD } from "@/lib/caisse/regles/quantites";
 import { afficherDatePeremption, lireDatePeremption } from "@/lib/date_peremption";
 import { champsErreur, codeErreur, detailsErreur, estErreurReseau } from "@/lib/erreurs_api";
 import {
@@ -983,13 +983,13 @@ export default function NouvelleReceptionPage() {
                             <div className="flex-1 space-y-2">
                               {coefficient > 1 ? (
                                 <p>
-                                  Le nombre d&apos;unités par boîte de {fiche.medicament.nom} n&apos;est pas encore confirmé :
+                                  Le nombre {deOuD(unite.pluriel)} par boîte de {fiche.medicament.nom} n&apos;est pas encore confirmé :
                                   vérifiez sa fiche avant de compter en boîtes, ou saisissez la quantité en {unite.pluriel}.
                                 </p>
                               ) : (
                                 // Choix de l'unité absent (1 unité par boîte) : seul conseil réalisable, confirmer la fiche.
                                 <p>
-                                  Le nombre d&apos;unités par boîte de {fiche.medicament.nom} n&apos;est pas encore confirmé.
+                                  Le nombre {deOuD(unite.pluriel)} par boîte de {fiche.medicament.nom} n&apos;est pas encore confirmé.
                                   Si une boîte en contient plusieurs, indiquez-le dans sa fiche avant d&apos;enregistrer
                                   cette réception. Sinon, vous pouvez l&apos;enregistrer telle quelle.
                                 </p>

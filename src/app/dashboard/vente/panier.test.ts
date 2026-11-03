@@ -121,6 +121,22 @@ describe("plafondVente", () => {
     expect(plafondVente(stock("a", { quantite: 4 }))).toBe(4);
   });
 
+  it("plafonne en plaquettes : 1 boîte de 10 et 9 plaquettes donnent 19", () => {
+    const plaquettes = fiche("p", { coefficientBoite: 10, uniteMinimale: "PLAQUETTE", quantite: 19, quantiteVendable: 19 });
+    expect(plafondVente(plaquettes)).toBe(19);
+    expect(avertissementStock(plaquettes, 19)).toBeNull();
+    expect(avertissementStock(plaquettes, 20)).toBe("stock-insuffisant");
+    expect(texteAvertissement("stock-insuffisant", plaquettes)).toBe("Stock insuffisant : il reste 1 boîte et 9 plaquettes.");
+    const p = panier({
+      lignes: [
+        { stockId: "p", unite: "BOITE", nombre: 1 },
+        { stockId: "p", unite: "UNITE", nombre: 9 },
+      ],
+    });
+    expect(demandeEnUm(p, plaquettes)).toBe(19);
+    expect(peutAugmenter(p, "p:UNITE", plaquettes)).toBe(false);
+  });
+
   it("vaut 0 en rupture, même avec une part à régulariser", () => {
     expect(plafondVente(stock("a", { quantite: 0, quantiteARegulariser: 1, quantiteVendable: 0 }))).toBe(0);
     expect(plafondVente(stock("a", { quantite: -1 }))).toBe(0);

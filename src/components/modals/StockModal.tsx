@@ -15,7 +15,7 @@ import {
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { useAuth } from "@/hooks/useAuth";
 import { ALERTE_ATTENTION, ALERTE_ERREUR, BOUTON_PRIMAIRE } from "@/components/pharmacie/classes";
-import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, aArticle, deOuD, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { manqueVenteAuDetail } from "@/lib/caisse/regles/prix";
 import { formaterGNF } from "@/lib/format_gnf";
 import { afficherDatePeremption, lireDatePeremption } from "@/lib/date_peremption";
@@ -70,7 +70,7 @@ const formVide = (): FormState => ({
   ordonnanceRequise: false,
 });
 
-const UNITES: UniteMinimale[] = ["COMPRIME", "GELULE", "ML", "SACHET", "GRAMME", "AMPOULE", "UNITE"];
+const UNITES: UniteMinimale[] = ["COMPRIME", "GELULE", "ML", "SACHET", "GRAMME", "AMPOULE", "PLAQUETTE", "UNITE"];
 
 /** « Comprimé », « Gélule », « ml »... : singulier avec majuscule, sauf « ml ». */
 const libelleUnite = (unite: UniteMinimale) => {
@@ -103,6 +103,21 @@ function lireEntier(saisie: string): Entier {
 
 const messageChiffres = (champ: string) => `${champ} : écrivez des chiffres seulement, sans virgule.`;
 
+/** « Prix d'une plaquette », « Prix d'un comprimé » : article indéfini accordé à l'unité choisie. */
+const libellePrixUnite = (unite: UniteMinimale) =>
+  `Prix d'${LIBELLES_UNITE_MINIMALE[unite].unArticle} ${LIBELLES_UNITE_MINIMALE[unite].singulier}`;
+
+/** « Nombre de plaquettes par boîte », « Nombre d'unités par boîte ». */
+const libelleNombreParBoite = (unite: UniteMinimale) =>
+  `Nombre ${deOuD(LIBELLES_UNITE_MINIMALE[unite].pluriel)} par boîte`;
+
+const MESSAGE_UNITE_AVEC_STOCK =
+  "Ce médicament a du stock : pour changer d'unité, comptez-le d'abord à 0 par un inventaire.";
+
+/** Fiche non qualifiée en « Unité » à 1 par boîte : l'unité peut changer, mais le nombre ne se convertira plus ensuite. */
+const messageNombreAIndiquer = (unite: UniteMinimale) =>
+  `Indiquez aussi combien ${deOuD(LIBELLES_UNITE_MINIMALE[unite].pluriel)} contient la boîte : après l'enregistrement, ce nombre ne pourra plus convertir le stock.`;
+
 interface Valeurs {
   prixBoite: number | null;
   coefficient: number;
@@ -119,11 +134,11 @@ function lireValeurs(form: FormState, ajout: boolean): { erreur: string } | { va
 
   const coefficient = lireEntier(form.coefficient);
   if (coefficient.etat === "invalide" || (coefficient.etat === "ok" && coefficient.valeur < 1)) {
-    return { erreur: "Nombre d'unités par boîte : indiquez un nombre entier d'au moins 1." };
+    return { erreur: `${libelleNombreParBoite(form.unite)} : indiquez un nombre entier d'au moins 1.` };
   }
 
   const prixUnite = form.deconditionnable ? lireEntier(form.prixUnite) : ({ etat: "vide" } as Entier);
-  if (prixUnite.etat === "invalide") return { erreur: messageChiffres("Prix d'une unité") };
+  if (prixUnite.etat === "invalide") return { erreur: messageChiffres(libellePrixUnite(form.unite)) };
 
   const tolerance = lireEntier(form.tolerance);
   if (tolerance.etat === "invalide") return { erreur: messageChiffres("Écart toléré à l'inventaire") };
@@ -498,6 +513,13 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
   const dateLue = departPositif && !form.sansPeremption && form.datePeremption.trim() !== "" ? lireDatePeremption(form.datePeremption) : null;
   const pluriel = LIBELLES_UNITE_MINIMALE[form.unite].pluriel;
   const singulier = LIBELLES_UNITE_MINIMALE[form.unite].singulier;
+  // Changement d'unité sur une fiche qui a du stock (D724) : permis seulement pour une fiche non qualifiée en « Unité » à 1 par boîte.
+  const uniteAvant = editItem?.uniteMinimale ?? "UNITE";
+  const uniteChangee = !!editItem && form.unite !== uniteAvant;
+  const reprisePermise = nonQualifie && uniteAvant === "UNITE" && coefficientAvant === 1;
+  const aideUniteAvecStock = uniteChangee && aDuStock && !reprisePermise;
+  const aideNombreAIndiquer =
+    uniteChangee && aDuStock && reprisePermise && form.unite !== "UNITE" && coefficientCourant === 1;
   const valeurOuNull = (e: Entier) => (e.etat === "ok" ? e.valeur : null);
   const prixBoiteLu = valeurOuNull(lireEntier(form.prixBoite));
   const manqueDetail = form.deconditionnable
@@ -535,7 +557,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
             <div className="space-y-6">
               <p role="status" className={ALERTE_ATTENTION}>
                 <AlertCircle className="w-5 h-5 shrink-0" aria-hidden="true" />
-                {`Enregistré. Le prix d'une unité s'écarte de ${avertissementEcart} % du prix de la boîte divisé par le nombre d'unités : vérifiez qu'il n'y a pas d'erreur.`}
+                {`Enregistré. Le ${libellePrixUnite(form.unite).toLowerCase()} s'écarte de ${avertissementEcart} % du prix de la boîte divisé par le nombre ${deOuD(pluriel)} : vérifiez qu'il n'y a pas d'erreur.`}
               </p>
               <button type="button" onClick={onClose} className={`w-full ${BOUTON_PRIMAIRE}`}>
                 Fermer
@@ -723,18 +745,22 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     id="stock-unite"
                     value={form.unite}
                     onChange={(e) => maj({ unite: e.target.value as UniteMinimale })}
+                    aria-describedby={aideUniteAvecStock ? "stock-aide-unite" : undefined}
                     className={SAISIE}
                   >
                     {UNITES.map((u) => (
                       <option key={u} value={u}>{libelleUnite(u)}</option>
                     ))}
                   </select>
+                  {aideUniteAvecStock && (
+                    <p id="stock-aide-unite" className={AIDE}>{MESSAGE_UNITE_AVEC_STOCK}</p>
+                  )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label htmlFor="stock-coefficient" className={LABEL}>Nombre d&apos;unités par boîte</label>
+                  <label htmlFor="stock-coefficient" className={LABEL}>{libelleNombreParBoite(form.unite)}</label>
                   <input
                     id="stock-coefficient"
                     type="text"
@@ -742,7 +768,9 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     autoComplete="off"
                     value={form.coefficient}
                     onChange={(e) => maj({ coefficient: e.target.value })}
-                    aria-describedby={editItem && !nonQualifie ? "stock-aide-coefficient" : undefined}
+                    aria-describedby={
+                      aideNombreAIndiquer ? "stock-aide-nombre" : editItem && !nonQualifie ? "stock-aide-coefficient" : undefined
+                    }
                     className={SAISIE}
                   />
                   {editItem && !nonQualifie && (
@@ -750,9 +778,14 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                       S&apos;applique aux prochaines réceptions et aux ventes à la boîte.
                     </p>
                   )}
+                  {aideNombreAIndiquer && (
+                    <p id="stock-aide-nombre" className="text-xs text-amber-700 dark:text-amber-300 ml-1">
+                      {messageNombreAIndiquer(form.unite)}
+                    </p>
+                  )}
                 </div>
                 <div className="space-y-2">
-                  <label htmlFor="stock-tolerance" className={LABEL}>Écart toléré à l&apos;inventaire (en unités)</label>
+                  <label htmlFor="stock-tolerance" className={LABEL}>{`Écart toléré à l'inventaire (en ${pluriel})`}</label>
                   <input
                     id="stock-tolerance"
                     type="text"
@@ -776,12 +809,12 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                   onChange={(e) => maj({ deconditionnable: e.target.checked })}
                   className={CASE_A_COCHER}
                 />
-                <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Se vend aussi à l&apos;unité (boîte entamée)</span>
+                <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{`Se vend aussi ${aArticle(LIBELLES_UNITE_MINIMALE[form.unite].article)} (boîte entamée)`}</span>
               </label>
 
               {form.deconditionnable && (
                 <div className="space-y-2">
-                  <label htmlFor="stock-prix-unite" className={LABEL}>Prix d&apos;une unité (GNF)</label>
+                  <label htmlFor="stock-prix-unite" className={LABEL}>{`${libellePrixUnite(form.unite)} (GNF)`}</label>
                   <input
                     id="stock-prix-unite"
                     type="text"
@@ -809,7 +842,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
               <div className="space-y-4">
                 <div className={ALERTE_ATTENTION}>
                   <Info className="w-5 h-5 shrink-0" aria-hidden="true" />
-                  <p>Le nombre d&apos;unités par boîte de ce médicament n&apos;est pas encore confirmé. Vérifiez-le, puis cochez la case ci-dessous.</p>
+                  <p>{`Le nombre ${deOuD(pluriel)} par boîte de ce médicament n'est pas encore confirmé. Vérifiez-le, puis cochez la case ci-dessous.`}</p>
                 </div>
 
                 {afficherChoix && (

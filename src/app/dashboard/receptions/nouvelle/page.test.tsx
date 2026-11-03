@@ -201,7 +201,7 @@ describe("Nouvelle réception", () => {
     await attendrePage();
 
     choisirMedicament(1, "amox");
-    expect(screen.getByText(/Le nombre d'unités par boîte de Amoxicilline n'est pas encore confirmé/)).toBeInTheDocument();
+    expect(screen.getByText(/Le nombre de gélules par boîte de Amoxicilline n'est pas encore confirmé/)).toBeInTheDocument();
 
     fireEvent.change(screen.getByLabelText("Unité de la quantité, ligne 1"), { target: { value: "UNITE" } });
     expect(screen.queryByText(/n'est pas encore confirmé/)).toBeNull();
