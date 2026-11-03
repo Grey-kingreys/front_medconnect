@@ -144,6 +144,15 @@ describe("raccourcis de la pharmacie", () => {
     expect(estRouteAutorisee("/dashboard/inventaire", vendeur)).toBe(false);
   });
 
+  it("montre Clôture de caisse avec cloture:gerer et la refuse au rôle Pharmacien (D704)", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "cloture:gerer"]);
+    expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/clotures");
+    expect(estRouteAutorisee("/dashboard/clotures", titulaire)).toBe(true);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(vendeur))).not.toContain("/dashboard/clotures");
+    expect(estRouteAutorisee("/dashboard/clotures", vendeur)).toBe(false);
+  });
+
   it("garde la saisie et le détail d'une réception sous reception:write", () => {
     const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "reception:write"]);
     const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);

@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { authFetch } from "./api_auth";
+import { authDownload, authFetch } from "./api_auth";
 import {
   assurerPosteWeb,
+  cloturerJournee,
   enregistrerMouvement,
+  exporterCloture,
   fermerSession,
   getBilan,
+  getPreparationCloture,
   getReferentiels,
   getSessionCourante,
+  listerClotures,
+  listerRemonteesApresCloture,
   ouvrirSession,
   saisirComptage,
 } from "./api_caisse";
@@ -14,9 +19,11 @@ import {
 vi.mock("./api_auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./api_auth")>()),
   authFetch: vi.fn(),
+  authDownload: vi.fn(),
 }));
 
 const mockedAuthFetch = vi.mocked(authFetch);
+const mockedAuthDownload = vi.mocked(authDownload);
 
 beforeEach(() => {
   mockedAuthFetch.mockReset();
@@ -68,5 +75,35 @@ describe("api_caisse", () => {
       method: "POST",
       body: '{"comptageFermeture":{"id":"f1","coupures":[]}}',
     });
+  });
+
+  it("lit la préparation, clôture et liste les clôtures du mois aux routes encodées", async () => {
+    await getPreparationCloture("s 1", "2026-10-30");
+    expect(mockedAuthFetch).toHaveBeenLastCalledWith("/pharmacie/s%201/caisse/clotures/2026-10-30/preparation");
+    await cloturerJournee("s1", { jour: "2026-10-30", forcer: true, motifForcage: "Panne" });
+    expect(mockedAuthFetch).toHaveBeenLastCalledWith("/pharmacie/s1/caisse/clotures", {
+      method: "POST",
+      body: '{"jour":"2026-10-30","forcer":true,"motifForcage":"Panne"}',
+    });
+    await listerClotures("s1", "2026-10");
+    expect(mockedAuthFetch).toHaveBeenLastCalledWith("/pharmacie/s1/caisse/clotures?mois=2026-10");
+  });
+
+  it("lit les sommes arrivées après une clôture dans data.anomalies", async () => {
+    mockedAuthFetch.mockResolvedValue({ data: { anomalies: [{ id: "a1" }], total: 21 }, message: "ok", success: true });
+    const liste = await listerRemonteesApresCloture("s1");
+    expect(mockedAuthFetch).toHaveBeenCalledWith("/pharmacie/s1/anomalies?type=REMONTEE_APRES_CLOTURE&statut=OUVERTE");
+    expect(liste).toEqual({ anomalies: [{ id: "a1" }], total: 21 });
+  });
+
+  it("exporte par authDownload, rend le même Blob et un nom de repli sans en-tête", async () => {
+    const blob = new Blob(["﻿a;b"], { type: "text/csv" });
+    mockedAuthDownload.mockResolvedValueOnce({ blob, filename: "cloture-2026-10-30.csv" });
+    const recu = await exporterCloture("s1", "2026-10-30");
+    expect(mockedAuthDownload).toHaveBeenLastCalledWith("/pharmacie/s1/caisse/clotures/2026-10-30/export");
+    expect(recu.blob).toBe(blob);
+    expect(recu.filename).toBe("cloture-2026-10-30.csv");
+    mockedAuthDownload.mockResolvedValueOnce({ blob, filename: null });
+    expect((await exporterCloture("s1", "2026-10-29")).filename).toBe("cloture-2026-10-29.csv");
   });
 });

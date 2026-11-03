@@ -9,6 +9,7 @@ import {
   Bot,
   Building2,
   Calendar,
+  CalendarCheck,
   ClipboardCheck,
   ClipboardList,
   Clock,
@@ -403,6 +404,15 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
       degrade: "from-emerald-500 to-teal-500",
       rolesRepli: [],
     },
+  },
+  {
+    id: "clotures",
+    section: "activite",
+    href: "/dashboard/clotures",
+    icone: CalendarCheck,
+    libelle: { defaut: "Clôture de caisse" },
+    acces: perm(["cloture:gerer"], { typesStructure: P }),
+    rolesRepli: [],
   },
   {
     id: "ordonnances-recues",
