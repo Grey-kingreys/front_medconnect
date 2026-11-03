@@ -18,7 +18,7 @@ import {
   type StockMedicament,
   type UniteMinimale,
 } from "@/lib/api_pharmacie";
-import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { afficherDatePeremption, lireDatePeremption } from "@/lib/date_peremption";
 import { champsErreur, codeErreur, detailsErreur, estErreurReseau } from "@/lib/erreurs_api";
 import {
@@ -667,6 +667,7 @@ export default function InventairePage() {
                   const fiche = ficheDe(l.stockId);
                   const unite = fiche?.uniteMinimale ?? "UNITE";
                   const coefficient = coefficientParLot.get(l.lotId) ?? fiche?.coefficientBoite ?? 1;
+                  const aRegulariser = formaterARegulariser(l.quantiteARegulariser, coefficient, unite);
                   const lot = `${l.numeroLot ? l.numeroLot : "Lot sans numéro"}, ${
                     l.dateExpiration ? afficherDatePeremption(l.dateExpiration) : "sans date"
                   }`;
@@ -676,6 +677,9 @@ export default function InventairePage() {
                       <td className="py-3 pr-3 text-slate-800 dark:text-slate-200">{lot}</td>
                       <td className="py-3 pr-3 text-slate-800 dark:text-slate-200">
                         {formaterQuantite(l.quantiteTheorique, coefficient, unite)}
+                        {aRegulariser !== null && (
+                          <span className="block text-xs text-amber-700 dark:text-amber-300">{`dont ${aRegulariser}`}</span>
+                        )}
                       </td>
                       <td className="py-3 pr-3 text-slate-800 dark:text-slate-200">
                         {formaterQuantite(l.quantiteComptee, coefficient, unite)}

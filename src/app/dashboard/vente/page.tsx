@@ -19,13 +19,12 @@ import {
 import { estErreurReseau } from "@/lib/erreurs_api";
 import { sourceEnLigne } from "@/lib/caisse/source_en_ligne";
 import type { EtatCaisse } from "@/lib/caisse/source";
-import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { MSG_TELEPHONE_INVALIDE, AIDE_TELEPHONE } from "@/lib/erreur_telephone";
 import { lireContexteAcces } from "@/lib/acces";
 import { formaterGNF } from "@/lib/format_gnf";
 import { estRouteAutorisee } from "@/lib/navigation_tableau_de_bord";
 import {
-  ALERTE_ATTENTION,
   ALERTE_INFO,
   BOUTON_ICONE,
   BOUTON_PRIMAIRE,
@@ -39,11 +38,11 @@ import { formaterHeure, formaterJour, jourConakry } from "../ventes/affichage";
 import { ConfirmationVente } from "./ConfirmationVente";
 import { SortieLotPerime } from "./SortieLotPerime";
 import {
-  LIBELLES_AVERTISSEMENT,
-  LIBELLES_RAISON,
+  LIBELLES_RAISON_LISTE,
   LONGUEUR_MAX_NOM_CLIENT,
   NOMBRE_MAX_RESULTATS,
   PANIER_VIDE,
+  QUANTITE_MAX_LIGNE,
   ajouterAuPanier,
   autreUnite,
   avertissementStock,
@@ -54,18 +53,24 @@ import {
   cleStockagePanier,
   corpsVente,
   definirSortieManuelle,
+  demandeEnUm,
   enregistrerPanier,
   lirePanierStocke,
   medicamentsSurOrdonnance,
   messageCorrections,
   montantLigne,
   panierPlein,
+  peutAjouter,
+  peutAugmenter,
+  plafondVente,
+  raisonListe,
   raisonNonVendable,
   rechercherDansStock,
   reconcilierPanier,
   retirerDuPanier,
   retirerLignes,
   telephoneClientValide,
+  texteAvertissement,
   totalPanier,
   uniteParDefaut,
   type PanierVente,
@@ -287,7 +292,7 @@ export default function NouvelleVentePage() {
     if (e.key !== "Enter") return;
     e.preventDefault();
     if (verrouille || texte.trim() === "") return;
-    const premier = resultats.find((s) => raisonNonVendable(s, uniteParDefaut(s)) === null);
+    const premier = resultats.find((s) => raisonListe(s, uniteParDefaut(s)) === null && peutAjouter(panier, s, uniteParDefaut(s)));
     if (!premier) return;
     ajouter(premier);
     setTexte("");
@@ -337,6 +342,16 @@ export default function NouvelleVentePage() {
         setSortie(null);
         setBandeau(message);
       }
+      return;
+    }
+
+    // Stock plus bas que la demande : le message du serveur est affiché tel quel, le panier reste modifiable,
+    // le stock est relu pour dire sous chaque ligne ce qu'il reste. La clé est renouvelée : la vente corrigée n'est pas un rejeu.
+    if (code === "STOCK_INSUFFISANT") {
+      enregistrerEtAppliquer(refuse(envoye));
+      setEssai((n) => n + 1);
+      setSortie(null);
+      setBandeau(message);
       return;
     }
 
@@ -535,11 +550,6 @@ export default function NouvelleVentePage() {
             ))}
             {rendu !== null && <p className="font-bold text-slate-900 dark:text-white">Monnaie à rendre : {formaterGNF(rendu)}</p>}
           </div>
-          {succes.provisoire === true && (
-            <p role="status" className={ALERTE_ATTENTION}>
-              Une partie de cette vente attend une livraison : le stock sera rattaché à la prochaine réception.
-            </p>
-          )}
           {autreJour && typeof succes.jourMetier === "string" && (
             <p role="status" className={ALERTE_INFO}>
               Vente comptée pour le {formaterJour(succes.jourMetier)} (journée d&apos;aujourd&apos;hui déjà clôturée).
@@ -629,12 +639,19 @@ export default function NouvelleVentePage() {
             <ul className="divide-y divide-slate-200 dark:divide-slate-800">
               {resultats.map((s) => {
                 const unite = uniteParDefaut(s);
-                const raison = raisonNonVendable(s, unite);
+                const raison = raisonListe(s, unite);
                 const dansPanier = nombreDansPanier(s.id, unite);
                 const nom = s.medicament.nom;
                 const coefficient = s.coefficientBoite ?? 1;
                 const libelleUnite = LIBELLES_UNITE_MINIMALE[s.uniteMinimale ?? "UNITE"];
-                const avertissement = raison === null ? avertissementStock(s, unite, Math.max(dansPanier, 1)) : null;
+                const demandeMini = unite === "UNITE" ? 1 : coefficient;
+                const avertissement =
+                  raison === null ? avertissementStock(s, Math.max(demandeEnUm(panier, s), demandeMini)) : null;
+                const aRegulariser = formaterARegulariser(
+                  s.quantiteARegulariser,
+                  coefficient,
+                  s.uniteMinimale ?? "UNITE",
+                );
                 const prixBoite = typeof s.prixUnitaire === "number" && s.prixUnitaire > 0 ? s.prixUnitaire : null;
                 const prixUnite =
                   s.deconditionnable === true && typeof s.prixUnite === "number" && s.prixUnite > 0 ? s.prixUnite : null;
@@ -647,20 +664,23 @@ export default function NouvelleVentePage() {
                       )}
                       <p className="text-sm text-slate-600 dark:text-slate-400">
                         Reste : {formaterQuantite(s.quantite, coefficient, s.uniteMinimale ?? "UNITE")}
+                        {aRegulariser !== null && `, ${aRegulariser}`}
                         {prixBoite !== null && ` · ${formaterGNF(prixBoite)}`}
                         {prixUnite !== null && ` · ${formaterGNF(prixUnite)} le ${libelleUnite.singulier}`}
                         {s.medicament.ordonnanceRequise && " · Sur ordonnance"}
                       </p>
                       {avertissement !== null && (
-                        <p className="text-sm text-amber-700 dark:text-amber-300">{LIBELLES_AVERTISSEMENT[avertissement]}</p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300">{texteAvertissement(avertissement, s)}</p>
                       )}
                     </div>
                     {raison !== null ? (
                       <span className="inline-flex self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300">
-                        {LIBELLES_RAISON[raison]}
+                        {LIBELLES_RAISON_LISTE[raison]}
                       </span>
                     ) : dansPanier === 0 && panierPlein(panier) ? (
                       <span className="text-sm text-slate-600 dark:text-slate-400">Panier complet</span>
+                    ) : !peutAjouter(panier, s, unite) ? (
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Plus assez de stock à ajouter</span>
                     ) : (
                       <button
                         type="button"
@@ -759,6 +779,17 @@ export default function NouvelleVentePage() {
                   const libelleUnite = LIBELLES_UNITE_MINIMALE[s.uniteMinimale ?? "UNITE"];
                   const autre = autreUnite(ligne.unite);
                   const autrePossible = raisonNonVendable(s, autre) === null;
+                  const peutPlus = peutAugmenter(panier, cle, s);
+                  const avertissementLigne = avertissementStock(s, demandeEnUm(panier, s));
+                  // Au-dessus du stock (stock relu après un refus) : le texte dit ce qu'il reste ; au plafond : le « + » s'arrête.
+                  const texteStock =
+                    avertissementLigne === "stock-insuffisant"
+                      ? texteAvertissement(avertissementLigne, s)
+                      : !peutPlus && ligne.nombre < QUANTITE_MAX_LIGNE && plafondVente(s) > 0
+                        ? demandeEnUm(panier, s) >= plafondVente(s)
+                          ? "Vous avez pris tout le stock disponible."
+                          : "Il ne reste pas assez de stock pour une boîte de plus."
+                        : null;
                   const boutonsUnite: { unite: UniteVente; libelle: string }[] = [
                     { unite: "BOITE", libelle: "Boîte" },
                     { unite: "UNITE", libelle: majuscule(libelleUnite.pluriel) },
@@ -806,7 +837,7 @@ export default function NouvelleVentePage() {
                       <div className="flex items-center gap-2">
                         <button
                           type="button"
-                          onClick={() => setPanier(changerNombre(panier, cle, -1))}
+                          onClick={() => setPanier(changerNombre(panier, cle, -1, s))}
                           disabled={verrouille || ligne.nombre <= 1}
                           aria-label={`Diminuer la quantité de ${nom}`}
                           className={BOUTON_ICONE}
@@ -818,8 +849,8 @@ export default function NouvelleVentePage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => setPanier(changerNombre(panier, cle, 1))}
-                          disabled={verrouille}
+                          onClick={() => setPanier(changerNombre(panier, cle, 1, s))}
+                          disabled={verrouille || !peutPlus}
                           aria-label={`Augmenter la quantité de ${nom}`}
                           className={BOUTON_ICONE}
                         >
@@ -836,6 +867,9 @@ export default function NouvelleVentePage() {
                           Retirer
                         </button>
                       </div>
+                      {texteStock !== null && (
+                        <p className="text-sm text-amber-700 dark:text-amber-300">{texteStock}</p>
+                      )}
                     </li>
                   );
                 })}

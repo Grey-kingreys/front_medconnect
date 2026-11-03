@@ -28,7 +28,7 @@ import {
   removeStockItem
 } from "@/lib/api_pharmacie";
 import { calculerApercuStock } from "@/lib/apercu_pharmacie";
-import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { formaterGNF } from "@/lib/format_gnf";
 import { afficherDatePeremption } from "@/lib/date_peremption";
 import { jourConakry } from "../ventes/affichage";
@@ -314,6 +314,11 @@ export default function StockPage() {
                         </span>
                         {s.reliquat && s.reliquat.length > 0 && (
                           <span className="text-xs text-slate-600 dark:text-slate-400">boîte entamée</span>
+                        )}
+                        {formaterARegulariser(s.quantiteARegulariser, coefficient, unite) !== null && (
+                          <span className="text-xs text-amber-700 dark:text-amber-300">
+                            {formaterARegulariser(s.quantiteARegulariser, coefficient, unite)}
+                          </span>
                         )}
                       </div>
                     </td>

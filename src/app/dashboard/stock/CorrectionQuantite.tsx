@@ -14,7 +14,7 @@ import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
 import { updateStockQuantite, type StockMedicament } from "@/lib/api_pharmacie";
 import { estErreurReseau } from "@/lib/erreurs_api";
-import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { LONGUEUR_MAX_MOTIF, motifValide } from "../ventes/affichage";
 
 interface CorrectionQuantiteProps {
@@ -46,6 +46,7 @@ interface ContenuProps {
 function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuProps) {
   const coefficient = stock.coefficientBoite ?? 1;
   const unite = stock.uniteMinimale ?? "UNITE";
+  const aRegulariser = formaterARegulariser(stock.quantiteARegulariser, coefficient, unite);
   const libelleUnite = LIBELLES_UNITE_MINIMALE[unite];
   const lots = stock.lots ?? [];
   const lotObligatoire = lots.length > 1;
@@ -117,9 +118,19 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
             </h3>
           </div>
 
-          <p className="text-sm font-bold text-slate-900 dark:text-white">
-            Stock actuel : {formaterQuantite(stock.quantite, coefficient, unite)}
-          </p>
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-slate-900 dark:text-white">
+              Stock actuel : {formaterQuantite(stock.quantite, coefficient, unite)}
+            </p>
+            {aRegulariser !== null && (
+              <>
+                <p className="text-sm text-amber-700 dark:text-amber-300">{aRegulariser}</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300">
+                  Ces ventes se régularisent à la prochaine réception ou au prochain inventaire.
+                </p>
+              </>
+            )}
+          </div>
 
           <fieldset disabled={issueInconnue || envoiEnCours} className="flex flex-col gap-5 min-w-0">
             <fieldset className="space-y-2">

@@ -232,6 +232,40 @@ describe("Inventaire", () => {
     verifierTermes();
   });
 
+  it("résultat : « Attendu » écrêté à 0 avec « dont 1 boîte à régulariser », écart signé conservé", async () => {
+    enregistrerInventaire.mockResolvedValue(
+      reponse({
+        lignes: [
+          {
+            id: "x1",
+            stockId: "s1",
+            nom: "Doliprane",
+            lotId: "l1",
+            numeroLot: "DL23K052",
+            dateExpiration: "2028-06-30T00:00:00.000Z",
+            lotTechnique: false,
+            quantiteTheorique: 0,
+            quantiteARegulariser: 10,
+            quantiteComptee: 40,
+            ecart: 40,
+            sousTolerance: false,
+            anomalieId: null,
+          },
+        ],
+      }),
+    );
+    render(<InventairePage />);
+    await attendrePage();
+    await ajouter("dolip", /DL23K052/);
+    fireEvent.change(groupe(/DL23K052/).getByLabelText("Boîtes"), { target: { value: "2" } });
+    enregistrer();
+    await screen.findByRole("button", { name: "Nouvel inventaire" });
+    const ligne = screen.getByRole("row", { name: /Doliprane/ });
+    expect(ligne).toHaveTextContent("0 boîtedont 1 boîte à régulariser");
+    expect(within(ligne).getByText("+40 comprimés")).toBeInTheDocument();
+    expect(ligne.textContent).not.toMatch(/-\d/);
+  });
+
   it("rejoue le même identifiant après un échec réseau", async () => {
     enregistrerInventaire.mockRejectedValueOnce(new ApiError("Réseau", 0));
     render(<InventairePage />);

@@ -129,12 +129,19 @@ describe("calculerApercuStock", () => {
     expect(a.valeur).toBe(0);
   });
 
-  it("compte en rupture une quantité négative avec le détail des ventes en attente de livraison", () => {
-    const a = calculerApercuStock([ligne("x", "Ventoline", -1, 1000)], MAINTENANT);
+  it("dit la part à régulariser d'une fiche en rupture, sans parler de livraison", () => {
+    const a = calculerApercuStock([{ ...ligne("x", "Ventoline", 0, 1000), quantiteARegulariser: 1 }], MAINTENANT);
     expect(a.ruptures).toBe(1);
     expect(a.aSurveiller[0]).toMatchObject({
       raison: "rupture",
-      detail: "Rupture de stock (ventes en attente de livraison)",
+      detail: "Rupture de stock, 1 boîte à régulariser",
     });
+  });
+
+  it("garde « Rupture de stock » seul sans part à régulariser, et traite un négatif comme 0", () => {
+    const a = calculerApercuStock([ligne("x", "Ventoline", -1, 1000)], MAINTENANT);
+    expect(a.ruptures).toBe(1);
+    expect(a.aSurveiller[0]).toMatchObject({ raison: "rupture", detail: "Rupture de stock" });
+    expect(JSON.stringify(a)).not.toMatch(/livraison|-\d/);
   });
 });

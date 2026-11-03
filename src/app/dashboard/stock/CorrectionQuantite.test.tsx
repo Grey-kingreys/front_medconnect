@@ -40,6 +40,27 @@ describe("CorrectionQuantite", () => {
     vi.clearAllMocks();
   });
 
+  it("dit la part à régulariser et la phrase d'explication, sans signe moins", () => {
+    render(
+      <CorrectionQuantite
+        isOpen
+        stock={{ ...stock, quantite: 0, quantiteARegulariser: 21 }}
+        structureId="s1"
+        onClose={vi.fn()}
+        onSucces={vi.fn()}
+      />,
+    );
+    expect(screen.getByText("Stock actuel : 0 boîte")).toBeTruthy();
+    expect(screen.getByText("1 boîte et 1 comprimé à régulariser")).toBeTruthy();
+    expect(screen.getByText("Ces ventes se régularisent à la prochaine réception ou au prochain inventaire.")).toBeTruthy();
+    expect(screen.getByRole("dialog").textContent).not.toMatch(/-\d/);
+  });
+
+  it("n'affiche aucune mention sans part à régulariser", () => {
+    ouvrir();
+    expect(screen.queryByText(/à régulariser/)).toBeNull();
+  });
+
   it("affiche le message du serveur pour un lot négatif et garde le dialogue ouvert", async () => {
     vi.mocked(updateStockQuantite).mockRejectedValue(
       new ApiError("Ce lot ne contient pas assez de comprimés.", 409, { code: "STOCK_LOT_NEGATIF" }),

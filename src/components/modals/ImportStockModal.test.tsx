@@ -252,6 +252,34 @@ describe("ImportStockModal en mode stock", () => {
     expect(screen.getByRole("row", { name: /Doliprane 500/ })).toHaveTextContent("5 → devient 15");
   });
 
+  it("montre « 0 → 4 » avec la part à régulariser rattachée, sans signe moins ni jargon", async () => {
+    mockedApercuStock.mockResolvedValue({
+      data: {
+        ...RAPPORT_STOCK,
+        lignes: [
+          { ...RAPPORT_STOCK.lignes[1], quantiteAvant: 0, quantiteApres: 4, quantiteARegulariserAvant: 1 },
+          // Un ancien serveur peut encore donner un avant négatif : il se lit 0.
+          { ...RAPPORT_STOCK.lignes[0], quantiteAvant: -2, quantiteApres: 8 },
+        ],
+      },
+      message: "",
+      success: true,
+    });
+    afficherStock();
+
+    choisirFichier();
+    verifier();
+
+    const ligne = await screen.findByRole("row", { name: /Amoxicilline/ });
+    expect(ligne).toHaveTextContent("0 → devient 4");
+    expect(ligne).toHaveTextContent("1 à régulariser avant cette livraison");
+    expect(ligne).not.toHaveTextContent("boîte à régulariser");
+    const autre = screen.getByRole("row", { name: /Doliprane 500/ });
+    expect(autre).toHaveTextContent("0 → devient 8");
+    expect(autre).not.toHaveTextContent("régulariser");
+    expect(within(screen.getByRole("table")).queryByText(/-\d/)).not.toBeInTheDocument();
+  });
+
   it("vérifie en mode « livraison » quand la livraison est choisie à l'étape 1", async () => {
     mockedApercuStock.mockResolvedValue({ data: RAPPORT_STOCK, message: "", success: true });
     afficherStock();

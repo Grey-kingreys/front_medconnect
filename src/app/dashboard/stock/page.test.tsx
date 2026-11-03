@@ -78,6 +78,33 @@ describe("Page du stock", () => {
     expect(await screen.findByText("1 boîte et 6 comprimés")).toBeTruthy();
   });
 
+  it("Ventoline à 0 avec 1 boîte à régulariser : « 0 boîte » et la mention, sans signe moins", async () => {
+    vi.mocked(getMyStock).mockResolvedValue(
+      reponse([fiche("v", "Ventoline", 0, { quantiteARegulariser: 1 })], { rupture: [{ id: "v", nom: "Ventoline" }] }),
+    );
+    render(<StockPage />);
+    await screen.findByText("Ventoline");
+    const ligne = screen.getByText("Ventoline").closest("tr") as HTMLElement;
+    expect(ligne.textContent).toContain("0 boîte");
+    expect(ligne.textContent).toContain("1 boîte à régulariser");
+    expect(ligne.textContent).not.toMatch(/-\d/);
+  });
+
+  it("fiche à coefficient 20 : la part à régulariser se dit en boîtes et unités", async () => {
+    vi.mocked(getMyStock).mockResolvedValue(
+      reponse([doliprane(0, { quantiteARegulariser: 43 })], { rupture: [{ id: "d1", nom: "Doliprane" }] }),
+    );
+    render(<StockPage />);
+    expect(await screen.findByText("2 boîtes et 3 comprimés à régulariser")).toBeTruthy();
+  });
+
+  it("n'affiche aucune mention sans part à régulariser", async () => {
+    vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(26)]));
+    render(<StockPage />);
+    await screen.findByText("1 boîte et 6 comprimés");
+    expect(document.body.textContent).not.toContain("à régulariser");
+  });
+
   it("lit les statuts des alertes du serveur", async () => {
     vi.mocked(getMyStock).mockResolvedValue(
       reponse([fiche("a", "Amlor", 500), fiche("v", "Ventoline", -1), fiche("o", "Oméprazole", 500)], {

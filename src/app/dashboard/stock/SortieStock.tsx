@@ -24,7 +24,7 @@ import {
   type StockMedicament,
   type UniteMinimale,
 } from "@/lib/api_pharmacie";
-import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { estErreurReseau } from "@/lib/erreurs_api";
 
 interface SortieStockProps {
@@ -130,7 +130,10 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
     try {
       const res = await sortirDuStock(structureId, corps);
       const reste = formaterQuantite(res.data.soldeLot, Math.max(1, coefficientLot), unite);
-      onSucces(`${res.message} Reste dans ce lot : ${reste}.`);
+      const aRegulariser = formaterARegulariser(res.data.quantiteARegulariser, coefficientFiche, unite);
+      onSucces(
+        `${res.message} Reste dans ce lot : ${reste}.${aRegulariser === null ? "" : ` Sur ce médicament : ${aRegulariser}.`}`,
+      );
       onClose(false);
     } catch (err) {
       if (estErreurReseau(err)) {

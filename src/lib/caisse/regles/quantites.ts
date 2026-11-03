@@ -45,17 +45,28 @@ export const LIBELLES_UNITE_MINIMALE: Record<UniteMinimale, { singulier: string;
 const nombre = (n: number) => n.toLocaleString("fr-FR");
 const boiteAvecNombre = (n: number) => `${nombre(n)} ${n > 1 ? "boîtes" : "boîte"}`;
 
-/** Quantité lisible : « 12 boîtes », « 2 boîtes et 6 comprimés », « 6 comprimés », « 1 boîte », « 0 boîte », « -3 comprimés » (négatif : en unités seulement). */
-export function formaterQuantite(um: number, coefficient: number, unite: UniteMinimale): string {
+/**
+ * Quantité lisible : « 12 boîtes », « 2 boîtes et 6 comprimés », « 6 comprimés », « 1 boîte », « 0 boîte ».
+ * Filet (D713) : une valeur négative s'affiche comme 0, jamais de signe moins à l'écran.
+ */
+export function formaterQuantite(umBrut: number, coefficient: number, unite: UniteMinimale): string {
+  const um = umBrut < 0 ? 0 : umBrut;
   const libelle = LIBELLES_UNITE_MINIMALE[unite];
   const unites = (n: number) => `${nombre(n)} ${Math.abs(n) > 1 ? libelle.pluriel : libelle.singulier}`;
 
-  if (coefficient <= 1) {
-    return um < 0 ? `-${boiteAvecNombre(-um)}` : boiteAvecNombre(um);
-  }
-  if (um < 0) return `-${unites(-um)}`;
+  if (coefficient <= 1) return boiteAvecNombre(um);
   const { boites, unites: reste } = umVersBoites(um, coefficient);
   if (boites === 0) return reste === 0 ? boiteAvecNombre(0) : unites(reste);
   if (reste === 0) return boiteAvecNombre(boites);
   return `${boiteAvecNombre(boites)} et ${unites(reste)}`;
+}
+
+/** Mention d'une part de vente à régulariser (D717) : « 1 boîte à régulariser », null s'il n'y en a pas. */
+export function formaterARegulariser(
+  um: number | null | undefined,
+  coefficient: number,
+  unite: UniteMinimale,
+): string | null {
+  if (um === null || um === undefined || um <= 0) return null;
+  return `${formaterQuantite(um, coefficient, unite)} à régulariser`;
 }

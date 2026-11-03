@@ -35,8 +35,10 @@ export interface StockMedicament {
   medicamentId: string;
   medicament: Medicament;
   structureId: string;
-  /** Unités minimales (comprimés, ml...), peut être négative. */
+  /** Unités minimales (comprimés, ml...), jamais négative (D713). */
   quantite: number;
+  /** Unités minimales vendues sans stock, à rattacher à une réception ou un inventaire (D717). Absent sur un ancien serveur. */
+  quantiteARegulariser?: number;
   /** Prix de la boîte. */
   prixUnitaire?: number;
   // Champs de la fiche : la recherche publique ne les renvoie pas.
@@ -71,7 +73,7 @@ export interface StockInfo {
   stocks: StockMedicament[];
   alertes: {
     stockBas: Array<{ id: string; nom: string; quantite: number }>;
-    rupture: Array<{ id: string; nom: string }>;
+    rupture: Array<{ id: string; nom: string; quantiteARegulariser?: number }>;
   };
 }
 
@@ -211,6 +213,8 @@ export interface LigneImportStock {
   quantiteAvant?: number | null;
   /** Quantité en stock après l'import, selon le mode choisi ; absente sur un ancien serveur. */
   quantiteApres?: number | null;
+  /** Unités vendues sans stock qui étaient à régulariser avant l'import (rattachées par l'import) ; absente sur un ancien serveur. */
+  quantiteARegulariserAvant?: number | null;
 }
 
 /** Colonnes du fichier telles que le serveur les a comprises. */
@@ -485,8 +489,10 @@ export interface LigneInventaireEcrite {
   numeroLot: string | null;
   dateExpiration: string | null;
   lotTechnique: boolean;
-  /** Unités minimales attendues (peut être négatif). */
+  /** Unités minimales attendues (écrêtées à 0). */
   quantiteTheorique: number;
+  /** Unités vendues sans stock comprises dans l'attendu ; absente sur un ancien serveur. */
+  quantiteARegulariser?: number;
   /** Unités minimales comptées. */
   quantiteComptee: number;
   /** Écart signé en unités minimales. */
@@ -558,6 +564,8 @@ export interface SortieStockEnregistree {
   /** Unités minimales restant dans le lot. */
   soldeLot: number;
   soldeProduit: number;
+  /** Unités vendues sans stock encore à régulariser sur la fiche ; absente sur un ancien serveur. */
+  quantiteARegulariser?: number;
   auteurId: string;
   createdAt: string;
   /** Faux sur le rejeu d'un identifiant déjà enregistré. */

@@ -191,7 +191,7 @@ describe("Nouvelle vente", () => {
     expect(ligne.textContent).toContain(`${formaterGNF(600)} le comprimé`);
   });
 
-  it("ne plafonne plus la quantité au stock et calcule le total en direct", async () => {
+  it("le « + » s'arrête au stock (3 boîtes), « - » reste permis, et le total se calcule en direct", async () => {
     render(<NouvelleVentePage />);
     await screen.findByText("Paracétamol");
     ajouter("Paracétamol");
@@ -199,12 +199,16 @@ describe("Nouvelle vente", () => {
     const moins = screen.getByRole("button", { name: "Diminuer la quantité de Paracétamol" });
     const plus = screen.getByRole("button", { name: "Augmenter la quantité de Paracétamol" });
     expect(moins).toBeDisabled();
-    fireEvent.click(plus);
-    fireEvent.click(plus);
-    fireEvent.click(plus);
     expect(plus).not.toBeDisabled();
+    fireEvent.click(plus);
+    fireEvent.click(plus);
+    fireEvent.click(plus);
+    expect(plus).toBeDisabled();
     expect(moins).not.toBeDisabled();
-    expect(screen.getByText("Total").parentElement?.textContent).toBe(`Total${formaterGNF(6000)}`);
+    expect(screen.getByText("Vous avez pris tout le stock disponible.")).toBeInTheDocument();
+    expect(screen.getByText("Total").parentElement?.textContent).toBe(`Total${formaterGNF(4500)}`);
+    fireEvent.click(moins);
+    expect(plus).not.toBeDisabled();
   });
 
   it("exige l'ordonnance vue pour un médicament sur ordonnance", async () => {
@@ -329,17 +333,159 @@ describe("Nouvelle vente", () => {
     expect(screen.getByRole("button", { name: "Unités" })).toBeDisabled();
   });
 
-  it("permet une vente sans stock, enregistrée en attente de livraison", async () => {
-    creerVente.mockResolvedValue(succesVente());
+  it("une fiche en rupture n'a pas de bouton d'ajout et montre « Rupture de stock » et la part à régulariser", async () => {
+    chargerStock.mockResolvedValue([
+      ...STOCKS.filter((s) => s.id !== "sv"),
+      stock("sv", "Ventoline", { quantite: 0, quantiteVendable: 0, quantiteARegulariser: 1, prixUnitaire: 4000 }),
+    ]);
     render(<NouvelleVentePage />);
     await screen.findByText("Ventoline");
-    expect(screen.getByText("Stock insuffisant : la vente sera enregistrée en attente de livraison.")).toBeInTheDocument();
-    ajouter("Ventoline");
+
+    const ligne = screen.getByText("Ventoline").closest("li") as HTMLElement;
+    expect(within(ligne).getByText("Rupture de stock")).toBeInTheDocument();
+    expect(ligne.textContent).toContain("Reste : 0 boîte, 1 boîte à régulariser");
+    expect(within(ligne).queryByRole("button")).toBeNull();
+    expect(document.body.textContent).not.toContain("livraison");
+    verifierTermes();
+  });
+
+  it("moins d'une boîte en stock : pas de bouton d'ajout, le reste est affiché, Entrée n'ajoute rien et garde la recherche", async () => {
+    chargerStock.mockResolvedValue([
+      stock("sm", "Spasfon", {
+        quantite: 5,
+        quantiteVendable: 5,
+        prixUnitaire: 3500,
+        coefficientBoite: 20,
+        uniteMinimale: "COMPRIME",
+        deconditionnable: true,
+        prixUnite: null,
+      }),
+    ]);
+    render(<NouvelleVentePage />);
+    await screen.findByText("Spasfon");
+
+    const ligne = screen.getByText("Spasfon").closest("li") as HTMLElement;
+    expect(within(ligne).getByText("Moins d'une boîte en stock")).toBeInTheDocument();
+    expect(ligne.textContent).toContain("Reste : 5 comprimés");
+    expect(within(ligne).queryByRole("button")).toBeNull();
+
+    const champ = screen.getByLabelText("Rechercher un médicament");
+    fireEvent.change(champ, { target: { value: "spas" } });
+    fireEvent.keyDown(champ, { key: "Enter" });
+    expect(champ).toHaveValue("spas");
+    expect(screen.getByText("Le panier est vide. Recherchez un médicament puis appuyez sur « Ajouter ».")).toBeInTheDocument();
+  });
+
+  it("au panier : stock restant mais pas assez pour une boîte de plus, ou tout le stock pris", async () => {
+    chargerStock.mockResolvedValue([
+      stock("sr", "Spasfon", {
+        quantite: 25,
+        quantiteVendable: 25,
+        prixUnitaire: 3500,
+        coefficientBoite: 20,
+        uniteMinimale: "COMPRIME",
+        deconditionnable: true,
+        prixUnite: null,
+      }),
+    ]);
+    render(<NouvelleVentePage />);
+    await screen.findByText("Spasfon");
+    ajouter("Spasfon");
+
+    expect(screen.getByText("Il ne reste pas assez de stock pour une boîte de plus.")).toBeInTheDocument();
+    expect(screen.queryByText("Vous avez pris tout le stock disponible.")).toBeNull();
+    expect(screen.getByRole("button", { name: "Augmenter la quantité de Spasfon" })).toBeDisabled();
+  });
+
+  it("au plafond : plus de bouton d'ajout dans la liste, Entrée ne fait rien", async () => {
+    chargerStock.mockResolvedValue([
+      stock("sr", "Spasfon", { quantite: 1, quantiteVendable: 1, prixUnitaire: 3500 }),
+    ]);
+    render(<NouvelleVentePage />);
+    await screen.findByText("Spasfon");
+    ajouter("Spasfon");
+
+    const ligne = screen.getByRole("button", { name: "Augmenter la quantité de Spasfon" });
+    expect(ligne).toBeDisabled();
+    expect(screen.getByText("Plus assez de stock à ajouter")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Ajouter Spasfon au panier" })).toBeNull();
+
+    const champ = screen.getByLabelText("Rechercher un médicament");
+    fireEvent.change(champ, { target: { value: "spas" } });
+    fireEvent.keyDown(champ, { key: "Enter" });
+    expect(champ).toHaveValue("spas");
+  });
+
+  it("périmé seulement : l'avertissement de la liste n'est pas doublé sous la ligne du panier", async () => {
+    render(<NouvelleVentePage />);
+    await screen.findByText("Augmentin");
+    ajouter("Augmentin");
+
+    const aviss = "Il ne reste que des boîtes périmées : vous devrez choisir le lot à sortir.";
+    expect(screen.getAllByText(aviss)).toHaveLength(1);
+    // Il reste de la place au panier (12 boîtes périmées) : aucun texte de plafond en plus.
+    expect(screen.queryByText("Vous avez pris tout le stock disponible.")).toBeNull();
+    const plus = screen.getByRole("button", { name: "Augmenter la quantité de Augmentin" });
+    for (let i = 0; i < 11; i++) fireEvent.click(plus);
+    expect(plus).toBeDisabled();
+    expect(screen.getAllByText("Vous avez pris tout le stock disponible.")).toHaveLength(1);
+    expect(screen.getAllByText(aviss)).toHaveLength(1);
+  });
+
+  it("un stock négatif d'un ancien serveur se lit 0 sans signe moins", async () => {
+    render(<NouvelleVentePage />);
+    await screen.findByText("Ventoline");
+
+    const ligne = screen.getByText("Ventoline").closest("li") as HTMLElement;
+    expect(ligne.textContent).toContain("Reste : 0 boîte");
+    expect(ligne.textContent).not.toMatch(/-\d/);
+    expect(within(ligne).queryByRole("button")).toBeNull();
+  });
+
+  it("STOCK_INSUFFISANT : message du serveur, panier gardé et modifiable, stock relu, nouvelle clé au renvoi", async () => {
+    const message = "Stock insuffisant pour Paracétamol : il reste 1 boîte. Corrigez le panier puis validez à nouveau.";
+    creerVente
+      .mockRejectedValueOnce(
+        new ApiError(message, 409, {
+          code: "STOCK_INSUFFISANT",
+          details: [{ stockId: "s1", nom: "Paracétamol", unite: "BOITE", demande: 3, disponible: 1, disponibleUm: 1 }],
+        }),
+      )
+      .mockResolvedValueOnce(succesVente());
+    render(<NouvelleVentePage />);
+    await screen.findByText("Paracétamol");
+    ajouter("Paracétamol");
+    fireEvent.click(screen.getByRole("button", { name: "Augmenter la quantité de Paracétamol" }));
+    fireEvent.click(screen.getByRole("button", { name: "Augmenter la quantité de Paracétamol" }));
+
+    // Le stock a baissé entre-temps : la relecture le dit à 1 boîte.
+    chargerStock.mockResolvedValue([
+      ...STOCKS.filter((s) => s.id !== "s1"),
+      stock("s1", "Paracétamol", { quantite: 1, quantiteVendable: 1 }),
+    ]);
+    await confirmerLaVente();
+
+    const alerte = await screen.findByRole("alert");
+    expect(alerte).toHaveTextContent(message);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    await waitFor(() => expect(chargerStock).toHaveBeenCalledTimes(2));
+    // Le panier est gardé (3 boîtes), le texte dit ce qu'il reste, « + » est bloqué, « - » permis.
+    const ligne = (await screen.findByRole("button", { name: "Retirer Paracétamol du panier" })).closest("li") as HTMLElement;
+    await waitFor(() => expect(ligne.textContent).toContain("Stock insuffisant : il reste 1 boîte."));
+    expect(ligne.textContent).toContain(`${formaterGNF(1500)} × 3`);
+    expect(screen.getByRole("button", { name: "Augmenter la quantité de Paracétamol" })).toBeDisabled();
+    const moins = screen.getByRole("button", { name: "Diminuer la quantité de Paracétamol" });
+    fireEvent.click(moins);
+    fireEvent.click(moins);
+    expect(ligne.textContent).toContain(`${formaterGNF(1500)} × 1`);
+    expect(ligne.textContent).not.toContain("Stock insuffisant");
 
     await confirmerLaVente();
 
     expect(await screen.findByRole("heading", { name: "Vente enregistrée" })).toBeInTheDocument();
-    expect(creerVente.mock.calls[0][1].lignes).toEqual([{ stockId: "sv", quantite: 1, unite: "BOITE" }]);
+    expect(creerVente).toHaveBeenCalledTimes(2);
+    expect(creerVente.mock.calls[1][2]).not.toBe(creerVente.mock.calls[0][2]);
+    expect(creerVente.mock.calls[1][1].lignes).toEqual([{ stockId: "s1", quantite: 1, unite: "BOITE" }]);
   });
 
   it("sortie d'un lot périmé : le second envoi porte le lot et le motif, avec une autre clé", async () => {
@@ -622,7 +768,7 @@ describe("Nouvelle vente", () => {
     expect(await screen.findByText(/Caisse ouverte, ventes comptées pour le .*22 octobre 2026/)).toBeInTheDocument();
   });
 
-  it("succès : monnaie à rendre et vente en attente de livraison", async () => {
+  it("succès : monnaie à rendre, sans texte d'attente de livraison", async () => {
     creerVente.mockResolvedValue(
       succesVente({
         ...VENTE,
@@ -643,9 +789,7 @@ describe("Nouvelle vente", () => {
     expect(screen.getByText(paragraphe(`Espèces : ${formaterGNF(10000)}`))).toBeInTheDocument();
     expect(screen.getByText(paragraphe(`Orange Money : ${formaterGNF(5000)}, référence OM-778`))).toBeInTheDocument();
     expect(screen.getByText(paragraphe(`Monnaie à rendre : ${formaterGNF(5000)}`))).toBeInTheDocument();
-    expect(
-      screen.getByText("Une partie de cette vente attend une livraison : le stock sera rattaché à la prochaine réception."),
-    ).toBeInTheDocument();
+    expect(document.body.textContent).not.toMatch(/attend une livraison|attente de livraison/);
     verifierTermes();
   });
 

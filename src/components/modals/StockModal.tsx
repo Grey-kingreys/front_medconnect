@@ -15,7 +15,7 @@ import {
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { useAuth } from "@/hooks/useAuth";
 import { ALERTE_ATTENTION, ALERTE_ERREUR, BOUTON_PRIMAIRE } from "@/components/pharmacie/classes";
-import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { manqueVenteAuDetail } from "@/lib/caisse/regles/prix";
 import { formaterGNF } from "@/lib/format_gnf";
 import { afficherDatePeremption, lireDatePeremption } from "@/lib/date_peremption";
@@ -321,7 +321,9 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     if (!e.stockId) {
       const res = await upsertStock(structureId, { medicamentId });
       const existante = res?.data;
-      const avecStock = typeof existante?.quantite === "number" && existante.quantite !== 0;
+      // Une fiche lue à 0 sans lot mais avec une part à régulariser (D713) est déjà dans le stock.
+      const avecStock =
+        (typeof existante?.quantite === "number" && existante.quantite !== 0) || (existante?.quantiteARegulariser ?? 0) > 0;
       if (existante && (avecStock || !!existante.archiveLe || (existante.lots?.length ?? 0) > 0)) {
         etapes.current = {};
         throw new DejaPresentError();
@@ -375,7 +377,8 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     const coefficientAvant = item.coefficientBoite ?? 1;
     const coefficientChange = v.coefficient !== coefficientAvant;
     const nonQualifie = item.qualifie === false;
-    const choixConversion = nonQualifie && coefficientChange && (item.quantite !== 0 || conversionRequise);
+    const aDuStock = item.quantite !== 0 || (item.quantiteARegulariser ?? 0) > 0;
+    const choixConversion = nonQualifie && coefficientChange && (aDuStock || conversionRequise);
     if (choixConversion && form.conversion === "") {
       setError(MESSAGE_CHOIX_CONVERSION);
       return "refus";
@@ -484,8 +487,12 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
   const coefficientCourant = coefficientLu.etat === "ok" && coefficientLu.valeur >= 1 ? coefficientLu.valeur : 1;
   const coefficientAvant = editItem?.coefficientBoite ?? 1;
   const nonQualifie = editItem?.qualifie === false;
+  const aDuStock = !!editItem && (editItem.quantite !== 0 || (editItem.quantiteARegulariser ?? 0) > 0);
   const afficherChoix =
-    !!editItem && nonQualifie && ((coefficientCourant !== coefficientAvant && editItem.quantite !== 0) || conversionRequise);
+    !!editItem && nonQualifie && ((coefficientCourant !== coefficientAvant && aDuStock) || conversionRequise);
+  const aRegulariser = editItem
+    ? formaterARegulariser(editItem.quantiteARegulariser, coefficientAvant, editItem.uniteMinimale ?? "UNITE")
+    : null;
   const departLu = lireEntier(form.quantiteDepart);
   const departPositif = !editItem && departLu.etat === "ok" && departLu.valeur > 0;
   const dateLue = departPositif && !form.sansPeremption && form.datePeremption.trim() !== "" ? lireDatePeremption(form.datePeremption) : null;
@@ -656,6 +663,9 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                 <p className="text-sm font-bold text-slate-900 dark:text-white">
                   Stock actuel : {formaterQuantite(editItem.quantite, coefficientAvant, editItem.uniteMinimale ?? "UNITE")}
                 </p>
+                {aRegulariser !== null && (
+                  <p className="text-sm text-amber-700 dark:text-amber-300">{aRegulariser}</p>
+                )}
                 <p className={AIDE}>
                   Pour changer la quantité : « Corriger la quantité » dans la liste, ou faites un inventaire.
                 </p>
@@ -805,7 +815,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                 {afficherChoix && (
                   <fieldset className="space-y-2">
                     <legend className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
-                      {`Le stock actuel de ${formaterQuantite(editItem.quantite, 1, "UNITE")} compte :`}
+                      {`Le stock actuel de ${formaterQuantite(editItem.quantite, 1, "UNITE")}${aRegulariser === null ? "" : `, avec ${aRegulariser},`} compte :`}
                     </legend>
                     <label className="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200">
                       <input

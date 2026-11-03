@@ -253,6 +253,37 @@ describe("StockModal", () => {
     expect(onSuccess).toHaveBeenCalled();
   });
 
+  it("fiche à régulariser (stock 0, 1 boîte à régulariser) : mention, sans signe moins, et le choix de conversion reste", async () => {
+    vi.mocked(modifierFiche).mockResolvedValue(reponse({ avertissements: [], conversion: null }) as never);
+    const aRegulariser: StockMedicament = { ...ficheNonQualifiee, quantite: 0, quantiteARegulariser: 1 };
+    const { onClose } = ouvrirModification(aRegulariser);
+    expect(screen.getByText("Stock actuel : 0 boîte")).toBeTruthy();
+    expect(screen.getByText("1 boîte à régulariser")).toBeTruthy();
+
+    fireEvent.change(screen.getByLabelText("Nombre d'unités par boîte"), { target: { value: "20" } });
+    // Le choix de conversion apparaît bien que la quantité soit 0.
+    expect(screen.getByLabelText(/^des boîtes : les convertir en unités/)).toBeTruthy();
+    expect(screen.getByText(/Le stock actuel de 0 boîte, avec 1 boîte à régulariser, compte/)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
+    expect(await screen.findByText("Indiquez si le stock actuel compte des boîtes ou des unités.")).toBeTruthy();
+    expect(modifierFiche).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByLabelText("déjà des unités : ne rien changer"));
+    fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
+    await waitFor(() => expect(onClose).toHaveBeenCalled());
+    expect(modifierFiche).toHaveBeenCalledWith("s1", "d1", {
+      coefficientBoite: 20,
+      conversionStock: "CONSERVER",
+      qualifie: true,
+    });
+  });
+
+  it("fiche à stock 0 sans part à régulariser : aucun choix de conversion", () => {
+    ouvrirModification({ ...ficheNonQualifiee, quantite: 0 });
+    fireEvent.change(screen.getByLabelText("Nombre d'unités par boîte"), { target: { value: "20" } });
+    expect(screen.queryByLabelText(/^des boîtes : les convertir en unités/)).toBeNull();
+  });
+
   it("exige le choix de conversion d'une fiche non confirmée puis envoie MULTIPLIER", async () => {
     vi.mocked(modifierFiche).mockResolvedValue(reponse({ avertissements: [], conversion: null }) as never);
     const { onClose } = ouvrirModification(ficheNonQualifiee);
@@ -346,6 +377,8 @@ describe("StockModal", () => {
       { id: "st1", quantite: 12, lots: [], archiveLe: null },
       { id: "st1", quantite: 0, lots: [], archiveLe: "2026-10-01T00:00:00.000Z" },
       { id: "st1", quantite: 0, lots: [{ id: "l1" }], archiveLe: null },
+      // Fiche à -1 lue à 0 sans lot : la part à régulariser suffit à la voir comme déjà présente (D713).
+      { id: "st1", quantite: 0, lots: [], archiveLe: null, quantiteARegulariser: 1 },
     ];
     for (const existante of cas) {
       const { onSuccess } = await ouvrirAjout();

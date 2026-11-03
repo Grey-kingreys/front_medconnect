@@ -33,10 +33,17 @@ const formatDate = (iso?: string) =>
 /** « avant → après » pour une ligne du stock ; rien si le serveur ne fournit pas ces quantités (D04, D07). */
 const renduEvolutionStock = (l: LigneImportStock) => {
   if (typeof l.quantiteApres !== "number") return null;
-  const avant = typeof l.quantiteAvant === "number" ? l.quantiteAvant : 0;
+  // Jamais de signe moins (D713) : un avant négatif d'un ancien serveur se lit 0.
+  const avant = typeof l.quantiteAvant === "number" ? Math.max(l.quantiteAvant, 0) : 0;
+  const aRegulariser = typeof l.quantiteARegulariserAvant === "number" ? l.quantiteARegulariserAvant : 0;
   return (
     <span className="whitespace-nowrap">
-      {avant} <span aria-hidden="true">→</span> <span className="sr-only">devient</span> {l.quantiteApres}
+      {avant} <span aria-hidden="true">→</span> <span className="sr-only">devient</span> {Math.max(l.quantiteApres, 0)}
+      {aRegulariser > 0 && (
+        <span className="block text-xs text-amber-700 dark:text-amber-300">
+          {aRegulariser} à régulariser avant cette livraison
+        </span>
+      )}
     </span>
   );
 };

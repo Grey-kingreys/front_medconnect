@@ -11,6 +11,11 @@ import {
   changerNombre,
   changerUnite,
   cleStockagePanier,
+  demandeEnUm,
+  peutAugmenter,
+  plafondVente,
+  raisonListe,
+  texteAvertissement,
   corpsVente,
   definirSortieManuelle,
   enregistrerPanier,
@@ -56,7 +61,7 @@ describe("uniteParDefaut", () => {
 });
 
 describe("raisonNonVendable", () => {
-  it("ne bloque ni la rupture ni la péremption", () => {
+  it("ne juge ni la rupture ni la péremption (la rupture est dite par raisonListe)", () => {
     expect(raisonNonVendable(stock("a", { quantite: -1 }), "BOITE")).toBeNull();
     expect(raisonNonVendable(stock("a", { dateExpiration: "2020-01-01T00:00:00.000Z" }), "BOITE")).toBeNull();
   });
@@ -74,17 +79,74 @@ describe("raisonNonVendable", () => {
 });
 
 describe("avertissementStock", () => {
-  it("signale l'attente de stock au-delà de la quantité vendable", () => {
+  it("signale un stock insuffisant au-delà du plafond, boîtes et unités additionnées", () => {
     const s = fiche("a", { quantite: 25, quantiteVendable: 25 });
-    expect(avertissementStock(s, "UNITE", 25)).toBeNull();
-    expect(avertissementStock(s, "UNITE", 26)).toBe("attente-stock");
-    expect(avertissementStock(s, "BOITE", 1)).toBeNull();
-    expect(avertissementStock(s, "BOITE", 2)).toBe("attente-stock");
-    expect(avertissementStock(stock("b", { quantite: -1 }), "BOITE", 1)).toBe("attente-stock");
+    expect(avertissementStock(s, 25)).toBeNull();
+    expect(avertissementStock(s, 26)).toBe("stock-insuffisant");
+    const p = panier({
+      lignes: [
+        { stockId: "a", unite: "BOITE", nombre: 1 },
+        { stockId: "a", unite: "UNITE", nombre: 6 },
+      ],
+    });
+    expect(demandeEnUm(p, s)).toBe(26);
+    expect(avertissementStock(s, demandeEnUm(p, s))).toBe("stock-insuffisant");
+    expect(avertissementStock(stock("b", { quantite: 0 }), 1)).toBe("stock-insuffisant");
   });
 
   it("signale qu'il ne reste que du périmé", () => {
-    expect(avertissementStock(fiche("a", { quantite: 12, quantiteVendable: 0 }), "UNITE", 1)).toBe("perime-seulement");
+    expect(avertissementStock(fiche("a", { quantite: 12, quantiteVendable: 0 }), 1)).toBe("perime-seulement");
+  });
+
+  it("dit le stock restant sans parler de livraison", () => {
+    const s = fiche("a", { quantite: 23, quantiteVendable: 23 });
+    expect(texteAvertissement("stock-insuffisant", s)).toBe("Stock insuffisant : il reste 1 boîte et 3 comprimés.");
+    expect(texteAvertissement("stock-insuffisant", stock("b", { quantite: 1, quantiteVendable: 1 }))).toBe(
+      "Stock insuffisant : il reste 1 boîte.",
+    );
+    expect(texteAvertissement("stock-insuffisant", stock("c", { quantite: 0 }))).toBe("Rupture de stock");
+  });
+});
+
+describe("plafondVente", () => {
+  it("prend le vendable s'il est positif", () => {
+    expect(plafondVente(fiche("a", { quantite: 50, quantiteVendable: 30 }))).toBe(30);
+  });
+
+  it("prend le stock quand il ne reste que du périmé", () => {
+    expect(plafondVente(fiche("a", { quantite: 12, quantiteVendable: 0 }))).toBe(12);
+  });
+
+  it("vaut le stock sur un ancien serveur sans vendable", () => {
+    expect(plafondVente(stock("a", { quantite: 4 }))).toBe(4);
+  });
+
+  it("vaut 0 en rupture, même avec une part à régulariser", () => {
+    expect(plafondVente(stock("a", { quantite: 0, quantiteARegulariser: 1, quantiteVendable: 0 }))).toBe(0);
+    expect(plafondVente(stock("a", { quantite: -1 }))).toBe(0);
+  });
+});
+
+describe("raisonListe", () => {
+  it("donne la rupture quand le plafond est 0", () => {
+    expect(raisonListe(stock("a", { quantite: 0, quantiteARegulariser: 1 }), "BOITE")).toBe("rupture");
+  });
+
+  it("dit « moins d'une boîte » quand la boîte ne peut plus se vendre, sans bouton d'ajout", () => {
+    // Déconditionnable sans prix à l'unité : vendue à la boîte, 5 comprimés pour des boîtes de 20.
+    const s = fiche("a", { prixUnite: null, quantite: 5, quantiteVendable: 5 });
+    expect(raisonListe(s, uniteParDefaut(s))).toBe("moins-d-une-boite");
+    expect(ajouterAuPanier(PANIER_VIDE, s, "BOITE", cle)).toBe(PANIER_VIDE);
+    // Non déconditionnable : le stock est déjà en boîtes, donc au moins une boîte tant qu'il en reste.
+    expect(raisonListe(stock("b", { quantite: 1, quantiteVendable: 1 }), "BOITE")).toBeNull();
+    // Avec un prix à l'unité, l'unité reste vendable.
+    expect(raisonListe(fiche("c", { quantite: 5, quantiteVendable: 5 }), "UNITE")).toBeNull();
+  });
+
+  it("garde les raisons de prix et d'unité sinon", () => {
+    expect(raisonListe(stock("a", { prixUnitaire: undefined }), "BOITE")).toBe("sans-prix");
+    expect(raisonListe(stock("a"), "UNITE")).toBe("unite-interdite");
+    expect(raisonListe(stock("a"), "BOITE")).toBeNull();
   });
 });
 
@@ -122,12 +184,26 @@ describe("ajouterAuPanier", () => {
     expect(deux.lignes).toHaveLength(2);
   });
 
-  it("ajoute un à une ligne existante de la même unité, sans plafond au stock", () => {
+  it("ajoute un à une ligne existante de la même unité, jusqu'au plafond du stock", () => {
     const s = stock("a", { quantite: 2 });
     let p = ajouterAuPanier(PANIER_VIDE, s, "BOITE", cle);
     p = ajouterAuPanier(p, s, "BOITE", cle);
-    p = ajouterAuPanier(p, s, "BOITE", cle);
-    expect(p.lignes).toEqual([{ stockId: "a", unite: "BOITE", nombre: 3 }]);
+    expect(p.lignes).toEqual([{ stockId: "a", unite: "BOITE", nombre: 2 }]);
+    expect(ajouterAuPanier(p, s, "BOITE", cle)).toBe(p);
+  });
+
+  it("additionne boîtes et unités pour le plafond", () => {
+    const s = fiche("a", { quantite: 25, quantiteVendable: 25 });
+    let p = ajouterAuPanier(PANIER_VIDE, s, "BOITE", cle);
+    for (let i = 0; i < 5; i++) p = ajouterAuPanier(p, s, "UNITE", cle);
+    expect(p.lignes.map((l) => [l.unite, l.nombre])).toEqual([["BOITE", 1], ["UNITE", 5]]);
+    expect(ajouterAuPanier(p, s, "UNITE", cle)).toBe(p);
+    expect(ajouterAuPanier(p, s, "BOITE", cle)).toBe(p);
+  });
+
+  it("autorise toute la quantité d'un périmé seul (la sortie manuelle suit)", () => {
+    const s = stock("a", { quantite: 2, quantiteVendable: 0 });
+    expect(ajouterAuPanier(PANIER_VIDE, s, "BOITE", cle).lignes).toHaveLength(1);
   });
 
   it("remet l'ordonnance à non vue pour un nouveau médicament à ordonnance", () => {
@@ -136,9 +212,11 @@ describe("ajouterAuPanier", () => {
     expect(ajouterAuPanier(p, stock("c", {}, "C", false), "BOITE", cle).ordonnanceVue).toBe(true);
   });
 
-  it("ajoute une fiche en rupture (vente sans stock, D689)", () => {
-    const p = ajouterAuPanier(PANIER_VIDE, stock("a", { quantite: -1 }), "BOITE", cle);
-    expect(p.lignes).toEqual([{ stockId: "a", unite: "BOITE", nombre: 1 }]);
+  it("n'ajoute pas une fiche en rupture, même avec une part à régulariser (D713)", () => {
+    expect(ajouterAuPanier(PANIER_VIDE, stock("a", { quantite: -1 }), "BOITE", cle)).toBe(PANIER_VIDE);
+    expect(
+      ajouterAuPanier(PANIER_VIDE, stock("a", { quantite: 0, quantiteARegulariser: 1 }), "BOITE", cle),
+    ).toBe(PANIER_VIDE);
   });
 
   it("refuse une fiche sans prix de boîte en boîte", () => {
@@ -146,7 +224,7 @@ describe("ajouterAuPanier", () => {
   });
 
   it("garde une ligne par unité pour une même fiche", () => {
-    const s = fiche("a");
+    const s = fiche("a", { quantite: 100, quantiteVendable: 100 });
     const p = ajouterAuPanier(ajouterAuPanier(PANIER_VIDE, s, "BOITE", cle), s, "UNITE", cle);
     expect(p.lignes.map((l) => l.unite)).toEqual(["BOITE", "UNITE"]);
   });
@@ -155,10 +233,45 @@ describe("ajouterAuPanier", () => {
 describe("changerNombre", () => {
   const p = panier({ lignes: [{ stockId: "a", unite: "BOITE", nombre: 2 }], cleIdempotence: "k" });
 
-  it("reste entre 1 et 10000, sans lien avec le stock", () => {
-    expect(changerNombre(p, "a:BOITE", -5).lignes[0].nombre).toBe(1);
-    expect(changerNombre(p, "a:BOITE", 50).lignes[0].nombre).toBe(52);
-    expect(changerNombre(changerNombre(p, "a:BOITE", 20000), "a:BOITE", 1).lignes[0].nombre).toBe(QUANTITE_MAX_LIGNE);
+  const grand = stock("a", { quantite: 100000, quantiteVendable: 100000 });
+  const petit = stock("a", { quantite: 3, quantiteVendable: 3 });
+
+  it("reste entre 1 et 10000 quand le stock suffit", () => {
+    expect(changerNombre(p, "a:BOITE", -5, grand).lignes[0].nombre).toBe(1);
+    expect(changerNombre(p, "a:BOITE", 50, grand).lignes[0].nombre).toBe(52);
+    expect(changerNombre(changerNombre(p, "a:BOITE", 20000, grand), "a:BOITE", 1, grand).lignes[0].nombre).toBe(
+      QUANTITE_MAX_LIGNE,
+    );
+  });
+
+  it("le « + » s'arrête au plafond du stock", () => {
+    expect(peutAugmenter(p, "a:BOITE", petit)).toBe(true);
+    const trois = changerNombre(p, "a:BOITE", 1, petit);
+    expect(trois.lignes[0].nombre).toBe(3);
+    expect(peutAugmenter(trois, "a:BOITE", petit)).toBe(false);
+    expect(changerNombre(trois, "a:BOITE", 1, petit)).toBe(trois);
+  });
+
+  it("le « + » additionne boîtes et unités de la fiche", () => {
+    const s = fiche("a", { quantite: 25, quantiteVendable: 25 });
+    const deux = panier({
+      lignes: [
+        { stockId: "a", unite: "BOITE", nombre: 1 },
+        { stockId: "a", unite: "UNITE", nombre: 5 },
+      ],
+    });
+    expect(peutAugmenter(deux, "a:BOITE", s)).toBe(false);
+    expect(peutAugmenter(deux, "a:UNITE", s)).toBe(false);
+  });
+
+  it("au-dessus du plafond : « - », l'unité et le retrait restent permis (D722)", () => {
+    const dessus = panier({ lignes: [{ stockId: "a", unite: "BOITE", nombre: 5 }], cleIdempotence: "k" });
+    expect(peutAugmenter(dessus, "a:BOITE", petit)).toBe(false);
+    expect(changerNombre(dessus, "a:BOITE", -1, petit).lignes[0].nombre).toBe(4);
+    expect(retirerDuPanier(dessus, "a:BOITE").lignes).toHaveLength(0);
+    const f = fiche("a", { quantite: 5, quantiteVendable: 5 });
+    const enUnites = panier({ lignes: [{ stockId: "a", unite: "UNITE", nombre: 9 }] });
+    expect(changerUnite(enUnites, "a:UNITE", f).lignes[0].unite).toBe("BOITE");
   });
 });
 

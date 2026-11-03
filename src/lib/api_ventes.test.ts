@@ -104,6 +104,22 @@ describe("lignesErreurVente", () => {
     expect(lignesErreurVente(err)).toEqual([{ stockId: "s1", disponible: 2, demande: 5 }]);
   });
 
+  it("lit les détails de STOCK_INSUFFISANT : unité et stock en unités minimales", () => {
+    const err = new ApiError("x", 409, {
+      code: "STOCK_INSUFFISANT",
+      details: [{ stockId: "s1", nom: "Ventoline", unite: "BOITE", demande: 2, disponible: 1, disponibleUm: 1 }],
+    });
+    expect(codeErreurVente(err)).toBe("STOCK_INSUFFISANT");
+    expect(lignesErreurVente(err)).toEqual([
+      { stockId: "s1", nom: "Ventoline", unite: "BOITE", demande: 2, disponible: 1, disponibleUm: 1 },
+    ]);
+  });
+
+  it("ignore un disponibleUm mal typé", () => {
+    const err = new ApiError("x", 409, { details: [{ stockId: "s1", unite: 3, disponibleUm: -2 }] });
+    expect(lignesErreurVente(err)).toEqual([{ stockId: "s1" }]);
+  });
+
   it("ignore les anciens emplacements", () => {
     expect(lignesErreurVente(new ApiError("x", 409, { donnees: { details: [ligne] } }))).toEqual([]);
     expect(lignesErreurVente(new ApiError("x", 409, { donnees: { lignes: [ligne] } }))).toEqual([]);

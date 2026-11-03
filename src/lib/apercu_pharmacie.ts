@@ -1,6 +1,6 @@
 /** Chiffres de l'aperçu d'une pharmacie, calculés à partir de son stock (aucune valeur inventée). */
 import type { StockMedicament } from "./api_pharmacie";
-import { formaterQuantite } from "./caisse/regles/quantites";
+import { formaterARegulariser, formaterQuantite } from "./caisse/regles/quantites";
 
 /** Seuil par défaut du serveur (`seuilStockBas`), en boîtes : alerte « stock bas » sous 10 boîtes. */
 export const SEUIL_STOCK_BAS = 10;
@@ -105,7 +105,8 @@ export function calculerApercuStock(stocks: readonly StockMedicament[], maintena
     if (perime) {
       listables.push({ ...base, raison: "perime", detail: `Périmé depuis le ${date}` });
     } else if (rupture) {
-      const detail = q < 0 ? "Rupture de stock (ventes en attente de livraison)" : "Rupture de stock";
+      const aRegulariser = formaterARegulariser(s.quantiteARegulariser, coefficient, unite);
+      const detail = aRegulariser === null ? "Rupture de stock" : `Rupture de stock, ${aRegulariser}`;
       listables.push({ ...base, raison: "rupture", detail });
     } else if (bas) {
       listables.push({ ...base, raison: "stockBas", detail: `Plus que ${formaterQuantite(q, coefficient, unite)} en stock` });

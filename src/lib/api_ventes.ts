@@ -28,6 +28,7 @@ export const CODES_ERREUR_VENTE = [
   "FICHE_MODIFIEE",
   "JOURNEE_CLOTUREE",
   "PIECE_NON_ANNULABLE",
+  "STOCK_INSUFFISANT",
 ] as const;
 export type CodeErreurVente = (typeof CODES_ERREUR_VENTE)[number];
 
@@ -173,7 +174,11 @@ export interface LotErreurVente {
 export interface LigneErreurVente {
   stockId: string;
   nom?: string;
+  /** Unité de la ligne refusée (STOCK_INSUFFISANT) : BOITE ou UNITE. */
+  unite?: string;
   disponible?: number;
+  /** Stock disponible en unités minimales (STOCK_INSUFFISANT). */
+  disponibleUm?: number;
   demande?: number;
   lots?: LotErreurVente[];
 }
@@ -226,11 +231,13 @@ export function lignesErreurVente(err: unknown): LigneErreurVente[] {
   const lignes: LigneErreurVente[] = [];
   for (const element of tableau as unknown[]) {
     if (!estObjet(element)) continue;
-    const { stockId, nom, disponible, demande } = element;
+    const { stockId, nom, unite, disponible, disponibleUm, demande } = element;
     if (typeof stockId !== "string" || stockId === "") continue;
     const ligne: LigneErreurVente = { stockId };
     if (typeof nom === "string") ligne.nom = nom;
+    if (typeof unite === "string") ligne.unite = unite;
     if (entierPositif(disponible)) ligne.disponible = disponible;
+    if (entierPositif(disponibleUm)) ligne.disponibleUm = disponibleUm;
     if (entierPositif(demande)) ligne.demande = demande;
     if (Array.isArray(element.lots)) {
       const lots: LotErreurVente[] = [];
