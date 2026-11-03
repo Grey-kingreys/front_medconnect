@@ -1,17 +1,22 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
-import type { Referentiels, SessionCaisse } from "@/lib/api_caisse";
+import type { BilanCaisse, Referentiels, SessionCaisse } from "@/lib/api_caisse";
+import { formaterGNF } from "@/lib/format_gnf";
 import { jourConakry } from "../ventes/affichage";
 import MaCaissePage from "./page";
 
-const { getReferentiels, assurerPosteWeb, getSessionCourante, ouvrirSession, saisirComptage } = vi.hoisted(() => ({
-  getReferentiels: vi.fn(),
-  assurerPosteWeb: vi.fn(),
-  getSessionCourante: vi.fn(),
-  ouvrirSession: vi.fn(),
-  saisirComptage: vi.fn(),
-}));
+const { getReferentiels, assurerPosteWeb, getSessionCourante, ouvrirSession, saisirComptage, getBilan, fermerSession, enregistrerMouvement } =
+  vi.hoisted(() => ({
+    getReferentiels: vi.fn(),
+    assurerPosteWeb: vi.fn(),
+    getSessionCourante: vi.fn(),
+    ouvrirSession: vi.fn(),
+    saisirComptage: vi.fn(),
+    getBilan: vi.fn(),
+    fermerSession: vi.fn(),
+    enregistrerMouvement: vi.fn(),
+  }));
 
 vi.mock("@/hooks/useAuth", () => ({
   useAuth: () => ({
@@ -19,10 +24,22 @@ vi.mock("@/hooks/useAuth", () => ({
     loading: false,
   }),
 }));
-vi.mock("@/lib/api_caisse", () => ({ getReferentiels, assurerPosteWeb, getSessionCourante, ouvrirSession, saisirComptage }));
+vi.mock("@/lib/api_caisse", () => ({
+  getReferentiels,
+  assurerPosteWeb,
+  getSessionCourante,
+  ouvrirSession,
+  saisirComptage,
+  getBilan,
+  fermerSession,
+  enregistrerMouvement,
+}));
 
 const REFERENTIELS: Referentiels = {
-  modesPaiement: [],
+  modesPaiement: [
+    { code: "ESPECES", libelle: "Espèces", comptagePhysique: true, referenceAutorisee: false, ordre: 1 },
+    { code: "ORANGE_MONEY", libelle: "Orange Money", comptagePhysique: false, referenceAutorisee: true, ordre: 2 },
+  ],
   coupures: [
     { devise: "GNF", valeurFaciale: 20000, type: "BILLET", ordre: 1 },
     { devise: "GNF", valeurFaciale: 10000, type: "BILLET", ordre: 2 },
@@ -56,6 +73,30 @@ const SESSION: SessionCaisse = {
   comptageFermeture: null,
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
+const BILAN: BilanCaisse = {
+  activite: {
+    nombreVentes: 3,
+    nombreAnnulations: 1,
+    montantEncaisse: 150000,
+    parMode: [
+      { mode: "ESPECES", libelle: "Espèces", montant: 63000, nombrePaiements: 2 },
+      { mode: "ORANGE_MONEY", libelle: "Orange Money", montant: 87000, nombrePaiements: 3 },
+    ],
+  },
+  session: SESSION,
+  fond: { montant: 0, compte: false },
+  mouvements: [],
+  theorique: [
+    { mode: "ESPECES", libelle: "Espèces", montant: 63000 },
+    { mode: "ORANGE_MONEY", libelle: "Orange Money", montant: 87000 },
+  ],
+  compte: [],
+  ecarts: [],
+  ecartEspeces: null,
+  seuilEcartCaisse: 5000,
+  commentaireRequis: false,
+  fige: false,
+};
 
 const afficher = async (session: SessionCaisse | null) => {
   getSessionCourante.mockResolvedValue({ data: session, message: "ok", success: true });
@@ -70,6 +111,7 @@ beforeEach(() => {
   assurerPosteWeb.mockResolvedValue({ data: POSTE, message: "ok", success: true });
   ouvrirSession.mockResolvedValue({ data: { ...SESSION, cree: true, ouverteMaintenant: true }, message: "Caisse ouverte.", success: true });
   saisirComptage.mockResolvedValue({ data: {}, message: "ok", success: true });
+  getBilan.mockResolvedValue({ data: BILAN, message: "ok", success: true });
 });
 afterEach(() => {
   cleanup();
@@ -173,6 +215,70 @@ describe("Ma caisse", () => {
   it("ne date pas une caisse ouverte aujourd'hui", async () => {
     await afficher(SESSION);
     expect(screen.getByText("Ouverte à 08:15")).toBeTruthy();
+  });
+
+  it("affiche l'activité du vendeur avant l'attendu dans la caisse", async () => {
+    await afficher(SESSION);
+    const ventes = await screen.findByText("Ventes : 3");
+    const attendu = screen.getByText("Attendu dans la caisse");
+    expect(ventes.compareDocumentPosition(attendu) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(screen.getByText(`Orange Money : ${formaterGNF(87000).replace(/\s/g, " ")} (3 paiements)`)).toBeTruthy();
+  });
+
+  it("ferme depuis le bandeau une caisse restée ouverte un jour passé, pour cette caisse", async () => {
+    const figee = { ...BILAN, fige: true, session: { ...SESSION, jourMetier: "2026-11-01", commentaireEcart: null } };
+    fermerSession.mockResolvedValue({ data: figee, message: "Caisse fermée.", success: true });
+    await afficher({ ...SESSION, jourMetier: "2026-11-01", ouverteLe: "2026-11-01T08:15:00.000Z" });
+    const bouton = await screen.findByRole("button", { name: "Fermer cette caisse" });
+    await waitFor(() => expect(bouton.hasAttribute("disabled")).toBe(false));
+    fireEvent.click(bouton);
+    expect(await screen.findByText("Comptez l'argent de votre caisse.")).toBeTruthy();
+    expect(screen.getByText("Les ventes de cette caisse sont comptées pour le dimanche 1 novembre 2026.")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText(/Nombre de billets de 20/), { target: { value: "3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Fermer ma caisse" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Confirmer la fermeture" }));
+    await waitFor(() => expect(fermerSession).toHaveBeenCalledTimes(1));
+    expect(fermerSession.mock.calls[0][0]).toBe("p1");
+    expect(fermerSession.mock.calls[0][1]).toBe("sc1");
+    expect(await screen.findByRole("heading", { name: "Caisse fermée" })).toBeTruthy();
+    expect(screen.getByText("Les ventes de cette caisse sont comptées pour le dimanche 1 novembre 2026.")).toBeTruthy();
+  });
+
+  it("après une coupure, Fermer et vérifier relit le bilan et demande de vérifier la liste", async () => {
+    enregistrerMouvement.mockRejectedValueOnce(new ApiError("Réseau", 0));
+    await afficher(SESSION);
+    await screen.findByText("Aucun mouvement de caisse.");
+    const lectures = getBilan.mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Mouvement de caisse" }));
+    fireEvent.click(screen.getByLabelText("Apport (ajout d'argent)"));
+    fireEvent.change(screen.getByLabelText("Montant (GNF)"), { target: { value: "5000" } });
+    fireEvent.change(screen.getByLabelText("Motif"), { target: { value: "Monnaie" } });
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer" }));
+    const fermer = await screen.findByRole("button", { name: "Fermer et vérifier" });
+
+    // Le serveur avait bien reçu le mouvement : la relecture le montre.
+    getBilan.mockResolvedValue({
+      data: {
+        ...BILAN,
+        mouvements: [{ id: "m1", type: "APPORT", mode: "ESPECES", montant: 5000, motif: "Monnaie", auteurId: "u1", horodatageServeur: new Date().toISOString() }],
+        theorique: [
+          { mode: "ESPECES", libelle: "Espèces", montant: 68000 },
+          { mode: "ORANGE_MONEY", libelle: "Orange Money", montant: 87000 },
+        ],
+      },
+      message: "ok",
+      success: true,
+    });
+    fireEvent.click(fermer);
+
+    expect(
+      await screen.findByText("Vérifiez la liste des mouvements avant d'en saisir un autre : le précédent a peut-être été enregistré."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(getBilan.mock.calls.length).toBe(lectures + 1);
+    expect(await screen.findByText(/^Apport de 5.000 GNF, Monnaie, à /)).toBeTruthy();
+    expect(screen.getByText(`Espèces : ${formaterGNF(68000).replace(/\s/g, " ")}`)).toBeTruthy();
+    expect(enregistrerMouvement).toHaveBeenCalledTimes(1);
   });
 
   it("date la caisse d'un autre vendeur ouverte un autre jour", async () => {

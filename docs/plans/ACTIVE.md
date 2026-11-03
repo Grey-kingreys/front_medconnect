@@ -22,7 +22,7 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | PF09 | Unité plaquette à l'écran, libellés accordés (après PB21 et PF08 ; D723 à D725) | validé (test navigateur OK, 8a2a159, rapports/PF09-chef.md du run) |
 | PF07d | Import Excel livraison et inventaire | validé (d16c1f2, rapports/PF07d-chef.md du run ; import réel à jouer par le porteur) |
 | PF03a | Ma caisse : ouverture, comptage | contrôlé par le chef (D730, rapports/PF03a-chef.md du run), test navigateur à faire |
-| PF03b | Ma caisse : mouvements, fermeture | à faire |
+| PF03b | Ma caisse : mouvements, fermeture | contrôlé par le chef (rapports/PF03b-chef.md du run), test navigateur à faire ; question ouverte au porteur : attendu et écart visibles pendant le comptage |
 | PF04 | Annulation et ventes du jour | à faire |
 | PF05 | Clôture journalière | à faire |
 | PF06a | File d'anomalies | à faire |

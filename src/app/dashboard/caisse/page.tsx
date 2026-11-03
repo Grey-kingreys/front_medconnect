@@ -8,11 +8,14 @@ import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
 import {
   assurerPosteWeb,
+  getBilan,
   getReferentiels,
   getSessionCourante,
   ouvrirSession,
   saisirComptage,
+  type BilanCaisse,
   type LigneComptage,
+  type TypeMouvementCaisse,
   type Poste,
   type Referentiels,
   type SessionCaisse,
@@ -32,11 +35,19 @@ import {
   POLICE_TITRE,
 } from "@/components/pharmacie/classes";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
-import { formaterHeure, formaterJour, jourConakry } from "../ventes/affichage";
+import { formaterDateHeure, formaterHeure, formaterJour, jourConakry } from "../ventes/affichage";
 import { ComptageCoupures } from "./ComptageCoupures";
+import { CaisseFermee, FermetureCaisse } from "./FermetureCaisse";
+import { MouvementCaisse } from "./MouvementCaisse";
 import { lignesAEnvoyer, lignesDepuisReferentiel } from "./comptage";
 
 type Action = "ouvrir" | "ouvrirSansCompter" | "enregistrerFond";
+
+const LIBELLES_MOUVEMENT: Record<TypeMouvementCaisse, string> = {
+  PRELEVEMENT: "Prélèvement",
+  APPORT: "Apport",
+  REMBOURSEMENT: "Remboursement",
+};
 
 const MESSAGE_RESEAU =
   "L'opération n'a peut-être pas été enregistrée. Appuyez sur « Réessayer » : elle ne sera pas comptée deux fois.";
@@ -62,13 +73,71 @@ export default function MaCaissePage() {
   const [refus, setRefus] = useState<string | null>(null);
   const [succes, setSucces] = useState<string | null>(null);
 
+  const [bilanCharge, setBilanCharge] = useState<{ id: string; bilan: BilanCaisse } | null>(null);
+  const [erreurBilanId, setErreurBilanId] = useState<string | null>(null);
+  const [versionBilan, setVersionBilan] = useState(0);
+  const [mouvementOuvert, setMouvementOuvert] = useState(false);
+  const [fermetureOuverte, setFermetureOuverte] = useState(false);
+  const [fermee, setFermee] = useState<{ bilan: BilanCaisse; jourPasse: string | null } | null>(null);
+
   // Relit l'état de la caisse sans repasser par l'écran de chargement.
   const relire = useCallback(async (structure: string, utilisateur: string) => {
     const p = (await assurerPosteWeb(structure, utilisateur)).data;
     const s = (await getSessionCourante(structure, p.id)).data;
     setPoste(p);
     setSession(s);
+    return s;
   }, []);
+
+  // Le bilan se charge pour la caisse ouverte de l'utilisateur, quel que soit son jour métier.
+  const sessionId = session?.id;
+  const sessionEstLaMienne = session !== null && session.utilisateurId === userId;
+  useEffect(() => {
+    if (!structureId || !sessionId || !sessionEstLaMienne) return;
+    let actif = true;
+    getBilan(structureId, sessionId)
+      .then((res) => {
+        if (!actif) return;
+        setBilanCharge({ id: sessionId, bilan: res.data });
+        setErreurBilanId(null);
+      })
+      .catch(() => {
+        if (actif) setErreurBilanId(sessionId);
+      });
+    return () => {
+      actif = false;
+    };
+  }, [structureId, sessionId, sessionEstLaMienne, versionBilan]);
+  const bilan = bilanCharge !== null && bilanCharge.id === sessionId ? bilanCharge.bilan : null;
+  const erreurBilan = erreurBilanId !== null && erreurBilanId === sessionId;
+
+  const reessayerBilan = () => {
+    setErreurBilanId(null);
+    setVersionBilan((n) => n + 1);
+  };
+
+  // La caisse a refusé un mouvement ou la fermeture : message du serveur tel quel, état relu.
+  const apresRefus = async (message: string) => {
+    if (!structureId || !userId) return;
+    setMouvementOuvert(false);
+    setSucces(null);
+    setRefus(message);
+    const s = await relire(structureId, userId).catch(() => undefined);
+    if (!s) setFermetureOuverte(false);
+    setVersionBilan((n) => n + 1);
+  };
+
+  const apresMouvement = (message: string) => {
+    setMouvementOuvert(false);
+    setRefus(null);
+    setSucces(message);
+    setVersionBilan((n) => n + 1);
+  };
+
+  const ouvrirFermeture = () => {
+    if (fermetureOuverte) document.getElementById("fermeture-caisse")?.scrollIntoView?.({ block: "start" });
+    setFermetureOuverte(true);
+  };
 
   useEffect(() => {
     if (!structureId || !userId) return;
@@ -93,6 +162,10 @@ export default function MaCaissePage() {
   }, [structureId, userId, essai]);
 
   const reessayerChargement = () => {
+    setFermee(null);
+    setFermetureOuverte(false);
+    setSucces(null);
+    setRefus(null);
     setErreurChargement(false);
     setCharge(false);
     setEssai((n) => n + 1);
@@ -240,6 +313,18 @@ export default function MaCaissePage() {
     </p>
   );
 
+  if (fermee !== null) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+        {enTete}
+        <CaisseFermee bilan={fermee.bilan} jourPasse={fermee.jourPasse} onNouvelleCaisse={reessayerChargement} />
+      </div>
+    );
+  }
+
+  const momentMouvement = (iso: string) =>
+    jourConakry(new Date(iso)) === aujourdhui ? `à ${formaterHeure(iso)}` : `le ${formaterDateHeure(iso)}`;
+
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       {enTete}
@@ -318,16 +403,24 @@ export default function MaCaissePage() {
           </div>
 
           {caisseDUnJourPasse && (
-            <p role="status" className={ALERTE_ATTENTION}>
+            <div role="status" className={`${ALERTE_ATTENTION} flex-wrap`}>
               <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
-              <span>
+              <span className="flex-1 min-w-48">
                 Cette caisse est restée ouverte depuis le {formaterJour(jourOuverture)}. Les ventes d&apos;aujourd&apos;hui y
                 sont encore comptées pour le {formaterJour(session.jourMetier)}. Fermez-la pour repartir sur la bonne date.
               </span>
-            </p>
+              <button
+                type="button"
+                onClick={ouvrirFermeture}
+                disabled={verrouille || bilan === null}
+                className={BOUTON_PRIMAIRE}
+              >
+                Fermer cette caisse
+              </button>
+            </div>
           )}
 
-          {session.comptageOuverture === null && (
+          {session.comptageOuverture === null && !fermetureOuverte && (
             <div className="space-y-4">
               <ComptageCoupures
                 coupures={referentiels.coupures}
@@ -362,8 +455,123 @@ export default function MaCaissePage() {
                 Ventes du jour
               </Link>
             )}
+            <button
+              type="button"
+              onClick={() => setMouvementOuvert(true)}
+              disabled={verrouille}
+              className={BOUTON_SECONDAIRE}
+            >
+              Mouvement de caisse
+            </button>
+            <button
+              type="button"
+              onClick={ouvrirFermeture}
+              disabled={verrouille || bilan === null}
+              className={BOUTON_PRIMAIRE}
+            >
+              Fermer la caisse
+            </button>
           </div>
         </div>
+      )}
+
+      {session !== null && !autreVendeur && erreurBilan && (
+        <ErreurAvecReessai
+          message="Le bilan de votre caisse n'a pas pu être chargé. Vérifiez votre connexion puis réessayez."
+          onReessayer={reessayerBilan}
+        />
+      )}
+
+      {session !== null && !autreVendeur && bilan === null && !erreurBilan && (
+        <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+          <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+          Chargement du bilan...
+        </div>
+      )}
+
+      {session !== null && !autreVendeur && bilan !== null && (
+        <>
+          <div className={`${CARTE} space-y-2`}>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+              Votre activité
+            </h2>
+            <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+              <p>Ventes : {bilan.activite.nombreVentes}</p>
+              <p>Annulations : {bilan.activite.nombreAnnulations}</p>
+              <p className="font-bold text-slate-900 dark:text-white">Encaissé : {formaterGNF(bilan.activite.montantEncaisse)}</p>
+              {bilan.activite.parMode.map((m) => (
+                <p key={m.mode}>
+                  {m.libelle} : {formaterGNF(m.montant)} ({m.nombrePaiements} {m.nombrePaiements > 1 ? "paiements" : "paiement"})
+                </p>
+              ))}
+            </div>
+          </div>
+
+          <div className={`${CARTE} space-y-2`}>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+              Mouvements de caisse
+            </h2>
+            {bilan.mouvements.length === 0 ? (
+              <p className="text-sm text-slate-700 dark:text-slate-300">Aucun mouvement de caisse.</p>
+            ) : (
+              <ul className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+                {bilan.mouvements.map((m) => (
+                  <li key={m.id}>
+                    {LIBELLES_MOUVEMENT[m.type]} de {formaterGNF(m.montant)}, {m.motif}, {momentMouvement(m.horodatageServeur)}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <div className={`${CARTE} space-y-2`}>
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+              Attendu dans la caisse
+            </h2>
+            <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+              {bilan.theorique.map((t) => (
+                <p key={t.mode}>
+                  {t.libelle} : {formaterGNF(t.montant)}
+                </p>
+              ))}
+            </div>
+          </div>
+
+          {fermetureOuverte && (
+            <FermetureCaisse
+              key={session.id}
+              structureId={structureId}
+              sessionId={session.id}
+              bilan={bilan}
+              modes={referentiels.modesPaiement}
+              coupures={referentiels.coupures}
+              jourPasse={session.jourMetier < aujourdhui ? session.jourMetier : null}
+              onFermee={(figee) => {
+                setFermee({ bilan: figee, jourPasse: session.jourMetier < aujourdhui ? session.jourMetier : null });
+                setFermetureOuverte(false);
+              }}
+              onRefus={(message) => void apresRefus(message)}
+            />
+          )}
+        </>
+      )}
+
+      {session !== null && !autreVendeur && (
+        <MouvementCaisse
+          isOpen={mouvementOuvert}
+          onClose={() => setMouvementOuvert(false)}
+          structureId={structureId}
+          sessionId={session.id}
+          modes={referentiels.modesPaiement}
+          onEnregistre={apresMouvement}
+          onRefus={(message) => void apresRefus(message)}
+          onVerifier={() => {
+            setMouvementOuvert(false);
+            setSucces(null);
+            setRefus("Vérifiez la liste des mouvements avant d'en saisir un autre : le précédent a peut-être été enregistré.");
+            setVersionBilan((n) => n + 1);
+          }}
+        />
       )}
     </div>
   );

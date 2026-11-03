@@ -68,6 +68,35 @@ export interface LigneComptage {
 }
 export type SessionCaisseOuverte = SessionCaisse & { cree: boolean; ouverteMaintenant: boolean };
 
+export type TypeMouvementCaisse = "PRELEVEMENT" | "APPORT" | "REMBOURSEMENT";
+export interface MouvementCaisse {
+  id: string;
+  type: TypeMouvementCaisse;
+  mode: string;
+  montant: number;
+  motif: string;
+  auteurId: string;
+  horodatageServeur: string;
+}
+export interface BilanCaisse {
+  activite: {
+    nombreVentes: number;
+    nombreAnnulations: number;
+    montantEncaisse: number;
+    parMode: { mode: string; libelle: string; montant: number; nombrePaiements: number }[];
+  };
+  session: SessionCaisse;
+  fond: { montant: number; compte: boolean };
+  mouvements: MouvementCaisse[];
+  theorique: { mode: string; libelle: string; montant: number }[];
+  compte: { mode: string; libelle: string; montant: number | null }[];
+  ecarts: { mode: string; libelle: string; ecart: number | null }[];
+  ecartEspeces: number | null;
+  seuilEcartCaisse: number;
+  commentaireRequis: boolean;
+  fige: boolean;
+}
+
 export function getReferentiels(structureId: string) {
   return authFetch<Referentiels>(`/pharmacie/${encodeURIComponent(structureId)}/referentiels`);
 }
@@ -110,6 +139,40 @@ export function saisirComptage(
 ) {
   return authFetch<ComptageCaisse>(
     `/pharmacie/${encodeURIComponent(structureId)}/caisse/sessions/${encodeURIComponent(sessionId)}/comptages`,
+    { method: "POST", body: JSON.stringify(corps) },
+  );
+}
+
+/** Prélèvement, apport ou remboursement d'espèces ou d'un autre mode. Rejouable avec le même `id` (D688). */
+export function enregistrerMouvement(
+  structureId: string,
+  sessionId: string,
+  corps: { id: string; type: TypeMouvementCaisse; montant: number; motif: string; mode?: string },
+) {
+  return authFetch<MouvementCaisse>(
+    `/pharmacie/${encodeURIComponent(structureId)}/caisse/sessions/${encodeURIComponent(sessionId)}/mouvements`,
+    { method: "POST", body: JSON.stringify(corps) },
+  );
+}
+
+/** Bilan d'une caisse : activité du vendeur d'abord, puis attendu, compté et écart. */
+export function getBilan(structureId: string, sessionId: string) {
+  return authFetch<BilanCaisse>(
+    `/pharmacie/${encodeURIComponent(structureId)}/caisse/sessions/${encodeURIComponent(sessionId)}/bilan`,
+  );
+}
+
+/** Ferme la caisse et renvoie le bilan figé. Rejouable avec le même `id` de comptage (D688). */
+export function fermerSession(
+  structureId: string,
+  sessionId: string,
+  corps: {
+    comptageFermeture: { id: string; coupures: LigneComptage[]; releves?: { mode: string; montant: number }[] };
+    commentaire?: string;
+  },
+) {
+  return authFetch<BilanCaisse>(
+    `/pharmacie/${encodeURIComponent(structureId)}/caisse/sessions/${encodeURIComponent(sessionId)}/fermer`,
     { method: "POST", body: JSON.stringify(corps) },
   );
 }

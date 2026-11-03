@@ -1,6 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { authFetch } from "./api_auth";
-import { assurerPosteWeb, getReferentiels, getSessionCourante, ouvrirSession, saisirComptage } from "./api_caisse";
+import {
+  assurerPosteWeb,
+  enregistrerMouvement,
+  fermerSession,
+  getBilan,
+  getReferentiels,
+  getSessionCourante,
+  ouvrirSession,
+  saisirComptage,
+} from "./api_caisse";
 
 vi.mock("./api_auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./api_auth")>()),
@@ -43,6 +52,21 @@ describe("api_caisse", () => {
     expect(mockedAuthFetch).toHaveBeenLastCalledWith("/pharmacie/s1/caisse/sessions/c%201/comptages", {
       method: "POST",
       body: '{"id":"i2","moment":"OUVERTURE","coupures":[{"valeurFaciale":500,"nombre":2}]}',
+    });
+  });
+
+  it("enregistre un mouvement, lit le bilan et ferme la caisse aux routes encodées", async () => {
+    await enregistrerMouvement("s1", "c 1", { id: "m1", type: "APPORT", montant: 5000, motif: "Monnaie" });
+    expect(mockedAuthFetch).toHaveBeenLastCalledWith("/pharmacie/s1/caisse/sessions/c%201/mouvements", {
+      method: "POST",
+      body: '{"id":"m1","type":"APPORT","montant":5000,"motif":"Monnaie"}',
+    });
+    await getBilan("s1", "c 1");
+    expect(mockedAuthFetch).toHaveBeenLastCalledWith("/pharmacie/s1/caisse/sessions/c%201/bilan");
+    await fermerSession("s1", "c 1", { comptageFermeture: { id: "f1", coupures: [] } });
+    expect(mockedAuthFetch).toHaveBeenLastCalledWith("/pharmacie/s1/caisse/sessions/c%201/fermer", {
+      method: "POST",
+      body: '{"comptageFermeture":{"id":"f1","coupures":[]}}',
     });
   });
 });
