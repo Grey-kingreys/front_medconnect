@@ -123,6 +123,12 @@ const ETAPES: string[] = [
     enregistreLe TEXT NOT NULL
   );
   `,
+  // Version 2 (PD02b) : caisse ouverte par une vente, bilan figé à la fermeture.
+  `
+  ALTER TABLE sessions ADD COLUMN ouverteAutomatiquement INTEGER NOT NULL DEFAULT 0;
+  ALTER TABLE sessions ADD COLUMN bilanFige TEXT;
+  ALTER TABLE ventes ADD COLUMN typePiece TEXT NOT NULL DEFAULT 'VENTE';
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;
@@ -131,14 +137,14 @@ export const VERSION_SCHEMA = ETAPES.length;
  * Amène la base à la dernière version. Une base plus récente que l'application
  * (mise à jour annulée, application plus ancienne) est refusée sans rien écrire (D740).
  */
-export function migrer(stockage: Stockage): void {
+export function migrer(stockage: Stockage, versionCible: number = VERSION_SCHEMA): void {
   const actuelle = stockage.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version ?? 0;
   if (actuelle > VERSION_SCHEMA) {
     throw new Error(
       `La base locale est de version ${actuelle}, plus récente que cette application (version ${VERSION_SCHEMA}). Mettez l'application à jour.`,
     );
   }
-  for (let version = actuelle + 1; version <= VERSION_SCHEMA; version++) {
+  for (let version = actuelle + 1; version <= Math.min(versionCible, VERSION_SCHEMA); version++) {
     stockage.transaction(() => {
       stockage.executer(ETAPES[version - 1]);
       stockage.executer(`PRAGMA user_version = ${version}`);

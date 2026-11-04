@@ -1,31 +1,35 @@
 import type { LotFiche, StockMedicament, UniteMinimale } from "@/lib/api_pharmacie";
 import { calculerStockLocal, type SortieLocale } from "@/lib/caisse/regles/stock_local";
+import type { BilanCaisse, ComptageCaisse, MouvementCaisse, SessionCaisse, SessionCaisseOuverte } from "@/lib/api_caisse";
+import type { CorpsCreationVente, Vente, VentesDuJour } from "@/lib/api_ventes";
+import {
+  bilan,
+  enregistrerMouvement,
+  fermerSession,
+  ouvrirSession,
+  saisirComptage,
+  sessionOuverteLigne,
+  versSession,
+} from "./caisse_session";
+import { Contexte, type Outils, type Referentiels } from "./contexte";
+import { plageRestante } from "./plages_locales";
 import type { Stockage } from "./stockage";
+import type { ComptageEntree, EtatLocal, FermetureEntree, MouvementEntree, Utilisateur } from "./types_caisse";
 import type { FicheSynchro, Photographie } from "./types_synchro";
+import {
+  enregistrerAnnulationServeur,
+  enregistrerVente,
+  listerVentes,
+  lireVente,
+  type ReponseAnnulation,
+} from "./vente_locale";
+
+export type { ReponseAnnulation } from "./vente_locale";
+
+export type { Outils, Referentiels } from "./contexte";
 
 /** Fiche au format que l'écran de vente lit déjà. */
 export type FicheLocale = StockMedicament;
-
-export interface Referentiels {
-  pharmacie: Photographie["pharmacie"];
-  parametres: Photographie["parametres"];
-  modesPaiement: Photographie["modesPaiement"];
-  coupures: Photographie["coupures"];
-}
-
-export interface Outils {
-  horloge: () => Date;
-  genererId: () => string;
-}
-
-interface EtatPoste {
-  appareilId: string | null;
-  structureId: string | null;
-  posteId: string | null;
-  sequenceAppliquee: number;
-  prochaineSequence: number;
-  photographieLe: string | null;
-}
 
 const UNITES: readonly UniteMinimale[] = ["COMPRIME", "GELULE", "ML", "SACHET", "GRAMME", "AMPOULE", "PLAQUETTE", "UNITE"];
 
@@ -38,13 +42,17 @@ function uniteConnue(valeur: string): UniteMinimale {
  * Tout passe par le `Stockage` injecté.
  */
 export class CoeurCaisse {
+  private readonly ctx: Contexte;
+
   constructor(
     private readonly stockage: Stockage,
     private readonly outils: Outils,
-  ) {}
+  ) {
+    this.ctx = new Contexte(stockage, outils);
+  }
 
-  private etat(): EtatPoste {
-    return this.stockage.lireUn<EtatPoste>("SELECT * FROM etat_poste WHERE id = 1") as EtatPoste;
+  private etat() {
+    return this.ctx.etat();
   }
 
   /** Crée l'UUID de l'appareil au premier appel ; il ne change jamais ensuite. */
@@ -120,6 +128,20 @@ export class CoeurCaisse {
           plage.fin,
         ]);
       }
+      // Base en retard sur le serveur (D752) : remise à vide ou copie restaurée. Le serveur a reçu
+      // des événements que ce poste ne connaît plus (jamais vrai en marche normale), donc des
+      // numéros ont pu être donnés à des clients : aucun numéro de plage ne doit être réutilisé.
+      if (photo.poste.sequenceMaxRecue >= etat.prochaineSequence) {
+        const recues = [...photo.poste.plages].sort((a, b) => a.debut - b.debut);
+        // Deux plages ouvertes au serveur : seule la plus récente sert, elle est intacte (si elle
+        // portait un numéro, l'ancienne serait épuisée et absente de la réponse, D632).
+        // Une seule : abandonnée, elle a pu servir en partie.
+        const gardee = recues.length === 2 ? recues[1].id : null;
+        s.executer("UPDATE plages SET dernierUtilise = fin WHERE id <> ?", [gardee ?? ""]);
+        s.executer("UPDATE etat_poste SET prochainSecours = MAX(prochainSecours, ?) WHERE id = 1", [
+          photo.poste.sequenceMaxRecue + 1,
+        ]);
+      }
       const connues = new Set(photo.poste.plages.map((p) => p.id));
       for (const locale of s.lire<{ id: string; fin: number; dernierUtilise: number | null }>(
         "SELECT id, fin, dernierUtilise FROM plages",
@@ -163,7 +185,7 @@ export class CoeurCaisse {
 
   /** Jour courant en UTC, comme `jourConakry` du back : jamais le fuseau de Windows. */
   jour(): string {
-    return this.outils.horloge().toISOString().slice(0, 10);
+    return this.ctx.jour();
   }
 
   /** Fiches avec leur stock local : photographie moins les sorties de séquence supérieure à `sequenceAppliquee`. */
@@ -225,14 +247,66 @@ export class CoeurCaisse {
 
   /** Référentiels de la dernière photographie, ou null sans catalogue. */
   lireReferentiels(): Referentiels | null {
-    if (!this.aUnCatalogue()) return null;
-    const lire = <T>(table: string): T =>
-      JSON.parse((this.stockage.lireUn<{ document: string }>(`SELECT document FROM ${table} WHERE id = 1`) as { document: string }).document) as T;
+    return this.ctx.referentiels();
+  }
+
+  // ------------------------------------------------------------------ caisse (PD02b)
+
+  /** Caisse ouverte sur le poste, ou null. */
+  sessionOuverte(): SessionCaisse | null {
+    const s = sessionOuverteLigne(this.ctx);
+    return s ? versSession(this.ctx, s) : null;
+  }
+
+  ouvrirSession(entree: { id: string; comptage?: { coupures: { valeurFaciale: number; nombre: number }[] } }, u: Utilisateur): SessionCaisseOuverte {
+    return ouvrirSession(this.ctx, entree, u);
+  }
+
+  saisirComptage(sessionId: string, entree: ComptageEntree, u: Utilisateur): ComptageCaisse {
+    return saisirComptage(this.ctx, sessionId, entree, u);
+  }
+
+  enregistrerMouvement(sessionId: string, entree: MouvementEntree, u: Utilisateur): MouvementCaisse {
+    return enregistrerMouvement(this.ctx, sessionId, entree, u);
+  }
+
+  bilan(sessionId: string, u: Utilisateur): BilanCaisse {
+    return bilan(this.ctx, sessionId, u);
+  }
+
+  fermerSession(sessionId: string, entree: FermetureEntree, u: Utilisateur): BilanCaisse {
+    return fermerSession(this.ctx, sessionId, entree, u);
+  }
+
+  // ------------------------------------------------------------------ ventes (PD02b)
+
+  /** Vente, numéro, sorties et événement en une seule transaction ; jamais de refus de stock (D713.2). */
+  enregistrerVente(corps: CorpsCreationVente, cle: string, u: Utilisateur): Vente {
+    return enregistrerVente(this.ctx, corps, cle, u);
+  }
+
+  lireVente(id: string): Vente | null {
+    return lireVente(this.ctx, id);
+  }
+
+  listerVentes(jour: string): VentesDuJour {
+    return listerVentes(this.ctx, jour);
+  }
+
+  /** Annulation faite en ligne (D745) : théorique local, caisse adoptée, vente marquée annulée. Aucun événement. */
+  enregistrerAnnulationServeur(reponse: ReponseAnnulation): void {
+    enregistrerAnnulationServeur(this.ctx, reponse);
+  }
+
+  etatLocal(): EtatLocal {
+    const nombre = (sql: string) => this.stockage.lireUn<{ n: number }>(sql)?.n ?? 0;
+    const restante = plageRestante(this.ctx);
     return {
-      pharmacie: lire<Referentiels["pharmacie"]>("pharmacie"),
-      parametres: lire<Referentiels["parametres"]>("parametres"),
-      modesPaiement: lire<Referentiels["modesPaiement"]>("modes_paiement"),
-      coupures: lire<Referentiels["coupures"]>("coupures"),
+      fileEnAttente: nombre("SELECT COUNT(*) AS n FROM evenements WHERE statut IN ('A_ENVOYER', 'EN_ATTENTE')"),
+      rejetes: nombre("SELECT COUNT(*) AS n FROM evenements WHERE statut = 'REJETE'"),
+      plageRestante: restante,
+      plageEpuisee: restante === 0,
+      sessionOuverte: sessionOuverteLigne(this.ctx) !== undefined,
     };
   }
 }

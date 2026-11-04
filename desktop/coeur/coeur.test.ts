@@ -102,12 +102,42 @@ function sortie(s: Stockage, venteId: string, sequence: number, stockId: string,
 }
 
 describe("schéma et stockage", () => {
-  it("base neuve à la version 1, migration rejouée sans erreur", () => {
+  it("base neuve à la dernière version, migration rejouée sans erreur", () => {
     const s = base();
-    expect(VERSION_SCHEMA).toBe(1);
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(1);
+    expect(VERSION_SCHEMA).toBe(2);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(2);
     expect(() => migrer(s)).not.toThrow();
     expect(s.lire("SELECT id FROM etat_poste")).toHaveLength(1);
+  });
+
+  it("migration v1 vers v2 sur une base qui contient des données : rien n'est perdu, valeurs par défaut posées", () => {
+    const s = ouvrirStockage(":memory:");
+    OUVERTS.push(s);
+    migrer(s, 1);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(1);
+    s.executer("UPDATE etat_poste SET structureId = 'ph1', posteId = 'po1', posteCode = 'D1', prochaineSequence = 4, prochainSecours = 3 WHERE id = 1");
+    s.executer("INSERT INTO sessions (id, utilisateurId, utilisateurNom, statut, jourMetier, ouverteLe, adoptee) VALUES ('s-ancienne', 'u1', 'Mariama', 'OUVERTE', '2026-11-03', '2026-11-03T08:00:00.000Z', 0)");
+    s.executer("INSERT INTO ventes (id, sequence, sessionId, jourMetier, numero, total, document, createdAt) VALUES ('v-ancienne', 3, 's-ancienne', '2026-11-03', 'T1-0000007', 5000, '{}', '2026-11-03T09:00:00.000Z')");
+    s.executer("INSERT INTO paiements_locaux (venteId, sessionId, mode, montant) VALUES ('v-ancienne', 's-ancienne', 'ESPECES', 5000)");
+    s.executer("INSERT INTO plages (id, debut, fin, dernierUtilise) VALUES ('p1', 1, 500, 7)");
+    s.executer("INSERT INTO evenements (sequence, evenementId, type, horodatageLocal, utilisateurId, corps, statut) VALUES (3, 'e3', 'VENTE', '2026-11-03T09:00:00.000Z', 'u1', '{}', 'A_ENVOYER')");
+
+    migrer(s);
+
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(2);
+    expect(s.lireUn("SELECT id, statut, adoptee, ouverteAutomatiquement, bilanFige FROM sessions")).toEqual({
+      id: "s-ancienne",
+      statut: "OUVERTE",
+      adoptee: 0,
+      ouverteAutomatiquement: 0,
+      bilanFige: null,
+    });
+    expect(s.lireUn("SELECT id, numero, total, typePiece FROM ventes")).toEqual({ id: "v-ancienne", numero: "T1-0000007", total: 5000, typePiece: "VENTE" });
+    expect(s.lireUn("SELECT dernierUtilise FROM plages")).toEqual({ dernierUtilise: 7 });
+    expect(s.lireUn("SELECT prochaineSequence, prochainSecours FROM etat_poste")).toEqual({ prochaineSequence: 4, prochainSecours: 3 });
+    expect(s.lire("SELECT sequence FROM evenements")).toEqual([{ sequence: 3 }]);
+    expect(() => migrer(s)).not.toThrow();
+    expect(new CoeurCaisse(s, outils()).sessionOuverte()?.id).toBe("s-ancienne");
   });
 
   it("une base plus récente que l'application est refusée sans rien écrire", () => {
@@ -373,5 +403,97 @@ describe("CoeurCaisse", () => {
     console.log(`lireStock 5000 fiches, 500 sorties : médiane ${mediane.toFixed(1)} ms (mesures ${durees.map((d) => d.toFixed(1)).join(", ")})`);
     expect(c.lireStock()[0].quantite).toBe(38);
     expect(mediane).toBeLessThan(150);
+  });
+});
+
+describe("base en retard sur le serveur : aucun numéro réutilisé (D752)", () => {
+  const vendeur = { id: "u1", nom: "Mariama Diallo", superviseur: false };
+  const gros = [fiche(1, { quantite: 1000, lots: [{ ...fiche(1).lots[0], solde: 1000 }] })];
+  // « v2 » donne l'UUID `…0002` : le cœur exige un UUID pour la clé de vente.
+  const vendre = (c: CoeurCaisse, nom: string) =>
+    c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }] }, `00000000-0000-4000-8000-${nom.replace(/\D/g, "").padStart(12, "0")}`, vendeur);
+  const plagesLocales = (s: Stockage) =>
+    s.lire<{ id: string; dernierUtilise: number | null; fin: number }>("SELECT id, dernierUtilise, fin FROM plages ORDER BY debut");
+  const P1 = { id: "p1", debut: 1, fin: 500 };
+  const P2 = { id: "p2", debut: 501, fin: 1000 };
+
+  it("1. marche normale : sequenceMaxRecue 40 pour prochaineSequence 41, rien d'abandonné", () => {
+    const s = base();
+    const c = coeurRattache(s);
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 40, plages: [P1] }), null, null);
+    s.executer("UPDATE plages SET dernierUtilise = 5 WHERE id = 'p1'");
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 40, plages: [P1] }), null, null);
+    expect(plagesLocales(s)).toEqual([{ id: "p1", dernierUtilise: 5, fin: 500 }]);
+    expect(vendre(c, "v1").numero).toBe("T1-0000006");
+  });
+
+  it("2. poste neuf : sequenceMaxRecue 0, plage utilisable depuis debut", () => {
+    const s = base();
+    const c = coeurRattache(s);
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 0, plages: [P1] }), null, null);
+    expect(plagesLocales(s)).toEqual([{ id: "p1", dernierUtilise: null, fin: 500 }]);
+    expect(vendre(c, "v1").numero).toBe("T1-0000001");
+  });
+
+  it("3. base neuve, une plage : abandonnée, numéro de secours 41, puis plage neuve utilisée", () => {
+    const s = base();
+    const c = coeurRattache(s);
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 40, plages: [P1] }), null, null);
+    expect(plagesLocales(s)).toEqual([{ id: "p1", dernierUtilise: 500, fin: 500 }]);
+    expect(s.lireUn<{ prochainSecours: number; prochaineSequence: number }>("SELECT prochainSecours, prochaineSequence FROM etat_poste")).toEqual({
+      prochainSecours: 41,
+      prochaineSequence: 41,
+    });
+    expect(c.etatLocal().plageEpuisee).toBe(true);
+    expect(vendre(c, "v1").numero).toBe("S1-D1-41");
+    expect(s.lire<{ sequence: number }>("SELECT sequence FROM evenements ORDER BY sequence").map((e) => e.sequence)).toEqual([41, 42]);
+
+    // Le cycle suivant apporte une plage neuve : elle n'est pas abandonnée à son tour.
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 40, plages: [P1, P2] }), null, null);
+    expect(plagesLocales(s)).toEqual([
+      { id: "p1", dernierUtilise: 500, fin: 500 },
+      { id: "p2", dernierUtilise: null, fin: 1000 },
+    ]);
+    expect(vendre(c, "v2").numero).toBe("T1-0000501");
+  });
+
+  it("4. base neuve, deux plages : la première vente prend le debut de la plus récente", () => {
+    const s = base();
+    const c = coeurRattache(s);
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 40, plages: [P1, P2] }), null, null);
+    expect(plagesLocales(s)).toEqual([
+      { id: "p1", dernierUtilise: 500, fin: 500 },
+      { id: "p2", dernierUtilise: null, fin: 1000 },
+    ]);
+    expect(vendre(c, "v1").numero).toBe("T1-0000501");
+  });
+
+  it("5. copie restaurée : prochaineSequence 10, sequenceMaxRecue 40, plage entamée abandonnée, événement suivant en 41", () => {
+    const s = base();
+    const c = coeurRattache(s);
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 9, plages: [P1] }), null, null);
+    s.executer("UPDATE plages SET dernierUtilise = 120 WHERE id = 'p1'");
+    expect(s.lireUn<{ prochaineSequence: number }>("SELECT prochaineSequence FROM etat_poste")?.prochaineSequence).toBe(10);
+
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 40, plages: [P1] }), null, null);
+    expect(plagesLocales(s)).toEqual([{ id: "p1", dernierUtilise: 500, fin: 500 }]);
+    const v = vendre(c, "v1");
+    expect(v.numero).toBe("S1-D1-41");
+    expect(s.lire<{ sequence: number }>("SELECT sequence FROM evenements ORDER BY sequence")[0].sequence).toBe(41);
+  });
+
+  it("6. photographie suivante redevenue normale : plage neuve entamée conservée, abandon non rejoué", () => {
+    const s = base();
+    const c = coeurRattache(s);
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 40, plages: [P1] }), null, null);
+    vendre(c, "v1");
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 40, plages: [P1, P2] }), null, null);
+    expect(vendre(c, "v2").numero).toBe("T1-0000501");
+    c.appliquerPhotographie(photo(gros, { sequenceMaxRecue: 42, plages: [P1, P2] }), null, null);
+    expect(plagesLocales(s)).toEqual([
+      { id: "p1", dernierUtilise: 500, fin: 500 },
+      { id: "p2", dernierUtilise: 501, fin: 1000 },
+    ]);
+    expect(vendre(c, "v3").numero).toBe("T1-0000502");
   });
 });
