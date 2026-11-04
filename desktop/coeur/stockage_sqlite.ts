@@ -1,4 +1,5 @@
 import Database from "better-sqlite3";
+import { closeSync, existsSync, openSync, readSync, statSync } from "node:fs";
 import type { Stockage } from "./stockage";
 
 /** Le mode WAL est obligatoire sur disque (D740) ; une base en mémoire (tests) répond « memory ». */
@@ -15,8 +16,10 @@ export function exigerWal(mode: string | undefined, chemin: string): void {
  */
 export function ouvrirStockage(chemin: string): Stockage {
   const base = new Database(chemin);
-  const mode = (base.prepare("PRAGMA journal_mode = WAL").get() as { journal_mode?: string } | undefined)?.journal_mode;
   try {
+    // Un fichier abîmé échoue ici, dès le premier PRAGMA : la connexion est refermée, sinon le fichier
+    // resterait verrouillé et ne pourrait plus être renommé (D740).
+    const mode = (base.prepare("PRAGMA journal_mode = WAL").get() as { journal_mode?: string } | undefined)?.journal_mode;
     exigerWal(mode, chemin);
   } catch (erreur) {
     base.close();
@@ -47,6 +50,39 @@ export function ouvrirStockage(chemin: string): Stockage {
       base.close();
     },
   };
+}
+
+const ENTETE_SQLITE = Buffer.from("SQLite format 3\0", "latin1");
+
+/**
+ * Examine le fichier SANS l'ouvrir en écriture : fermer la dernière connexion d'une base abîmée supprime
+ * son -wal et son -shm (constaté), donc des ventes qui n'ont pas encore été reportées dans le fichier.
+ * L'en-tête est lu directement, puis `quick_check` passe par une connexion en lecture seule, qui ne touche
+ * à aucun fichier. Les erreurs qui ne disent pas « illisible » (fichier verrouillé, droits) remontent.
+ */
+export function examinerFichier(chemin: string): "absent" | "sain" | "illisible" {
+  if (!existsSync(chemin)) return "absent";
+  const taille = statSync(chemin).size;
+  if (taille === 0) return "sain";
+  const fd = openSync(chemin, "r");
+  const entete = Buffer.alloc(ENTETE_SQLITE.length);
+  try {
+    readSync(fd, entete, 0, entete.length, 0);
+  } finally {
+    closeSync(fd);
+  }
+  if (!entete.equals(ENTETE_SQLITE)) return "illisible";
+  const base = new Database(chemin, { readonly: true });
+  try {
+    const lignes = base.prepare("PRAGMA quick_check").all() as Record<string, unknown>[];
+    return lignes.length === 1 && Object.values(lignes[0])[0] === "ok" ? "sain" : "illisible";
+  } catch (erreur) {
+    const code = (erreur as { code?: unknown }).code;
+    if (typeof code === "string" && (code === "SQLITE_NOTADB" || code.startsWith("SQLITE_CORRUPT"))) return "illisible";
+    throw erreur;
+  } finally {
+    base.close();
+  }
 }
 
 /** Contrôle d'intégrité rapide (`PRAGMA quick_check`) : vrai si la base est saine. */

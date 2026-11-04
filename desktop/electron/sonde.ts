@@ -3,13 +3,22 @@
 import { app, session, type BrowserWindow } from "electron";
 import { createRequire } from "node:module";
 import { writeFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
+import type { CoeurCaisse } from "../coeur/coeur";
 
 type Resultat = Record<string, unknown>;
 
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-export async function lancerSonde(opts: { fenetre: BrowserWindow; origine: string; pidServeur?: number }): Promise<void> {
+export async function lancerSonde(opts: {
+  fenetre: BrowserWindow;
+  origine: string;
+  pidServeur?: number;
+  coeur: CoeurCaisse;
+  dossier: string;
+  urlApi: string;
+}): Promise<void> {
   const { fenetre, origine } = opts;
   const wc = fenetre.webContents;
   const r: Resultat = {};
@@ -41,6 +50,98 @@ export async function lancerSonde(opts: { fenetre: BrowserWindow; origine: strin
     } catch {
       // Une redirection peut interrompre le chargement initial.
     }
+  };
+
+  /** Pont de caisse : identité tirée du serveur, rattachement, contrôles d'accès. Booléens, comptes et codes seulement. */
+  const sondeCaisse = async (): Promise<Resultat> => {
+    const c: Resultat = {};
+    const pont = "window.medconnecteDesktop";
+    const lireJeton = () => js<string | null>(`localStorage.getItem("access_token")`);
+    const valide = (t: string | null) => !!t && t !== "invalide";
+    let jeton = await lireJeton();
+    if (!valide(jeton)) {
+      // Le rafraîchissement de l'étape 7 peut être interrompu par la navigation : nouvelle connexion démo.
+      await session.defaultSession.clearStorageData();
+      await aller("/auth/login");
+      await attendre(
+        () =>
+          js<boolean>(`(() => {
+            const b = Array.from(document.querySelectorAll("button")).filter((x) => (x.textContent || "").includes("Pharmacie de Kaloum"));
+            const cible = b.find((x) => (x.textContent || "").includes("Administrateur")) || b[0];
+            if (!cible) return false;
+            cible.click();
+            return true;
+          })()`),
+        20_000,
+      );
+      await attendre(() => new URL(url()).pathname.startsWith("/dashboard"), 25_000);
+      await attendre(async () => valide((jeton = await lireJeton())), 15_000);
+      c.nouvelleConnexion = true;
+    }
+    if (!jeton || !valide(jeton)) return { ...c, erreur: "jeton absent de la page" };
+    const octetsJeton = Buffer.from(jeton);
+
+    // Profil du compte connecté, lu par le processus principal (le jeton ne sort pas de la sonde).
+    const reponseMe = await fetch(`${opts.urlApi}/auth/me`, { headers: { Authorization: `Bearer ${jeton}` } });
+    const me = ((await reponseMe.json()) as { data?: Record<string, unknown> }).data ?? {};
+    // Seule la pharmacie sert d'argument aux appels de la page ; l'identité, elle, vient du processus principal.
+    const structureId = String((me.structure as { id?: string } | undefined)?.id ?? me.structureId ?? "");
+
+    // Forme du pont : méthodes nommées, aucun accès brut à ipcRenderer, aucune méthode pour déclarer une identité.
+    c.formePont = await js<unknown>(`(() => {
+      const p = ${pont};
+      return { cles: Object.keys(p).sort(), caisse: Object.keys(p.caisse).sort(), ipcRendererExpose: "ipcRenderer" in p || "ipcRenderer" in p.caisse, definirUtilisateurPresent: "definirUtilisateur" in p };
+    })()`);
+
+    // Avant tout jeton : aucune identité confirmée, 401. Validation dans le processus principal.
+    c.sansIdentite = await js<unknown>(`${pont}.caisse.chargerStock(${JSON.stringify(structureId)}).then((r) => ({ ok: r.ok, status: r.status }))`);
+    c.methodeInconnueAbsente = await js<boolean>(`typeof ${pont}.caisse.supprimerTout === "undefined"`);
+
+    // Jeton en mémoire seulement : le processus principal lit /auth/me, rattache le poste, puis synchronise.
+    await js(`${pont}.definirJeton(${JSON.stringify(jeton)})`);
+    const identite = await attendre(
+      async () => (await js<{ ok: boolean }>(`${pont}.caisse.chargerStock(${JSON.stringify(structureId)})`)).ok,
+      90_000,
+    );
+    c.identiteConfirmeeParLeServeur = identite;
+    c.posteRattache = opts.coeur.structureRattachee() === structureId;
+    const contact = await attendre(async () => (await js<{ dernierContactLe: string | null }>(`${pont}.etat()`)).dernierContactLe !== null, 90_000);
+    c.contactServeur = contact;
+    c.etat = await js<unknown>(`${pont}.etat()`);
+    if (!identite) return c;
+
+    c.argumentInvalide = await js<unknown>(
+      `${pont}.caisse.creerVente(${JSON.stringify(structureId)}, { lignes: "x" }, "k").then((r) => ({ ok: r.ok, status: r.status, code: r.code }))`,
+    );
+    c.autrePharmacie = await js<unknown>(
+      `${pont}.caisse.chargerStock("00000000-0000-4000-8000-000000000000").then((r) => ({ ok: r.ok, status: r.status }))`,
+    );
+    // Aucune nouvelle vente : la base du poste de la première passe (vente déjà envoyée) est relue.
+    const stock = await js<{ ok: boolean; data?: unknown[] }>(`${pont}.caisse.chargerStock(${JSON.stringify(structureId)})`);
+    c.fichesLues = stock.data?.length ?? 0;
+    c.etatCaisse = await js<unknown>(
+      `${pont}.caisse.etatCaisse(${JSON.stringify(structureId)}, ${JSON.stringify(String(me.id))}).then((r) => ({ ok: r.ok, poste: r.ok ? r.data.poste.type : null, sessionOuverte: r.ok ? r.data.session !== null : null }))`,
+    );
+    const e = opts.coeur.etatLocal();
+    const s = opts.coeur.etatPourSynchro();
+    c.fileEtSequence = { fileEnAttente: e.fileEnAttente, rejetes: e.rejetes, sequenceAppliquee: s.sequenceAppliquee };
+
+    // Le jeton n'est écrit dans aucun fichier du dossier de données du poste.
+    // (Le stockage local du navigateur garde le sien, comme sur le web : il n'entre pas dans ce contrôle.)
+    const fichiers = readdirSync(opts.dossier).filter((f) => /^(caisse\.sqlite|appareil\.json)/.test(f));
+    const dansFichier = fichiers.filter((f) => {
+      try {
+        return readFileSync(path.join(opts.dossier, f)).includes(octetsJeton);
+      } catch {
+        return false;
+      }
+    });
+    c.fichiersControles = fichiers.length;
+    c.jetonSurDisque = dansFichier.length > 0;
+    c.jetonDansLaBase = existsSync(path.join(opts.dossier, "caisse.sqlite"))
+      ? readFileSync(path.join(opts.dossier, "caisse.sqlite")).includes(octetsJeton)
+      : null;
+    return c;
   };
 
   try {
@@ -131,6 +232,9 @@ export async function lancerSonde(opts: { fenetre: BrowserWindow; origine: strin
         requireAbsent: typeof window.require === "undefined",
         processAbsent: typeof window.process === "undefined",
       })`);
+
+      // 10. Pont de caisse (PD04a) : écrit UNE vente sur la base de dev (compte démo de la Pharmacie de Kaloum).
+      r.caisse = await sondeCaisse();
 
       // Attente de mesure mémoire sur la vente
       const attenteMs = Number(process.env.MC_SONDE_ATTENTE_MS ?? 0);

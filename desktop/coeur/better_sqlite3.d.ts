@@ -15,7 +15,7 @@ declare module "better-sqlite3" {
   }
 
   interface ConstructeurBaseDeDonnees {
-    new (chemin: string): BaseDeDonnees;
+    new (chemin: string, options?: { readonly?: boolean }): BaseDeDonnees;
   }
 
   const Database: ConstructeurBaseDeDonnees;

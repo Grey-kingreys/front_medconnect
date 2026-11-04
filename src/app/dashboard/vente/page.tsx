@@ -17,7 +17,7 @@ import {
   type Vente,
 } from "@/lib/api_ventes";
 import { estErreurReseau } from "@/lib/erreurs_api";
-import { sourceEnLigne } from "@/lib/caisse/source_en_ligne";
+import { sourceCaisse } from "@/lib/caisse/source_active";
 import type { EtatCaisse } from "@/lib/caisse/source";
 import { LIBELLES_UNITE_MINIMALE, aArticle, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { MSG_TELEPHONE_INVALIDE, AIDE_TELEPHONE } from "@/lib/erreur_telephone";
@@ -163,9 +163,9 @@ export default function NouvelleVentePage() {
     if (!structureId || !userId) return;
     let actif = true;
     Promise.all([
-      sourceEnLigne.chargerStock(structureId),
-      sourceEnLigne.chargerReferentiels(structureId).catch(() => null),
-      sourceEnLigne.etatCaisse(structureId, userId).catch(() => null),
+      sourceCaisse().chargerStock(structureId),
+      sourceCaisse().chargerReferentiels(structureId).catch(() => null),
+      sourceCaisse().etatCaisse(structureId, userId).catch(() => null),
     ])
       .then(([stocks, refs, caisse]) => {
         if (!actif) return;
@@ -419,7 +419,7 @@ export default function NouvelleVentePage() {
     setBandeau(null);
     setReessayable(false);
     const aSurOrdonnance = medicamentsSurOrdonnance(envoye, stocks).length > 0;
-    sourceEnLigne
+    sourceCaisse()
       .creerVente(structureId, corpsVente(envoye, aSurOrdonnance, paiements), cle)
       .then((vente) => {
         envoiEnCours.current = false;
@@ -431,7 +431,7 @@ export default function NouvelleVentePage() {
         setSucces(vente);
         // Badge à jour : la première vente peut avoir ouvert la caisse.
         if (userId) {
-          sourceEnLigne
+          sourceCaisse()
             .etatCaisse(structureId, userId)
             .then(setEtatCaisse)
             .catch(() => undefined);

@@ -2,9 +2,18 @@
 import { app, BrowserWindow, Menu, session, shell } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { randomUUID } from "node:crypto";
+import os from "node:os";
+import { Passerelle, construireEtat } from "../coeur/passerelle";
+import { ouvrirCaisse, type CaisseOuverte } from "./demarrage";
+import { enregistrerIpc } from "./ipc";
 import { demarrerMesureMemoire } from "./memoire";
 import { lancerSonde } from "./sonde";
 import { arreterServeur, demarrerServeur, erreurFatale, pidServeur } from "./serveur-next";
+import { creerServiceSynchro } from "./synchro";
+
+// Adresse de l'API : figée au build par esbuild (`define`), jamais lue d'un fichier.
+const URL_API = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 // Réduction de mémoire (fiche PD01, section 5, étape a).
 app.disableHardwareAcceleration();
@@ -78,15 +87,81 @@ if (!premiereInstance) {
     fenetre.focus();
   });
 
-  app.on("will-quit", arreterServeur);
+  let caisse: CaisseOuverte | null = null;
+  let service: ReturnType<typeof creerServiceSynchro> | null = null;
+
+  // Fermeture : plus de nouveau cycle, on attend la fin de celui qui est en vol (quelques secondes au plus), puis on ferme la base.
+  let fermetureFaite = false;
+  app.on("will-quit", (evenement) => {
+    if (fermetureFaite) return;
+    fermetureFaite = true;
+    evenement.preventDefault();
+    service?.arreter();
+    arreterServeur();
+    const borne = new Promise<void>((ok) => setTimeout(ok, 4000));
+    void Promise.race([service?.attendreFinCycle() ?? Promise.resolve(), borne]).finally(() => {
+      try {
+        caisse?.stockage.fermer();
+      } catch {
+        // Déjà fermée.
+      }
+      // Tout est fermé : sortie directe (un second app.quit() dans will-quit ne ramenait pas toujours l'arrêt).
+      app.exit(0);
+    });
+  });
   app.on("window-all-closed", () => app.quit());
 
   void app.whenReady().then(async () => {
     Menu.setApplicationMenu(null);
     session.defaultSession.setPermissionRequestHandler((_wc, _permission, rappel) => rappel(false));
     session.defaultSession.setPermissionCheckHandler(() => false);
+
+    // La caisse locale d'abord : une base illisible demande une décision avant tout le reste.
+    caisse = await ouvrirCaisse({ sansInterface: sondeActive });
+    if (caisse === null) return;
+    const { coeur } = caisse;
+
     demarrerMesureMemoire();
     fenetre = creerFenetre();
+
+    const journal = (message: string) => console.log(`[caisse] ${message}`);
+    const envoyer = (canal: string, donnee?: unknown) => {
+      const contenu = fenetre?.webContents;
+      if (contenu && !contenu.isDestroyed()) contenu.send(canal, donnee);
+    };
+    let passerelle: Passerelle;
+    const etatPoste = () => construireEtat(coeur, service!.etat(), passerelle.utilisateurCourant());
+    const notifier = () => envoyer("etat", etatPoste());
+    service = creerServiceSynchro({
+      coeur,
+      urlApi: URL_API,
+      versionApp: app.getVersion(),
+      libellePoste: os.hostname().slice(0, 40),
+      genererId: () => randomUUID(),
+      notifier,
+      demanderJeton: () => envoyer("demande-jeton"),
+      identite: {
+        confirmer: (donnees) => void passerelle.confirmerIdentite(donnees),
+        effacer: () => passerelle.effacerIdentite(),
+        idCourant: () => passerelle.utilisateurCourant()?.id ?? null,
+      },
+      journal,
+    });
+    passerelle = new Passerelle({
+      coeur,
+      apresVente: () => service!.declencher("apres-vente"),
+      apresRattachement: () => service!.declencher("demarrage"),
+      etatChange: notifier,
+      journal,
+    });
+    enregistrerIpc({
+      passerelle,
+      origine: () => origine,
+      contenuAutorise: () => fenetre?.webContents ?? null,
+      definirJeton: (jeton) => service!.definirJeton(jeton),
+      deconnecter: () => service!.deconnecter(),
+      etat: etatPoste,
+    });
 
     // La fenêtre ne charge jamais une adresse tant que notre propre serveur n'a pas été confirmé vivant.
     const port = await demarrerServeur();
@@ -95,7 +170,14 @@ if (!premiereInstance) {
     }
     origine = `http://127.0.0.1:${port}`;
     if (sondeActive) {
-      await lancerSonde({ fenetre, origine, pidServeur: pidServeur() });
+      await lancerSonde({
+        fenetre,
+        origine,
+        pidServeur: pidServeur(),
+        coeur,
+        dossier: caisse.dossier,
+        urlApi: URL_API,
+      });
     } else {
       await fenetre.loadURL(`${origine}/dashboard`);
     }

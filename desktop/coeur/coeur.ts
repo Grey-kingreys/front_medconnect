@@ -71,6 +71,14 @@ export class CoeurCaisse {
     return this.etat().appareilId as string;
   }
 
+  /**
+   * Reprend l'identifiant du poste gardé hors de la base (`appareil.json`, D752) quand la base n'en a pas
+   * encore, après une remise à vide : même poste au serveur. Sans effet si la base en a déjà un.
+   */
+  fixerAppareilId(id: string): void {
+    this.stockage.executer("UPDATE etat_poste SET appareilId = ? WHERE id = 1 AND appareilId IS NULL", [id]);
+  }
+
   /** Un poste appartient à une seule pharmacie, fixée une fois (D741). */
   rattacher(entree: { structureId: string }): void {
     const actuelle = this.etat().structureId;
@@ -78,6 +86,31 @@ export class CoeurCaisse {
       throw new Error("Ce poste est déjà rattaché à une autre pharmacie.");
     }
     this.stockage.executer("UPDATE etat_poste SET structureId = ? WHERE id = 1", [entree.structureId]);
+  }
+
+  /** Poste enregistré au serveur par la dernière photographie, ou null tant qu'aucun catalogue n'est chargé. */
+  poste(): { id: string; code: string; libelle: string } | null {
+    const e = this.etat();
+    if (e.posteId === null || e.posteCode === null) return null;
+    return { id: e.posteId, code: e.posteCode, libelle: e.posteLibelle ?? "" };
+  }
+
+  /** Dernière identité confirmée par le serveur (`/auth/me`), sans jeton : relue hors ligne et au redémarrage. */
+  enregistrerProfil(profil: { utilisateurId: string } & Record<string, unknown>): void {
+    this.stockage.executer(
+      "INSERT OR REPLACE INTO profil_local (id, document, utilisateurId, enregistreLe) VALUES (1, ?, ?, ?)",
+      [JSON.stringify(profil), profil.utilisateurId, this.outils.horloge().toISOString()],
+    );
+  }
+
+  /** Retire l'identité locale (D756), jamais le journal ni les ventes. */
+  effacerProfil(): void {
+    this.stockage.executer("DELETE FROM profil_local", []);
+  }
+
+  lireProfil(): unknown {
+    const ligne = this.stockage.lireUn<{ document: string }>("SELECT document FROM profil_local WHERE id = 1");
+    return ligne ? (JSON.parse(ligne.document) as unknown) : null;
   }
 
   structureRattachee(): string | null {

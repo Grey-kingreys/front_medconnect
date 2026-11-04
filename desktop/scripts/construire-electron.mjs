@@ -3,9 +3,13 @@ import { build } from "esbuild";
 import { cpSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { exigerAdresseApi } from "./adresse_api.mjs";
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(racine, "dist");
+
+// L'adresse de l'API est figée dans le processus principal au build, comme pour le front (jamais lue d'un fichier).
+const adresseApi = exigerAdresseApi();
 mkdirSync(dist, { recursive: true });
 
 await build({
@@ -16,6 +20,7 @@ await build({
   format: "cjs",
   target: "node24",
   external: ["electron", "better-sqlite3"],
+  define: { "process.env.NEXT_PUBLIC_API_URL": JSON.stringify(adresseApi) },
   logLevel: "warning",
 });
 

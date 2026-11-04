@@ -3,16 +3,13 @@ import { spawnSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { exigerAdresseApi } from "./adresse_api.mjs";
 
 const racine = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const racineFront = path.resolve(racine, "..");
 const cible = path.join(racine, "dist-front", "serveur");
 
-const adresseApi = process.env.NEXT_PUBLIC_API_URL ?? "";
-if (!/^https?:\/\/\S+$/.test(adresseApi)) {
-  console.error("Indiquez NEXT_PUBLIC_API_URL : l'adresse de l'API que cette caisse doit appeler.");
-  process.exit(1);
-}
+exigerAdresseApi();
 
 const args = ["next", "build"];
 if (process.argv.includes("--webpack")) args.push("--webpack");

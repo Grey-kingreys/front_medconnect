@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { pontDesktop } from "./contrat_desktop";
+import { pontDesktop, type PontDesktop } from "./contrat_desktop";
 
 describe("pontDesktop", () => {
   afterEach(() => {
@@ -11,7 +11,7 @@ describe("pontDesktop", () => {
   });
 
   it("renvoie le pont s'il existe", () => {
-    window.medconnecteDesktop = { version: "0.1.0" };
+    window.medconnecteDesktop = { version: "0.1.0" } as unknown as PontDesktop;
     expect(pontDesktop()).toEqual({ version: "0.1.0" });
   });
 });
