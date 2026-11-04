@@ -151,6 +151,10 @@ if (!premiereInstance) {
     passerelle = new Passerelle({
       coeur,
       apresVente: () => service!.declencher("apres-vente"),
+      apresAnnulation: () => {
+        service!.moteur.forcerPhotographie();
+        service!.declencher("apres-vente");
+      },
       apresRattachement: () => service!.declencher("demarrage"),
       etatChange: notifier,
       journal,
@@ -182,6 +186,7 @@ if (!premiereInstance) {
         coeur,
         dossier: caisse.dossier,
         urlApi: URL_API,
+        declencher: () => service!.declencher("minuterie"),
       });
     } else {
       await fenetre.loadURL(`${origine}/dashboard`);

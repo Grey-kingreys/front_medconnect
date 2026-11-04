@@ -32,6 +32,8 @@ export interface UtilisateurPoste {
 
 export interface EtatPosteDesktop {
   enLigne: boolean;
+  /** Vrai seulement après un échec réel de contact avec le serveur. Au démarrage, `enLigne` et `horsLigne` sont faux tous deux. */
+  horsLigne: boolean;
   connexionARefaire: boolean;
   nonEnregistre: boolean;
   catalogueDisponible: boolean;

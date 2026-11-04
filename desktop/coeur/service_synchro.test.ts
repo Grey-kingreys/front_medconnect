@@ -78,6 +78,7 @@ function monter(coeur: CoeurCaisse, urlApi: string) {
   let passerelle!: Passerelle;
   const service = creerServiceSynchro({
     coeur,
+    sonderAuDemarrage: false,
     urlApi,
     versionApp: "0.1.0",
     libellePoste: "poste",

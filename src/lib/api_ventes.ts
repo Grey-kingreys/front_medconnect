@@ -27,6 +27,10 @@ export const CODES_ERREUR_VENTE = [
   "JOURNEE_CLOTUREE",
   "PIECE_NON_ANNULABLE",
   "STOCK_INSUFFISANT",
+  // Refus du poste desktop après une annulation déjà faite au serveur (D753).
+  "ANNULATION_AUTRE_POSTE",
+  "ANNULATION_AUTRE_CAISSE",
+  "ANNULATION_CAISSE_FERMEE",
 ] as const;
 export type CodeErreurVente = (typeof CODES_ERREUR_VENTE)[number];
 
@@ -89,6 +93,10 @@ export interface AnnulationPiece {
   motif: string | null;
   le: string;
   par: { id: string; nom: string };
+  /** Poste, caisse et jour métier de la pièce d'annulation, donc de l'auteur (D753). Facultatifs : une pièce plus ancienne ou un document local peut ne pas les porter. */
+  posteId?: string;
+  sessionCaisseId?: string;
+  jourMetier?: string;
 }
 export interface PharmacieVente {
   id: string;
@@ -148,6 +156,8 @@ export interface VenteResume {
   jourMetier: string;
   venteOrigine: { id: string; numero: string } | null;
   annulation: { id: string; numero: string } | null;
+  /** Desktop seulement : vente enregistrée sur ce poste que le serveur ne connaît pas encore. */
+  enCoursEnvoi?: boolean;
 }
 export interface VentesDuJour {
   date: string;
@@ -200,10 +210,11 @@ export function getVente(structureId: string, venteId: string) {
   return authFetch<Vente>(`/pharmacie/${encodeURIComponent(structureId)}/ventes/${encodeURIComponent(venteId)}`);
 }
 
-export function annulerVente(structureId: string, venteId: string, motif: string) {
+/** `posteId` : seulement le poste desktop (D745), pour que le remboursement sorte de sa caisse ; le web ne le passe jamais. */
+export function annulerVente(structureId: string, venteId: string, motif: string, posteId?: string) {
   return authFetch<Vente>(
     `/pharmacie/${encodeURIComponent(structureId)}/ventes/${encodeURIComponent(venteId)}/annuler`,
-    { method: "POST", body: JSON.stringify({ motif }) },
+    { method: "POST", body: JSON.stringify(posteId === undefined ? { motif } : { motif, posteId }) },
   );
 }
 

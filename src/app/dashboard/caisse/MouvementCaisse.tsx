@@ -5,7 +5,8 @@ import { AlertCircle, ArrowLeftRight, Loader2 } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
-import { enregistrerMouvement, type ModePaiement, type TypeMouvementCaisse } from "@/lib/api_caisse";
+import { sourceCaisse } from "@/lib/caisse/source_active";
+import type { ModePaiement, TypeMouvementCaisse } from "@/lib/api_caisse";
 import { codeErreur, estErreurReseau } from "@/lib/erreurs_api";
 import { formaterGNF } from "@/lib/format_gnf";
 import { ALERTE_ERREUR, BOUTON_PRIMAIRE, BOUTON_SECONDAIRE, CHAMP } from "@/components/pharmacie/classes";
@@ -99,7 +100,7 @@ function ContenuMouvement({
     onEnAttente(false);
     try {
       const corps = { id, type, montant: valeur, motif: motif.trim(), ...(mode !== CODE_ESPECES ? { mode } : {}) };
-      const res = await enregistrerMouvement(structureId, sessionId, corps);
+      const res = await sourceCaisse().enregistrerMouvement(structureId, sessionId, corps);
       onEnregistre(res.message);
     } catch (err) {
       if (estErreurReseau(err)) {

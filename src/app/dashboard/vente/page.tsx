@@ -18,6 +18,7 @@ import {
 } from "@/lib/api_ventes";
 import { estErreurReseau } from "@/lib/erreurs_api";
 import { sourceCaisse } from "@/lib/caisse/source_active";
+import { etatPosteAttendu, horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
 import type { EtatCaisse } from "@/lib/caisse/source";
 import { LIBELLES_UNITE_MINIMALE, aArticle, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { MSG_TELEPHONE_INVALIDE, AIDE_TELEPHONE } from "@/lib/erreur_telephone";
@@ -122,6 +123,11 @@ export default function NouvelleVentePage() {
   const structureId = user?.structureId;
   const userId = user?.id;
   const cleStock = structureId && userId ? cleStockagePanier(structureId, userId) : null;
+  // Poste desktop hors ligne : aucun plafond de stock, la vente sera à régulariser (D737). Faux sur le web.
+  const posteSuivi = useEtatPoste();
+  const sansPlafond = horsLigneSurPoste(posteSuivi);
+  // Poste desktop dont l'état n'est pas encore connu : on attend, sans appliquer ni retirer le plafond à tort.
+  const etatAttendu = etatPosteAttendu(posteSuivi);
 
   const [stock, setStock] = useState<StockMedicament[] | null>(null);
   const [referentiels, setReferentiels] = useState<Referentiels | null>(null);
@@ -291,7 +297,7 @@ export default function NouvelleVentePage() {
 
   const ajouter = (s: StockMedicament) => {
     const unite = uniteParDefaut(s);
-    setPanier(ajouterAuPanier(panier, s, unite, nouvelleCleIdempotence));
+    setPanier(ajouterAuPanier(panier, s, unite, nouvelleCleIdempotence, sansPlafond));
     setDerniereCle(cleLigne(s.id, unite));
   };
 
@@ -300,7 +306,9 @@ export default function NouvelleVentePage() {
     if (e.key !== "Enter") return;
     e.preventDefault();
     if (verrouille || texte.trim() === "") return;
-    const premier = resultats.find((s) => raisonListe(s, uniteParDefaut(s)) === null && peutAjouter(panier, s, uniteParDefaut(s)));
+    const premier = resultats.find(
+      (s) => raisonListe(s, uniteParDefaut(s), sansPlafond) === null && peutAjouter(panier, s, uniteParDefaut(s), sansPlafond),
+    );
     if (!premier) return;
     ajouter(premier);
     setTexte("");
@@ -429,6 +437,13 @@ export default function NouvelleVentePage() {
         setPanier(PANIER_VIDE);
         setDerniereCle(null);
         setSucces(vente);
+        // Sur le poste, le stock local est relu : la liste montre la quantité diminuée.
+        if (sourceCaisse().enLigneSeulement === false) {
+          sourceCaisse()
+            .chargerStock(structureId)
+            .then(setStock)
+            .catch(() => undefined);
+        }
         // Badge à jour : la première vente peut avoir ouvert la caisse.
         if (userId) {
           sourceCaisse()
@@ -542,6 +557,11 @@ export default function NouvelleVentePage() {
           >
             Vente enregistrée
           </h2>
+          {sourceCaisse().enLigneSeulement === false && succes.provisoire === true && (
+            <p className="text-sm text-slate-700 dark:text-slate-300">
+              Vente enregistrée. Une partie est à régulariser par le titulaire.
+            </p>
+          )}
           {succes.rejeu === true && (
             <p className="text-sm text-slate-700 dark:text-slate-300">
               Cette vente était déjà enregistrée : elle n&apos;a pas été comptée deux fois.
@@ -594,7 +614,7 @@ export default function NouvelleVentePage() {
   const libelleReliquat = derniereFiche ? LIBELLES_UNITE_MINIMALE[derniereFiche.uniteMinimale ?? "UNITE"] : null;
 
   let corps;
-  if (stock === null && erreurChargement === null) {
+  if ((stock === null && erreurChargement === null) || etatAttendu) {
     corps = (
       <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
@@ -647,14 +667,16 @@ export default function NouvelleVentePage() {
             <ul className="divide-y divide-slate-200 dark:divide-slate-800">
               {resultats.map((s) => {
                 const unite = uniteParDefaut(s);
-                const raison = raisonListe(s, unite);
+                const raison = raisonListe(s, unite, sansPlafond);
                 const dansPanier = nombreDansPanier(s.id, unite);
                 const nom = s.medicament.nom;
                 const coefficient = s.coefficientBoite ?? 1;
                 const libelleUnite = LIBELLES_UNITE_MINIMALE[s.uniteMinimale ?? "UNITE"];
                 const demandeMini = unite === "UNITE" ? 1 : coefficient;
                 const avertissement =
-                  raison === null ? avertissementStock(s, Math.max(demandeEnUm(panier, s), demandeMini)) : null;
+                  raison === null
+                    ? avertissementStock(s, Math.max(demandeEnUm(panier, s), demandeMini), sansPlafond)
+                    : null;
                 const aRegulariser = formaterARegulariser(
                   s.quantiteARegulariser,
                   coefficient,
@@ -687,7 +709,7 @@ export default function NouvelleVentePage() {
                       </span>
                     ) : dansPanier === 0 && panierPlein(panier) ? (
                       <span className="text-sm text-slate-600 dark:text-slate-400">Panier complet</span>
-                    ) : !peutAjouter(panier, s, unite) ? (
+                    ) : !peutAjouter(panier, s, unite, sansPlafond) ? (
                       <span className="text-sm text-slate-600 dark:text-slate-400">Plus assez de stock à ajouter</span>
                     ) : (
                       <button
@@ -787,11 +809,11 @@ export default function NouvelleVentePage() {
                   const libelleUnite = LIBELLES_UNITE_MINIMALE[s.uniteMinimale ?? "UNITE"];
                   const autre = autreUnite(ligne.unite);
                   const autrePossible = raisonNonVendable(s, autre) === null;
-                  const peutPlus = peutAugmenter(panier, cle, s);
-                  const avertissementLigne = avertissementStock(s, demandeEnUm(panier, s));
+                  const peutPlus = peutAugmenter(panier, cle, s, sansPlafond);
+                  const avertissementLigne = avertissementStock(s, demandeEnUm(panier, s), sansPlafond);
                   // Au-dessus du stock (stock relu après un refus) : le texte dit ce qu'il reste ; au plafond : le « + » s'arrête.
                   const texteStock =
-                    avertissementLigne === "stock-insuffisant"
+                    avertissementLigne === "stock-insuffisant" || avertissementLigne === "a-regulariser"
                       ? texteAvertissement(avertissementLigne, s)
                       : !peutPlus && ligne.nombre < QUANTITE_MAX_LIGNE && plafondVente(s) > 0
                         ? demandeEnUm(panier, s) >= plafondVente(s)
@@ -857,7 +879,7 @@ export default function NouvelleVentePage() {
                         </span>
                         <button
                           type="button"
-                          onClick={() => setPanier(changerNombre(panier, cle, 1, s))}
+                          onClick={() => setPanier(changerNombre(panier, cle, 1, s, sansPlafond))}
                           disabled={verrouille || !peutPlus}
                           aria-label={`Augmenter la quantité de ${nom}`}
                           className={BOUTON_ICONE}
@@ -1013,7 +1035,9 @@ export default function NouvelleVentePage() {
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in lg:h-[calc(100dvh-4rem)] lg:flex lg:flex-col lg:space-y-0 lg:gap-6">
       <div className="lg:shrink-0 space-y-4">
         {enTete}
-        <p className={ALERTE_INFO}>Cette page a besoin d&apos;internet : sans connexion, aucune vente n&apos;est enregistrée.</p>
+        {sourceCaisse().enLigneSeulement !== false && (
+          <p className={ALERTE_INFO}>Cette page a besoin d&apos;internet : sans connexion, aucune vente n&apos;est enregistrée.</p>
+        )}
       </div>
       {corps}
       {dialogues}

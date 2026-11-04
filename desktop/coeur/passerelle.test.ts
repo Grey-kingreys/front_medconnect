@@ -210,6 +210,50 @@ describe("appels du cœur", () => {
     expect(coeur.etatLocal().fileEnAttente).toBeGreaterThan(0);
   });
 
+  it("une annulation du serveur enregistrée lance un cycle avec photographie (apresAnnulation)", async () => {
+    const apresAnnulation = vi.fn();
+    const { coeur, deps } = monter();
+    const p = new Passerelle({ ...deps, apresAnnulation });
+    p.confirmerIdentite(UTILISATEUR);
+    await p.appeler("creerVente", ["ph1", corpsVente(), uuid(1, "cccccccc")]);
+    const vente = coeur.lireVente(uuid(1, "cccccccc"))!;
+    const annulation = {
+      id: uuid(9, "cccccccc"),
+      numero: `A-${vente.numero}`,
+      motif: "Erreur de saisie",
+      le: vente.createdAt,
+      par: vente.vendeur,
+      posteId: vente.poste.id,
+      sessionCaisseId: vente.session.id,
+      jourMetier: vente.jourMetier,
+    };
+    const reponse = await p.appeler("enregistrerAnnulationServeur", [{ ...vente, statut: "ANNULEE", annulation }]);
+    expect(reponse).toMatchObject({ ok: true });
+    expect(apresAnnulation).toHaveBeenCalledTimes(1);
+  });
+
+  it("une annulation refusée par le cœur (autre poste) ne lance aucun cycle", async () => {
+    const apresAnnulation = vi.fn();
+    const { coeur, deps } = monter();
+    const p = new Passerelle({ ...deps, apresAnnulation });
+    p.confirmerIdentite(UTILISATEUR);
+    await p.appeler("creerVente", ["ph1", corpsVente(), uuid(1, "cccccccc")]);
+    const vente = coeur.lireVente(uuid(1, "cccccccc"))!;
+    const annulation = {
+      id: uuid(9, "cccccccc"),
+      numero: `A-${vente.numero}`,
+      motif: "Erreur de saisie",
+      le: vente.createdAt,
+      par: vente.vendeur,
+      posteId: uuid(77, "cccccccc"),
+      sessionCaisseId: vente.session.id,
+      jourMetier: vente.jourMetier,
+    };
+    const reponse = await p.appeler("enregistrerAnnulationServeur", [{ ...vente, statut: "ANNULEE", annulation }]);
+    expect(reponse).toMatchObject({ ok: false, status: 409, code: "ANNULATION_AUTRE_POSTE" });
+    expect(apresAnnulation).not.toHaveBeenCalled();
+  });
+
   it("un refus du cœur devient ok:false avec son code, sans cycle", async () => {
     const { p, deps } = monter();
     p.confirmerIdentite(UTILISATEUR);
@@ -256,6 +300,33 @@ describe("appels du cœur", () => {
 });
 
 describe("état du poste", () => {
+  it("distingue démarrage, coupure réelle, connexion à refaire et poste non enregistré", () => {
+    const { coeur } = monter();
+    const de = (etat: "DEMARRAGE" | "HORS_LIGNE" | "CONNEXION_A_REFAIRE" | "NON_ENREGISTRE") =>
+      construireEtat(
+        coeur,
+        {
+          etat,
+          dernierContactLe: null,
+          echecsConsecutifs: 0,
+          prochainDelaiMs: 1000,
+          posteDesactive: false,
+          heureFausse: false,
+          ecartHeureMs: null,
+          enAttenteServeur: 0,
+          sequenceAppliqueeServeur: null,
+          erreur: null,
+          rejets: 0,
+          fileEnAttente: 0,
+        },
+        null,
+      );
+    expect(de("DEMARRAGE")).toMatchObject({ enLigne: false, horsLigne: false, connexionARefaire: false, nonEnregistre: false });
+    expect(de("HORS_LIGNE")).toMatchObject({ enLigne: false, horsLigne: true });
+    expect(de("CONNEXION_A_REFAIRE")).toMatchObject({ horsLigne: false, connexionARefaire: true });
+    expect(de("NON_ENREGISTRE")).toMatchObject({ horsLigne: false, nonEnregistre: true });
+  });
+
   it("transmet messageEnvoi et signale une autre pharmacie", () => {
     const { coeur } = monter();
     const moteur = {
@@ -275,6 +346,7 @@ describe("état du poste", () => {
     const e = construireEtat(coeur, moteur, { ...UTILISATEUR, structureId: "autre" });
     expect(e).toMatchObject({
       enLigne: true,
+      horsLigne: false,
       catalogueDisponible: true,
       fileEnAttente: 3,
       rejetes: 2,

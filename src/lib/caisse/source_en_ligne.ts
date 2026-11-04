@@ -10,7 +10,7 @@ import {
   saisirComptage,
 } from "../api_caisse";
 import { getMyStock } from "../api_pharmacie";
-import { creerVente, getVente, listerVentes } from "../api_ventes";
+import { annulerVente, creerVente, getVente, listerVentes } from "../api_ventes";
 import type { SourceCaisse } from "./source";
 
 /** Source de la caisse par l'API. Les erreurs remontent telles quelles. */
@@ -46,4 +46,5 @@ export const sourceEnLigne: SourceCaisse = {
   },
   listerVentes: (structureId, options) => listerVentes(structureId, options),
   getVente: (structureId, venteId) => getVente(structureId, venteId),
+  annulerVente: (structureId, venteId, motif) => annulerVente(structureId, venteId, motif),
 };

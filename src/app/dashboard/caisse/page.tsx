@@ -6,13 +6,8 @@ import { AlertCircle, CircleCheck, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
+import { sourceCaisse } from "@/lib/caisse/source_active";
 import {
-  assurerPosteWeb,
-  getBilan,
-  getReferentiels,
-  getSessionCourante,
-  ouvrirSession,
-  saisirComptage,
   type BilanCaisse,
   type LigneComptage,
   type TypeMouvementCaisse,
@@ -82,11 +77,10 @@ export default function MaCaissePage() {
 
   // Relit l'état de la caisse sans repasser par l'écran de chargement.
   const relire = useCallback(async (structure: string, utilisateur: string) => {
-    const p = (await assurerPosteWeb(structure, utilisateur)).data;
-    const s = (await getSessionCourante(structure, p.id)).data;
-    setPoste(p);
-    setSession(s);
-    return s;
+    const etat = await sourceCaisse().etatCaisse(structure, utilisateur);
+    setPoste(etat.poste);
+    setSession(etat.session);
+    return etat.session;
   }, []);
 
   // Le bilan se charge pour la caisse ouverte de l'utilisateur, quel que soit son jour métier.
@@ -95,7 +89,8 @@ export default function MaCaissePage() {
   useEffect(() => {
     if (!structureId || !sessionId || !sessionEstLaMienne) return;
     let actif = true;
-    getBilan(structureId, sessionId)
+    sourceCaisse()
+      .getBilan(structureId, sessionId)
       .then((res) => {
         if (!actif) return;
         setBilanCharge({ id: sessionId, bilan: res.data });
@@ -142,14 +137,13 @@ export default function MaCaissePage() {
   useEffect(() => {
     if (!structureId || !userId) return;
     let actif = true;
-    Promise.all([getReferentiels(structureId), assurerPosteWeb(structureId, userId)])
-      .then(async ([refs, p]) => {
-        const s = (await getSessionCourante(structureId, p.data.id)).data;
+    Promise.all([sourceCaisse().chargerReferentiels(structureId), sourceCaisse().etatCaisse(structureId, userId)])
+      .then(([refs, etat]) => {
         if (!actif) return;
-        setReferentiels(refs.data);
-        setPoste(p.data);
-        setSession(s);
-        setLignes(lignesDepuisReferentiel(refs.data.coupures));
+        setReferentiels(refs);
+        setPoste(etat.poste);
+        setSession(etat.session);
+        setLignes(lignesDepuisReferentiel(refs.coupures));
         setErreurChargement(false);
         setCharge(true);
       })
@@ -180,7 +174,7 @@ export default function MaCaissePage() {
     try {
       if (action === "enregistrerFond") {
         if (!session) return;
-        await saisirComptage(structureId, session.id, {
+        await sourceCaisse().saisirComptage(structureId, session.id, {
           id: idComptage,
           moment: "OUVERTURE",
           coupures: lignesAEnvoyer(lignes),
@@ -191,7 +185,7 @@ export default function MaCaissePage() {
           action === "ouvrir"
             ? { id: idOuverture, posteId: poste.id, comptage: { coupures: lignesAEnvoyer(lignes) } }
             : { id: idOuverture, posteId: poste.id };
-        const res = await ouvrirSession(structureId, corps);
+        const res = await sourceCaisse().ouvrirSession(structureId, corps);
         setSucces(res.message);
       }
       renouveler();
@@ -328,7 +322,9 @@ export default function MaCaissePage() {
   return (
     <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
       {enTete}
-      <p className={ALERTE_INFO}>Cette page a besoin d&apos;internet : sans connexion, aucune vente n&apos;est enregistrée.</p>
+      {sourceCaisse().enLigneSeulement !== false && (
+        <p className={ALERTE_INFO}>Cette page a besoin d&apos;internet : sans connexion, aucune vente n&apos;est enregistrée.</p>
+      )}
       {blocSucces}
       {blocRefus}
 

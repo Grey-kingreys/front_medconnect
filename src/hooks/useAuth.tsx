@@ -323,6 +323,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const parsed = JSON.parse(storedUser) as AuthUser;
           setUser(parsed);
           console.log("[Auth] User loaded from storage:", parsed.email);
+          // Application desktop : le menu et les droits viennent du profil local tout de suite, sans attendre
+          // les nouvelles tentatives du contrôle du jeton (plusieurs secondes sans réseau).
+          if (pont) await chargerProfilLocal();
         } catch (e) {
           console.error("[Auth] Failed to parse stored user", e);
           setUser(null);

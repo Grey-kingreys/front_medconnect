@@ -36,4 +36,9 @@ export interface SourceCaisse {
   fermerSession(structureId: string, sessionId: string, corps: CorpsFermeture): Promise<ApiResponse<BilanCaisse>>;
   listerVentes(structureId: string, options: { date?: string; page?: number }): Promise<ApiResponse<VentesDuJour>>;
   getVente(structureId: string, venteId: string): Promise<ApiResponse<Vente | null>>;
+  /**
+   * Annule une vente. `utilisateurId` ne sert qu'au poste desktop, qui envoie son propre poste au serveur (D745) ;
+   * en ligne il est ignoré.
+   */
+  annulerVente(structureId: string, venteId: string, motif: string, utilisateurId?: string): Promise<ApiResponse<Vente>>;
 }

@@ -26,7 +26,11 @@ export interface ClientHttp {
   ): Promise<ReponseHttp>;
 }
 
-export type EtatMoteur = "EN_LIGNE" | "HORS_LIGNE" | "CONNEXION_A_REFAIRE" | "NON_ENREGISTRE";
+/**
+ * `DEMARRAGE` : poste rattaché, aucun contact tenté ni échoué pour l'instant. Ce n'est PAS une coupure :
+ * `HORS_LIGNE` n'est posé qu'après un échec réel de contact avec le serveur.
+ */
+export type EtatMoteur = "EN_LIGNE" | "HORS_LIGNE" | "CONNEXION_A_REFAIRE" | "NON_ENREGISTRE" | "DEMARRAGE";
 
 export type MotifCycle = "minuterie" | "apres-vente" | "demarrage";
 
@@ -158,7 +162,19 @@ export class MoteurSynchro {
     private readonly http: ClientHttp,
     private readonly options: OptionsMoteur,
   ) {
-    this.etatMoteur = coeur.structureRattachee() === null ? "NON_ENREGISTRE" : "HORS_LIGNE";
+    this.etatMoteur = coeur.structureRattachee() === null ? "NON_ENREGISTRE" : "DEMARRAGE";
+  }
+
+  /**
+   * Résultat d'un contact léger (route publique, avec ou sans jeton), répété entre deux cycles : sans lui, une
+   * coupure ne se verrait qu'au prochain cycle, jusqu'à 5 minutes plus tard. Un échec réel pose HORS_LIGNE ; un
+   * contact réussi sort d'une coupure vers DEMARRAGE (le cycle suivant dira EN_LIGNE). Sans effet quand la
+   * connexion est à refaire ou le poste non enregistré : ces états ont leur propre message.
+   */
+  signalerContact(reussi: boolean): void {
+    if (this.etatMoteur === "CONNEXION_A_REFAIRE" || this.etatMoteur === "NON_ENREGISTRE") return;
+    if (!reussi) this.etatMoteur = "HORS_LIGNE";
+    else if (this.etatMoteur === "HORS_LIGNE") this.etatMoteur = "DEMARRAGE";
   }
 
   /** Demande une photographie complète au prochain cycle, même si elle n'est pas due. */
@@ -168,7 +184,7 @@ export class MoteurSynchro {
 
   /** Nouveau jeton disponible : le moteur repart au prochain cycle. */
   reprendreApresConnexion(): void {
-    if (this.etatMoteur === "CONNEXION_A_REFAIRE") this.etatMoteur = "HORS_LIGNE";
+    if (this.etatMoteur === "CONNEXION_A_REFAIRE") this.etatMoteur = "DEMARRAGE";
   }
 
   /** Un seul cycle à la fois : un second appel attend le même cycle, pas d'envois croisés. */
@@ -239,7 +255,7 @@ export class MoteurSynchro {
         passe.arret = "La connexion est à refaire.";
         return this.cloturer(passe, false);
       }
-      if (this.etatMoteur === "NON_ENREGISTRE") this.etatMoteur = "HORS_LIGNE";
+      if (this.etatMoteur === "NON_ENREGISTRE") this.etatMoteur = "DEMARRAGE";
       if (!this.envoiBloque) this.erreur = null;
       if (motif === "demarrage") this.posteDesactive = false;
 

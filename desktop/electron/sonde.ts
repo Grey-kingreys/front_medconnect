@@ -6,6 +6,7 @@ import { writeFileSync } from "node:fs";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { CoeurCaisse } from "../coeur/coeur";
+import { jouerScenario } from "./sonde_scenario";
 
 type Resultat = Record<string, unknown>;
 
@@ -18,8 +19,23 @@ export async function lancerSonde(opts: {
   coeur: CoeurCaisse;
   dossier: string;
   urlApi: string;
+  /** Lance un cycle de synchronisation (scénario PD04c). */
+  declencher?: () => void;
 }): Promise<void> {
   const { fenetre, origine } = opts;
+  // Scénario de preuve PD04c : phase donnée par MC_SCENARIO, sortie dans MC_SONDE_SORTIE.
+  if (process.env.MC_SCENARIO) {
+    await jouerScenario({
+      fenetre,
+      origine,
+      coeur: opts.coeur,
+      dossier: opts.dossier,
+      urlApi: opts.urlApi,
+      declencher: opts.declencher ?? (() => undefined),
+      phase: process.env.MC_SCENARIO,
+    });
+    return;
+  }
   const wc = fenetre.webContents;
   const r: Resultat = {};
   const messagesConsole: string[] = [];

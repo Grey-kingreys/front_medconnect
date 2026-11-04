@@ -6,10 +6,10 @@ import { AlertCircle, Ban, Loader2, Printer, ShoppingCart, X } from "lucide-reac
 import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
+import { sourceCaisse } from "@/lib/caisse/source_active";
+import { etatPosteAttendu, horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
 import {
-  annulerVente,
   codeErreurVente,
-  listerVentes,
   type CodeErreurVente,
   type TypePiece,
   type VenteResume,
@@ -55,7 +55,20 @@ const CODES_SANS_REESSAI: readonly CodeErreurVente[] = [
   "POSTE_INCONNU",
   "SESSION_AUTRE_UTILISATEUR",
   "JOURNEE_CLOTUREE",
+  "ANNULATION_AUTRE_POSTE",
+  "ANNULATION_AUTRE_CAISSE",
+  "ANNULATION_CAISSE_FERMEE",
 ];
+
+/** Refus du poste desktop alors que le serveur a déjà annulé la vente : la liste doit être relue à la fermeture (D753). */
+const CODES_DEJA_ANNULEE: readonly CodeErreurVente[] = [
+  "ANNULATION_AUTRE_POSTE",
+  "ANNULATION_AUTRE_CAISSE",
+  "ANNULATION_CAISSE_FERMEE",
+];
+
+const MESSAGE_ANNULATION_HORS_LIGNE = "L'annulation demande une connexion.";
+const MESSAGE_VENTES_DU_POSTE = "Seules les ventes de ce poste sont visibles sans connexion.";
 
 const MESSAGE_RESEAU =
   "L'annulation n'a peut-être pas été enregistrée. Fermez cette fenêtre et vérifiez la liste avant de recommencer.";
@@ -84,6 +97,9 @@ const libelleNombre = (n: number) => (n === 0 ? "Aucune vente" : n === 1 ? "1 ve
 export default function VentesDuJourPage() {
   const { user, loading, profile } = useAuth();
   const structureId = user?.structureId;
+  const poste = useEtatPoste();
+  const horsLigne = horsLigneSurPoste(poste);
+  const etatAttendu = etatPosteAttendu(poste);
   const contexte = user ? lireContexteAcces(user, profile ?? null) : null;
   // Le serveur exige aussi la caisse pour annuler : sans elle le bouton serait refusé.
   const peutAnnuler =
@@ -105,9 +121,11 @@ export default function VentesDuJourPage() {
   const envoiEnCours = useRef(false);
 
   useEffect(() => {
-    if (!structureId) return;
+    // Poste desktop : la liste se lit une fois l'état connu (en ligne ou non), jamais deux fois au démarrage.
+    if (!structureId || etatAttendu) return;
     let actif = true;
-    listerVentes(structureId, { date, page })
+    sourceCaisse()
+      .listerVentes(structureId, { date, page })
       .then((res) => {
         if (actif) setEtat({ statut: "pret", journee: res.data });
       })
@@ -121,7 +139,7 @@ export default function VentesDuJourPage() {
     return () => {
       actif = false;
     };
-  }, [structureId, date, page, essai]);
+  }, [structureId, date, page, essai, horsLigne, etatAttendu]);
 
   const recharger = () => {
     setEtat({ statut: "chargement" });
@@ -170,7 +188,8 @@ export default function VentesDuJourPage() {
     envoiEnCours.current = true;
     setEnvoi(true);
     setErreurDialogue(null);
-    annulerVente(structureId, cible.id, motif)
+    sourceCaisse()
+      .annulerVente(structureId, cible.id, motif, user?.id)
       .then((res) => {
         envoiEnCours.current = false;
         setEnvoi(false);
@@ -193,6 +212,8 @@ export default function VentesDuJourPage() {
           setErreurDialogue(MESSAGE_RESEAU);
         } else if ((code !== null && CODES_SANS_REESSAI.includes(code)) || estRefusDroit(err)) {
           setSansReessai(true);
+          // Annulation déjà faite au serveur mais refusée par le poste : jamais de nouvel essai, la liste est relue.
+          if (code !== null && CODES_DEJA_ANNULEE.includes(code)) setAVerifier(true);
           setErreurDialogue(messageErreurPour(err, "Cette vente ne peut pas être annulée."));
         } else {
           setErreurDialogue(messageErreurPour(err, "Un problème est survenu, réessayez dans un instant."));
@@ -282,6 +303,12 @@ export default function VentesDuJourPage() {
             Total du jour (annulations déduites) : <span className="font-bold">{formaterGNF(journee.totalJour)}</span>
           </p>
           <p className="text-sm text-slate-700 dark:text-slate-300">{libelleNombre(journee.nombre)}</p>
+          {horsLigne && (
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              {peutAnnuler ? `${MESSAGE_ANNULATION_HORS_LIGNE} ` : ""}
+              {date < aujourdhui ? MESSAGE_VENTES_DU_POSTE : ""}
+            </p>
+          )}
           {date < aujourdhui && (
             <p className="text-sm text-slate-600 dark:text-slate-400">
               Une annulation faite aujourd&apos;hui apparaît dans la journée d&apos;aujourd&apos;hui, pas dans celle-ci.
@@ -317,6 +344,11 @@ export default function VentesDuJourPage() {
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${etiquette.classes}`}>
                       {etiquette.libelle}
                     </span>
+                    {v.enCoursEnvoi === true && (
+                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${CLASSES_PIECE.REGULARISATION}`}>
+                        En cours d&apos;envoi
+                      </span>
+                    )}
                     <Link
                       href={`/dashboard/ventes/${encodeURIComponent(v.id)}/recu`}
                       aria-label={`Réimprimer le reçu ${v.numero}`}
@@ -329,8 +361,9 @@ export default function VentesDuJourPage() {
                       <button
                         type="button"
                         onClick={() => ouvrirAnnulation(v)}
+                        disabled={horsLigne || v.enCoursEnvoi === true}
                         aria-label={`Annuler la vente ${v.numero}`}
-                        className={`inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/15 ${FOCUS}`}
+                        className={`inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/15 disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}
                       >
                         <Ban className="w-4 h-4" aria-hidden="true" />
                         Annuler

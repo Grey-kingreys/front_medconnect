@@ -74,6 +74,8 @@ export interface DepsPasserelle {
   coeur: CoeurCaisse;
   /** Lance un cycle de synchronisation sans l'attendre (après une vente). */
   apresVente(): void;
+  /** Annulation du serveur enregistrée sur ce poste : cycle avec photographie forcée, pour le retour du stock (D745). */
+  apresAnnulation?(): void;
   /** Le poste vient d'être rattaché à une pharmacie : enregistrement et catalogue à lancer. */
   apresRattachement(): void;
   /** L'état du poste a changé : le rendu doit le relire. */
@@ -164,6 +166,7 @@ export class Passerelle {
       const reponse = this.executer(methode, valeurs, this.utilisateur as UtilisateurPoste);
       if (ECRITURES.has(methode)) this.deps.etatChange();
       if (methode === "creerVente") this.deps.apresVente();
+      if (methode === "enregistrerAnnulationServeur") this.deps.apresAnnulation?.();
       return reponse;
     } catch (e) {
       if (e instanceof RefusCaisse) {
@@ -254,6 +257,7 @@ export function construireEtat(coeur: CoeurCaisse, moteur: EtatSynchro, utilisat
   const rattachee = coeur.structureRattachee();
   return {
     enLigne: moteur.etat === "EN_LIGNE",
+    horsLigne: moteur.etat === "HORS_LIGNE",
     connexionARefaire: moteur.etat === "CONNEXION_A_REFAIRE",
     nonEnregistre: moteur.etat === "NON_ENREGISTRE",
     catalogueDisponible: coeur.aUnCatalogue(),

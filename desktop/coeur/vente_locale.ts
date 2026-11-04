@@ -537,8 +537,8 @@ export function listerVentes(c: Contexte, jour: string): VentesDuJour {
  * `annulation` le poste et la caisse de la pièce d'annulation (ceux de l'auteur, là où le
  * remboursement est enregistré), alors que `session` reste la caisse de la vente d'origine.
  */
-export type ReponseAnnulation = Vente & {
-  annulation: AnnulationPiece & { posteId: string; sessionCaisseId: string; jourMetier: string };
+export type ReponseAnnulation = Omit<Vente, "annulation"> & {
+  annulation: AnnulationPiece & Required<Pick<AnnulationPiece, "posteId" | "sessionCaisseId" | "jourMetier">>;
 };
 
 const MESSAGE_ANNULATION_AUTRE_POSTE =
@@ -648,6 +648,9 @@ export function enregistrerAnnulationServeur(c: Contexte, reponse: ReponseAnnula
           motif: annulation.motif,
           le: annulation.le,
           par: annulation.par,
+          posteId: annulation.posteId,
+          sessionCaisseId: annulation.sessionCaisseId,
+          jourMetier: annulation.jourMetier,
         },
         annuleeLe: annulation.le,
         annuleeParId: annulation.par.id,

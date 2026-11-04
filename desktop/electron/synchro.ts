@@ -23,6 +23,16 @@ export interface OptionsService {
   identite: { confirmer: (donnees: unknown) => void; effacer: () => void; idCourant: () => string | null };
   /** Sans donnée sensible : jamais de jeton, de corps ni de donnée de vente. */
   journal: (message: string) => void;
+  /** Faux pour couper le contact léger sans jeton (tests). */
+  sonderAuDemarrage?: boolean;
+}
+
+/**
+ * Rythme du contact léger (D758) : la connexion se paie au mégaoctet quand elle marche. En ligne, une fois par minute ;
+ * hors ligne, toutes les 10 s : rien ne passe, rien n'est facturé, et le retour du réseau se voit vite.
+ */
+export function delaiContactMs(etat: EtatSynchro["etat"]): number {
+  return etat === "HORS_LIGNE" ? 10_000 : 60_000;
 }
 
 export interface ServiceSynchro {
@@ -84,6 +94,38 @@ export function creerServiceSynchro(options: OptionsService): ServiceSynchro {
     if (arrete || jeton === null || options.urlApi === "") return;
     minuterie = setTimeout(() => void lancer("minuterie"), moteur.prochainDelaiMs());
   };
+
+  // Contact léger, répété sur une route publique : il dit si le serveur répond, avec ou sans jeton, pour que
+  // « hors connexion » soit posé après un échec réel (coupure au repos, démarrage hors ligne) et levé au retour du réseau.
+  let sondeur: ReturnType<typeof setTimeout> | null = null;
+  const sonder = async () => {
+    sondeur = null;
+    if (arrete || options.urlApi === "") return;
+    const avant = moteur.etat().etat;
+    let reussi = false;
+    try {
+      // Un proxy qui répond 502 ne prouve pas que le serveur répond : même règle que le moteur.
+      reussi = (await client.requete("GET", "/app/version")).status < 500;
+    } catch {
+      reussi = false;
+    }
+    if (!arrete) {
+      moteur.signalerContact(reussi);
+      if (reussi && jeton === null && options.identite.idCourant() !== null) {
+        // Une identité est gardée mais aucun jeton (démarrage ou retour du réseau) : le rendu en obtient un.
+        options.demanderJeton();
+      } else if (reussi && jeton !== null && avant === "HORS_LIGNE") {
+        // Retour du réseau : les ventes en attente partent sans attendre la minuterie.
+        void lancer("minuterie");
+      }
+      options.notifier();
+    }
+    if (!arrete) {
+      sondeur = setTimeout(() => void sonder(), delaiContactMs(moteur.etat().etat));
+      sondeur.unref?.();
+    }
+  };
+  if (options.sonderAuDemarrage !== false) void sonder();
 
   const lancer = async (motif: MotifCycle, identiteTentee = false): Promise<void> => {
     if (arrete || jeton === null || options.urlApi === "") return;
@@ -169,6 +211,8 @@ export function creerServiceSynchro(options: OptionsService): ServiceSynchro {
       arrete = true;
       if (minuterie !== null) clearTimeout(minuterie);
       minuterie = null;
+      if (sondeur !== null) clearTimeout(sondeur);
+      sondeur = null;
     },
     attendreFinCycle: () => enVol.then(() => undefined),
   };

@@ -7,6 +7,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { BandeauPoste } from "@/components/caisse/BandeauPoste";
+import ActionEnLigne, { VersLaVente } from "@/components/caisse/ActionEnLigne";
+import { horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
+import { routeHorsLigneAutorisee } from "@/lib/caisse/routes_hors_ligne";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 import { lireContexteAcces, EVENEMENT_ACCES_REFUSE } from "@/lib/acces";
@@ -264,6 +268,8 @@ export default function DashboardLayout({
 }) {
   const { user, profile, loading } = useAuth();
   const pathname = usePathname();
+  const poste = useEtatPoste();
+  const horsLigne = horsLigneSurPoste(poste);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -272,6 +278,7 @@ export default function DashboardLayout({
   useEffect(() => {
     setMounted(true);
   }, []);
+
 
   // Le serveur a refusé une lecture faute de droit : la page affichée est remplacée par un message
   useEffect(() => {
@@ -351,7 +358,14 @@ export default function DashboardLayout({
 
         {/* Page content */}
         <main className="p-4 sm:p-6 lg:p-8 print:p-0">
-          {pageNonDisponible ? <PageNonDisponible /> : children}
+          <BandeauPoste />
+          {pageNonDisponible ? (
+            <PageNonDisponible />
+          ) : horsLigne && !routeHorsLigneAutorisee(pathname) ? (
+            pathname === "/dashboard" ? <VersLaVente /> : <ActionEnLigne />
+          ) : (
+            children
+          )}
         </main>
       </div>
       <div className="print:hidden">

@@ -21,7 +21,7 @@ export const LIBELLES_RAISON_LISTE: Record<RaisonListe, string> = {
   "moins-d-une-boite": "Moins d'une boîte en stock",
 };
 
-export type AvertissementStock = "stock-insuffisant" | "perime-seulement";
+export type AvertissementStock = "stock-insuffisant" | "perime-seulement" | "a-regulariser";
 
 /** Lot périmé choisi par le vendeur pour une ligne ; jamais enregistré dans le stockage local. */
 export interface SortieManuelleLigne {
@@ -109,7 +109,9 @@ function quantiteDemandee(stock: StockMedicament, unite: UniteVente, nombre: num
  * Plafond de vente en unités minimales (D713, D714) : le vendable si positif ; sinon le stock s'il est positif
  * (périmé seul : le parcours de sortie manuelle reste) ; sinon 0.
  */
-export function plafondVente(stock: StockMedicament): number {
+export function plafondVente(stock: StockMedicament, sansPlafond = false): number {
+  // Poste desktop hors ligne : aucun plafond, la vente est toujours acceptée et sera régularisée (D737).
+  if (sansPlafond) return Number.POSITIVE_INFINITY;
   const vendable = stock.quantiteVendable;
   if (typeof vendable === "number" && vendable > 0) return vendable;
   return stock.quantite > 0 ? stock.quantite : 0;
@@ -123,8 +125,8 @@ export function demandeEnUm(panier: PanierVente, stock: StockMedicament): number
 }
 
 /** Raison d'affichage dans la liste : rupture si rien ne peut se vendre, sinon la raison de `raisonNonVendable`. */
-export function raisonListe(stock: StockMedicament, unite: UniteVente): RaisonListe | null {
-  const plafond = plafondVente(stock);
+export function raisonListe(stock: StockMedicament, unite: UniteVente, sansPlafond = false): RaisonListe | null {
+  const plafond = plafondVente(stock, sansPlafond);
   if (plafond === 0) return "rupture";
   const raison = raisonNonVendable(stock, unite);
   if (raison !== null) return raison;
@@ -133,9 +135,15 @@ export function raisonListe(stock: StockMedicament, unite: UniteVente): RaisonLi
 }
 
 /** Avertissement non bloquant pour une demande totale en unités minimales sur la fiche (les deux lignes additionnées). */
-export function avertissementStock(stock: StockMedicament, demandeUm: number): AvertissementStock | null {
+export function avertissementStock(
+  stock: StockMedicament,
+  demandeUm: number,
+  sansPlafond = false,
+): AvertissementStock | null {
   if (stock.quantite > 0 && stock.quantiteVendable === 0) return "perime-seulement";
-  return demandeUm > plafondVente(stock) ? "stock-insuffisant" : null;
+  if (demandeUm <= plafondVente(stock)) return null;
+  // Hors ligne sur le poste : pas de refus, la vente sera à régulariser (D737).
+  return sansPlafond ? "a-regulariser" : "stock-insuffisant";
 }
 
 /** Texte de l'avertissement, avec le stock restant dit en boîtes et unités. */
@@ -143,22 +151,27 @@ export function texteAvertissement(avertissement: AvertissementStock, stock: Sto
   if (avertissement === "perime-seulement") {
     return "Il ne reste que des boîtes périmées : vous devrez choisir le lot à sortir.";
   }
+  if (avertissement === "a-regulariser") {
+    const connu = plafondVente(stock);
+    const dit = connu > 0 ? formaterQuantite(connu, stock.coefficientBoite ?? 1, stock.uniteMinimale ?? "UNITE") : "0";
+    return `Stock connu sur ce poste : ${dit}. La vente sera à régulariser.`;
+  }
   const plafond = plafondVente(stock);
   if (plafond === 0) return "Rupture de stock";
   return `Stock insuffisant : il reste ${formaterQuantite(plafond, stock.coefficientBoite ?? 1, stock.uniteMinimale ?? "UNITE")}.`;
 }
 
 /** Vrai si une unité de plus dans cette ligne reste sous le plafond (boîtes et unités de la fiche additionnées) et sous la limite par ligne. */
-export function peutAugmenter(panier: PanierVente, cle: string, stock: StockMedicament): boolean {
+export function peutAugmenter(panier: PanierVente, cle: string, stock: StockMedicament, sansPlafond = false): boolean {
   const ligne = panier.lignes.find((l) => cleDe(l) === cle);
   if (!ligne || ligne.stockId !== stock.id) return false;
   if (ligne.nombre >= QUANTITE_MAX_LIGNE) return false;
-  return demandeEnUm(panier, stock) + quantiteDemandee(stock, ligne.unite, 1) <= plafondVente(stock);
+  return demandeEnUm(panier, stock) + quantiteDemandee(stock, ligne.unite, 1) <= plafondVente(stock, sansPlafond);
 }
 
 /** Vrai si le panier peut encore recevoir une unité de plus de cette fiche sans dépasser le plafond (boîtes et unités additionnées). */
-export function peutAjouter(panier: PanierVente, stock: StockMedicament, unite: UniteVente): boolean {
-  return demandeEnUm(panier, stock) + quantiteDemandee(stock, unite, 1) <= plafondVente(stock);
+export function peutAjouter(panier: PanierVente, stock: StockMedicament, unite: UniteVente, sansPlafond = false): boolean {
+  return demandeEnUm(panier, stock) + quantiteDemandee(stock, unite, 1) <= plafondVente(stock, sansPlafond);
 }
 
 export function panierPlein(panier: PanierVente): boolean {
@@ -193,10 +206,11 @@ export function ajouterAuPanier(
   stock: StockMedicament,
   unite: UniteVente,
   nouvelleCle: () => string,
+  sansPlafond = false,
 ): PanierVente {
   if (raisonNonVendable(stock, unite) !== null) return panier;
   // Au-dessus du plafond de la fiche (boîtes et unités additionnées), l'ajout est sans effet (D713).
-  if (!peutAjouter(panier, stock, unite)) return panier;
+  if (!peutAjouter(panier, stock, unite, sansPlafond)) return panier;
   const existante = panier.lignes.find((l) => l.stockId === stock.id && l.unite === unite);
   if (existante) {
     if (existante.nombre >= QUANTITE_MAX_LIGNE) return panier;
@@ -215,8 +229,14 @@ export function ajouterAuPanier(
 }
 
 /** Le « + » s'arrête au plafond ; « - » reste permis même au-dessus du plafond (D722). */
-export function changerNombre(panier: PanierVente, cle: string, delta: number, stock: StockMedicament): PanierVente {
-  if (delta > 0 && !peutAugmenter(panier, cle, stock)) return panier;
+export function changerNombre(
+  panier: PanierVente,
+  cle: string,
+  delta: number,
+  stock: StockMedicament,
+  sansPlafond = false,
+): PanierVente {
+  if (delta > 0 && !peutAugmenter(panier, cle, stock, sansPlafond)) return panier;
   return {
     ...panier,
     lignes: panier.lignes.map((l) =>

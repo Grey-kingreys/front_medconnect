@@ -9,7 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
 import { ApiError } from "@/lib/api_auth";
-import { getVente, type Vente } from "@/lib/api_ventes";
+import type { Vente } from "@/lib/api_ventes";
+import { sourceCaisse } from "@/lib/caisse/source_active";
 import { formaterGNF } from "@/lib/format_gnf";
 import { estRouteAutorisee } from "@/lib/navigation_tableau_de_bord";
 import {
@@ -65,9 +66,11 @@ export default function RecuVentePage() {
   useEffect(() => {
     if (!structureId) return;
     let actif = true;
-    getVente(structureId, venteId)
+    sourceCaisse()
+      .getVente(structureId, venteId)
       .then((res) => {
-        if (actif) setEtat({ statut: "pret", vente: res.data });
+        if (!actif) return;
+        setEtat(res.data === null ? { statut: "introuvable" } : { statut: "pret", vente: res.data });
       })
       .catch((err: unknown) => {
         if (!actif) return;

@@ -6,6 +6,7 @@ import { AlertCircle, CircleCheck, Loader2, Lock } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
+import { sourceCaisse } from "@/lib/caisse/source_active";
 import { fermerSession, type BilanCaisse, type Coupure, type LigneComptage, type ModePaiement } from "@/lib/api_caisse";
 import { codeErreur, estErreurReseau } from "@/lib/erreurs_api";
 import { formaterGNF } from "@/lib/format_gnf";
@@ -156,7 +157,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
     setErreur(null);
     setCorpsARejouer(null);
     try {
-      const res = await fermerSession(structureId, sessionId, corps);
+      const res = await sourceCaisse().fermerSession(structureId, sessionId, corps);
       onFermee(res.data);
     } catch (err) {
       if (estErreurReseau(err)) {
