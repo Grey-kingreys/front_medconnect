@@ -88,3 +88,39 @@ export interface Photographie {
   coupures: CoupureSynchro[];
   fiches: FicheSynchro[];
 }
+
+/** Ligne du journal local prête à partir : `corps` est le texte stocké, jamais retransformé. */
+export interface EvenementAEnvoyer {
+  sequence: number;
+  evenementId: string;
+  type: string;
+  horodatageLocal: string;
+  utilisateurId: string;
+  corps: string;
+}
+
+/** Sort d'un événement après un accusé du serveur (A_RENVOYER n'a pas d'équivalent : la ligne ne bouge pas). */
+export interface ResultatLocal {
+  evenementId: string;
+  statut: "ENVOYE" | "EN_ATTENTE" | "REJETE";
+  code?: string | null;
+  message?: string | null;
+}
+
+/** Ce que le moteur de synchronisation lit de l'état du poste. */
+export interface EtatPourSynchro {
+  structureId: string | null;
+  posteId: string | null;
+  etag: string | null;
+  photographieLe: string | null;
+  plageDemandeeId: string | null;
+  sequenceAppliquee: number;
+  plagesLocales: number;
+  /** Numéros restants dans toutes les plages, et paramètres de la dernière photographie (null sans catalogue). */
+  plageRestante: number;
+  taillePlage: number | null;
+  seuilRechargementPct: number | null;
+  sessionOuverte: boolean;
+  fileEnAttente: number;
+  rejetes: number;
+}

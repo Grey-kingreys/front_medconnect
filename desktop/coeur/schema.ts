@@ -129,6 +129,10 @@ const ETAPES: string[] = [
   ALTER TABLE sessions ADD COLUMN bilanFige TEXT;
   ALTER TABLE ventes ADD COLUMN typePiece TEXT NOT NULL DEFAULT 'VENTE';
   `,
+  // Version 3 (PD03) : identifiant de la demande de plage en cours, rejoué tel quel si la réponse s'est perdue (D632).
+  `
+  ALTER TABLE etat_poste ADD COLUMN plageDemandeeId TEXT;
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

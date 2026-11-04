@@ -104,8 +104,8 @@ function sortie(s: Stockage, venteId: string, sequence: number, stockId: string,
 describe("schéma et stockage", () => {
   it("base neuve à la dernière version, migration rejouée sans erreur", () => {
     const s = base();
-    expect(VERSION_SCHEMA).toBe(2);
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(2);
+    expect(VERSION_SCHEMA).toBe(3);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(3);
     expect(() => migrer(s)).not.toThrow();
     expect(s.lire("SELECT id FROM etat_poste")).toHaveLength(1);
   });
@@ -124,7 +124,7 @@ describe("schéma et stockage", () => {
 
     migrer(s);
 
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(2);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(3);
     expect(s.lireUn("SELECT id, statut, adoptee, ouverteAutomatiquement, bilanFige FROM sessions")).toEqual({
       id: "s-ancienne",
       statut: "OUVERTE",

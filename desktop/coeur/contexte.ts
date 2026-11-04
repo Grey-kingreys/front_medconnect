@@ -27,6 +27,9 @@ export interface EtatPoste {
   prochaineSequence: number;
   prochainSecours: number;
   photographieLe: string | null;
+  etag: string | null;
+  heureServeurEcartMs: number | null;
+  plageDemandeeId: string | null;
 }
 
 export type TypeEvenement = "SESSION_OUVERTE" | "COMPTAGE_SAISI" | "MOUVEMENT_CAISSE" | "SESSION_FERMEE" | "VENTE";

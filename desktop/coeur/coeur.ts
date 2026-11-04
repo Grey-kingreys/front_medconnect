@@ -15,7 +15,14 @@ import { Contexte, type Outils, type Referentiels } from "./contexte";
 import { plageRestante } from "./plages_locales";
 import type { Stockage } from "./stockage";
 import type { ComptageEntree, EtatLocal, FermetureEntree, MouvementEntree, Utilisateur } from "./types_caisse";
-import type { FicheSynchro, Photographie } from "./types_synchro";
+import type {
+  EtatPourSynchro,
+  EvenementAEnvoyer,
+  FicheSynchro,
+  PlageLue,
+  Photographie,
+  ResultatLocal,
+} from "./types_synchro";
 import {
   enregistrerAnnulationServeur,
   enregistrerVente,
@@ -296,6 +303,85 @@ export class CoeurCaisse {
   /** Annulation faite en ligne (D745) : théorique local, caisse adoptée, vente marquée annulée. Aucun événement. */
   enregistrerAnnulationServeur(reponse: ReponseAnnulation): void {
     enregistrerAnnulationServeur(this.ctx, reponse);
+  }
+
+  // ------------------------------------------------------------------ synchronisation (PD03)
+
+  /** État lu par le moteur de synchronisation. */
+  etatPourSynchro(): EtatPourSynchro {
+    const e = this.etat();
+    const local = this.etatLocal();
+    const ref = this.ctx.referentiels();
+    return {
+      structureId: e.structureId,
+      posteId: e.posteId,
+      etag: e.etag,
+      photographieLe: e.photographieLe,
+      plageDemandeeId: e.plageDemandeeId,
+      sequenceAppliquee: e.sequenceAppliquee,
+      plagesLocales: this.stockage.lireUn<{ n: number }>("SELECT COUNT(*) AS n FROM plages")?.n ?? 0,
+      plageRestante: local.plageRestante,
+      taillePlage: ref?.parametres.taillePlageTickets ?? null,
+      seuilRechargementPct: ref?.parametres.seuilRechargementPlagePct ?? null,
+      sessionOuverte: local.sessionOuverte,
+      fileEnAttente: local.fileEnAttente,
+      rejetes: local.rejetes,
+    };
+  }
+
+  /** Événements `A_ENVOYER` par séquence croissante, `limite` au plus. */
+  evenementsAEnvoyer(limite: number): EvenementAEnvoyer[] {
+    return this.stockage.lire<EvenementAEnvoyer>(
+      "SELECT sequence, evenementId, type, horodatageLocal, utilisateurId, corps FROM evenements WHERE statut = 'A_ENVOYER' ORDER BY sequence LIMIT ?",
+      [limite],
+    );
+  }
+
+  /** Vrai s'il reste un événement à envoyer ou qui attend un trou au serveur, au-delà de `sequenceMax`. */
+  resteApres(sequenceMax: number): { aEnvoyer: boolean; enAttente: boolean } {
+    const n = (sql: string, p: unknown[] = []) => this.stockage.lireUn<{ n: number }>(sql, p)?.n ?? 0;
+    return {
+      aEnvoyer: n("SELECT COUNT(*) AS n FROM evenements WHERE statut = 'A_ENVOYER' AND sequence > ?", [sequenceMax]) > 0,
+      enAttente: n("SELECT COUNT(*) AS n FROM evenements WHERE statut = 'EN_ATTENTE'") > 0,
+    };
+  }
+
+  /**
+   * Range les sorts rendus par le serveur. Une ligne déjà `ENVOYE` ou `REJETE` ne bouge plus.
+   * N'écrit JAMAIS `sequenceAppliquee` : seule `appliquerPhotographie` le fait (D437, D742).
+   */
+  appliquerResultats(resultats: ResultatLocal[]): void {
+    this.stockage.transaction(() => {
+      for (const r of resultats) {
+        this.stockage.executer(
+          "UPDATE evenements SET statut = ?, code = ?, message = ? WHERE evenementId = ? AND statut IN ('A_ENVOYER', 'EN_ATTENTE')",
+          [r.statut, r.code ?? null, r.message ?? null, r.evenementId],
+        );
+      }
+    });
+  }
+
+  /** Mémorise l'identifiant de la plage demandée (rejoué tel quel après une réponse perdue), ou l'efface. */
+  memoriserPlageDemandee(id: string | null): void {
+    this.stockage.executer("UPDATE etat_poste SET plageDemandeeId = ? WHERE id = 1", [id]);
+  }
+
+  /** Ajoute les plages que le serveur dit en cours ; celles que le poste connaît déjà ne bougent pas. */
+  ajouterPlages(plages: PlageLue[]): void {
+    this.stockage.transaction(() => {
+      for (const p of plages) {
+        this.stockage.executer("INSERT OR IGNORE INTO plages (id, debut, fin, dernierUtilise) VALUES (?, ?, ?, NULL)", [p.id, p.debut, p.fin]);
+      }
+    });
+  }
+
+  /** Réponse 304 : catalogue inchangé, seuls la date de la photographie et l'écart d'heure sont mis à jour. */
+  confirmerPhotographie(dateServeur: Date | null): void {
+    const maintenant = this.outils.horloge();
+    this.stockage.executer("UPDATE etat_poste SET photographieLe = ? WHERE id = 1", [maintenant.toISOString()]);
+    if (dateServeur !== null) {
+      this.stockage.executer("UPDATE etat_poste SET heureServeurEcartMs = ? WHERE id = 1", [dateServeur.getTime() - maintenant.getTime()]);
+    }
   }
 
   etatLocal(): EtatLocal {
