@@ -21,6 +21,7 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
   definirJeton: (jeton: string | null) => appeler("jeton", jeton),
   deconnexion: () => appeler("deconnexion"),
   surDemandeJeton: (rappel: () => void) => abonner<void>("demande-jeton", () => rappel()),
+  profil: { lire: () => appeler("profil:lire") },
   etat: () => appeler("etat"),
   surEtat: (rappel: (etat: unknown) => void) => abonner<unknown>("etat", rappel),
   caisse: {

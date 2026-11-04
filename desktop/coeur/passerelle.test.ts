@@ -93,6 +93,26 @@ describe("validation des messages", () => {
     expect(JSON.stringify(coeur.lireProfil())).not.toMatch(/jeton|token/i);
   });
 
+  it("garde le profil complet de /auth/me sans aucune clé de jeton, et le rend en lecture seule", () => {
+    const { p, coeur } = monter();
+    p.confirmerIdentite({
+      ...UTILISATEUR,
+      structureType: "PHARMACIE",
+      role: "ADMIN",
+      access_token: "A",
+      refresh_token: "B",
+      refreshToken: "C",
+      imbrique: { refreshToken: "D", garde: 1 },
+    });
+    const document = JSON.stringify(coeur.lireProfil());
+    expect(document).not.toMatch(/access_token|refresh_token|refreshToken/);
+    const lu = p.profilLocal();
+    expect(lu).toMatchObject({ id: UTILISATEUR.id, structureType: "PHARMACIE", role: "ADMIN", imbrique: { garde: 1 } });
+    expect(lu).not.toHaveProperty("utilisateurId");
+    p.effacerIdentite();
+    expect(p.profilLocal()).toBeNull();
+  });
+
   it("identité effacée : plus d'écriture ni de lecture, même après un redémarrage, la file reste (D756)", async () => {
     const { p, coeur } = monter();
     p.confirmerIdentite(UTILISATEUR);

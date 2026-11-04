@@ -52,6 +52,24 @@ export function identiteDepuisProfil(brut: unknown): UtilisateurPoste | null {
   return lu.success ? lu.data[0] : null;
 }
 
+const CLES_JETON = new Set(["access_token", "refresh_token", "refreshToken"]);
+
+/** Copie du profil sans aucune clé de jeton, à tout niveau : le profil local n'en garde jamais. */
+function sansJeton(valeur: unknown): Record<string, unknown> {
+  const copier = (v: unknown): unknown => {
+    if (Array.isArray(v)) return v.map(copier);
+    if (v !== null && typeof v === "object") {
+      return Object.fromEntries(
+        Object.entries(v as Record<string, unknown>)
+          .filter(([cle]) => !CLES_JETON.has(cle))
+          .map(([cle, x]) => [cle, copier(x)]),
+      );
+    }
+    return v;
+  };
+  return copier(valeur) as Record<string, unknown>;
+}
+
 export interface DepsPasserelle {
   coeur: CoeurCaisse;
   /** Lance un cycle de synchronisation sans l'attendre (après une vente). */
@@ -89,6 +107,15 @@ export class Passerelle {
     return this.utilisateur;
   }
 
+  /** Profil confirmé par le serveur, relu de la base locale pour le rendu hors ligne (lecture seule) ; null si absent. */
+  profilLocal(): Record<string, unknown> | null {
+    const brut = this.deps.coeur.lireProfil();
+    if (brut === null || typeof brut !== "object") return null;
+    const profil = sansJeton(brut);
+    delete profil.utilisateurId;
+    return profil;
+  }
+
   /**
    * Installe l'identité confirmée par le serveur (`donnees` : le champ `data` de `/auth/me`) et la garde en base
    * locale, sans jeton. Le premier compte de pharmacie (droit `caisse:utiliser`) rattache le poste à sa pharmacie
@@ -99,7 +126,8 @@ export class Passerelle {
     const u = identiteDepuisProfil(donnees);
     if (u === null) return false;
     this.utilisateur = u;
-    this.deps.coeur.enregistrerProfil({ utilisateurId: u.id, ...u });
+    // Le profil complet de `/auth/me` (type de structure, rôle, etc.) pour le menu hors ligne, jamais un jeton.
+    this.deps.coeur.enregistrerProfil({ ...sansJeton(donnees), utilisateurId: u.id });
     if (u.permissions.includes("caisse:utiliser") && this.deps.coeur.structureRattachee() === null) {
       try {
         this.deps.coeur.rattacher({ structureId: u.structureId });

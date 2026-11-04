@@ -1,3 +1,4 @@
+import type { UserProfile } from "../api_auth";
 import type {
   BilanCaisse,
   ComptageCaisse,
@@ -76,6 +77,8 @@ export interface PontDesktop {
   /** Déconnexion volontaire ou session refusée par le serveur : identité effacée, même hors ligne (D756). `definirJeton(null)` ne l'efface pas. */
   deconnexion(): Promise<void>;
   surDemandeJeton(rappel: () => void): () => void;
+  /** Dernier profil confirmé par le serveur, sans jeton, lu en base locale : lecture seule, le rendu ne l'écrit jamais. */
+  profil: { lire(): Promise<UserProfile | null> };
   etat(): Promise<EtatPosteDesktop>;
   surEtat(rappel: (e: EtatPosteDesktop) => void): () => void;
   caisse: {

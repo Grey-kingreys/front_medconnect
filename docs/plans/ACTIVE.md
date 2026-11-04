@@ -4,7 +4,7 @@ Index du run orchestré en cours. 150 lignes max. Protocole : docs/ORCHESTRATOR.
 Reprise : lire ce fichier, puis seulement le fichier de la prochaine tâche.
 
 Run: 2026-10-25-pharmacie-t1 (tranche pharmacie 1, partie desktop ; le web est fusionné vers dev, PR #43) | Branche: orch/pharmacie-t1-desktop | Parallélisme: 1 | Audience: non-dev (écrans de la pharmacie)
-Desktop, une fiche à la fois, dans cet ordre (tasks/ du run dans le dépôt back) : PD01, PD02a, PD02b, PD03 et PD04a validés (rapports/PD01-chef.md, PD02a-chef.md, PD02b-chef.md, PD03-chef.md, PD04a-chef.md), puis PD04b, PD04c, PD05, PD06 à faire. Décisions D733 à D756. Le back (`annulation` enrichie, D753) doit partir avant ou avec le desktop.
+Desktop, une fiche à la fois, dans cet ordre (tasks/ du run dans le dépôt back) : PD01, PD02a, PD02b, PD03, PD04a et PD04b validés (rapports/PD01-chef.md à PD04b-chef.md), puis PD04c, PD05, PD06 à faire. Décisions D733 à D757. Le back (`annulation` enrichie, D753) doit partir avant ou avec le desktop.
 Détails du run (fiches, décisions, rapports) : dans le dépôt back, back_medconnect/docs/plans/runs/2026-10-25-pharmacie-t1/ (tasks/PF*.md, decisions.md D683 à D709, rapports/). Suivi complet : back_medconnect/docs/plans/ACTIVE.md. Contrat du back : orch/pharmacie-t1-back (tête 0ae19c1, PB01 à PB19 validés ; puis correctif D707 de l'upsert du stock commité avec PF02b), non fusionné vers dev.
 Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 = d338e70, fusionnés par la PR #39).
 

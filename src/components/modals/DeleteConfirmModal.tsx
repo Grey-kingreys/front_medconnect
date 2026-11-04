@@ -15,6 +15,8 @@ interface DeleteConfirmModalProps {
   icone?: LucideIcon;
   /** Texte du bouton pendant l'action ("Suppression..." par défaut) */
   libelleEnCours?: string;
+  /** Texte du bouton qui ferme la modale sans agir ("Annuler" par défaut) */
+  libelleAnnuler?: string;
 }
 
 export function DeleteConfirmModal({
@@ -26,6 +28,7 @@ export function DeleteConfirmModal({
   confirmLabel = "Supprimer",
   icone: Icone = Trash2,
   libelleEnCours = "Suppression...",
+  libelleAnnuler = "Annuler",
 }: DeleteConfirmModalProps) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState("");
@@ -75,7 +78,7 @@ export function DeleteConfirmModal({
               disabled={deleting}
               className="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all disabled:opacity-50"
             >
-              Annuler
+              {libelleAnnuler}
             </button>
             <button
               onClick={handleDelete}

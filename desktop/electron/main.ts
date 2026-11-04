@@ -4,6 +4,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
 import os from "node:os";
+import { retirerEtControlerCookieRefresh } from "../coeur/cookie_session";
 import { Passerelle, construireEtat } from "../coeur/passerelle";
 import { ouvrirCaisse, type CaisseOuverte } from "./demarrage";
 import { enregistrerIpc } from "./ipc";
@@ -159,7 +160,11 @@ if (!premiereInstance) {
       origine: () => origine,
       contenuAutorise: () => fenetre?.webContents ?? null,
       definirJeton: (jeton) => service!.definirJeton(jeton),
-      deconnecter: () => service!.deconnecter(),
+      deconnecter: () => {
+        service!.deconnecter();
+        // Le vendeur suivant ne doit pas hériter du refresh de la session, en ligne comme hors ligne
+        void retirerEtControlerCookieRefresh(session.defaultSession.cookies, journal);
+      },
       etat: etatPoste,
     });
 

@@ -44,6 +44,12 @@ export function enregistrerIpc(deps: DepsIpc): void {
     return deps.etat();
   });
 
+  // Lecture seule du profil confirmé par le serveur (sans jeton) ; le rendu ne peut rien y écrire.
+  ipcMain.handle("profil:lire", (evenement) => {
+    if (!expediteurAutorise(evenement)) return null;
+    return deps.passerelle.profilLocal();
+  });
+
   ipcMain.handle("jeton", (evenement, ...args: unknown[]) => {
     if (!expediteurAutorise(evenement)) return;
     const lu = schemaJeton.safeParse(args);

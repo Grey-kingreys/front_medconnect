@@ -144,6 +144,95 @@ export async function lancerSonde(opts: {
     return c;
   };
 
+  /**
+   * Connexion hors ligne (PD04b). À lancer avec une adresse d'API injoignable, après une passe en ligne qui a laissé la session ouverte.
+   * Phase 1 : redémarrage de la page sans réseau (session et menu gardés), déconnexion confirmée, page de connexion.
+   * Phase 2 : relance de l'application sans réseau (connexion demandée, aucune vente). Booléens et statuts seulement, jamais de jeton.
+   */
+  const sondeHorsLigne = async (phase: string): Promise<Resultat> => {
+    const h: Resultat = { phase };
+    const pont = "window.medconnecteDesktop";
+    const texte = () => js<string>(`document.body.innerText`);
+    const cliquer = (libelle: string, dansDialogue: boolean) =>
+      js<boolean>(`(() => {
+        const racine = ${dansDialogue ? `document.querySelector('[role="dialog"]')` : "document"};
+        if (!racine) return false;
+        const b = Array.from(racine.querySelectorAll("button")).find((x) => (x.textContent || "").trim() === ${JSON.stringify(libelle)});
+        if (!b) return false;
+        b.click();
+        return true;
+      })()`);
+    const ventesBloquees = async () => {
+      const stock = await js<{ ok: boolean; status?: number }>(`${pont}.caisse.chargerStock("00000000-0000-4000-8000-000000000001")`);
+      const vente = await js<{ ok: boolean; status?: number }>(
+        `${pont}.caisse.creerVente("00000000-0000-4000-8000-000000000001", { lignes: [{ stockId: "x", quantite: 1 }] }, "00000000-0000-4000-8000-0000000000aa")`,
+      );
+      return { stock: { ok: stock.ok, status: stock.status }, vente: { ok: vente.ok, status: vente.status } };
+    };
+
+    await aller("/dashboard/vente");
+    if (phase === "1") {
+      await attendre(async () => !(await js<boolean>(`!!localStorage.getItem("access_token")`)) || new URL(url()).pathname.startsWith("/dashboard"), 20_000);
+      await pause(4000);
+      h.resteConnecte = new URL(url()).pathname.startsWith("/dashboard");
+      h.stockageIntact = await js<boolean>(`!!localStorage.getItem("access_token") && !!localStorage.getItem("user")`);
+      h.horsLigneConstate = await attendre(async () => !(await js<{ enLigne: boolean }>(`${pont}.etat()`)).enLigne, 90_000);
+      const profil = await js<{ id?: string; structureType?: string; permissions?: string[]; structure?: { id?: string } } | null>(
+        `${pont}.profil.lire()`,
+      );
+      h.profilPont = {
+        present: profil !== null,
+        pharmacie: profil?.structureType === "PHARMACIE",
+        droitCaisse: profil?.permissions?.includes("caisse:utiliser") === true,
+        jetonAbsent: profil !== null && !/token|jeton/i.test(JSON.stringify(profil)),
+      };
+      const structureId = String(profil?.structure?.id ?? "");
+      const stock = await js<{ ok: boolean; data?: unknown[] }>(`${pont}.caisse.chargerStock(${JSON.stringify(structureId)})`);
+      h.stockLuHorsLigne = { ok: stock.ok, fiches: stock.data?.length ?? 0 };
+      h.menuVisible = (await texte()).includes("Se déconnecter");
+
+      // Déconnexion volontaire sans réseau : confirmation, « Rester connecté » ne change rien
+      h.clicSeDeconnecter = await cliquer("Se déconnecter", false);
+      await attendre(async () => (await texte()).includes("ne pourrez pas vous reconnecter"), 10_000);
+      h.dialogue = (await texte()).includes("Les ventes de ce poste restent enregistrées");
+      await cliquer("Rester connecté", true);
+      await pause(800);
+      h.resteApresAnnuler = new URL(url()).pathname.startsWith("/dashboard") && (await js<boolean>(`!!localStorage.getItem("user")`));
+      const file = opts.coeur.etatLocal().fileEnAttente;
+      await cliquer("Se déconnecter", false);
+      await attendre(async () => (await texte()).includes("ne pourrez pas vous reconnecter"), 10_000);
+      await cliquer("Se déconnecter", true);
+      h.versConnexion = await attendre(() => new URL(url()).pathname.startsWith("/auth/login"), 30_000);
+      await attendre(async () => (await texte()).includes("Pas de connexion internet"), 15_000);
+      h.messageHorsLigne = (await texte()).includes("Pas de connexion internet");
+      h.stockageVide = await js<boolean>(`!localStorage.getItem("access_token") && !localStorage.getItem("user")`);
+      h.apresDeconnexion = await ventesBloquees();
+      h.fileInchangee = opts.coeur.etatLocal().fileEnAttente === file;
+    } else {
+      await attendre(() => new URL(url()).pathname.startsWith("/auth/login"), 20_000);
+      await pause(2000);
+      h.versConnexion = new URL(url()).pathname.startsWith("/auth/login");
+      h.messageHorsLigne = await attendre(async () => (await texte()).includes("Pas de connexion internet"), 20_000);
+      h.profilLocalAbsent = (await js<unknown>(`${pont}.profil.lire()`)) === null;
+      h.apresRelance = await ventesBloquees();
+      h.venteEnFile = opts.coeur.etatLocal().fileEnAttente;
+    }
+    return h;
+  };
+
+  const modeHorsLigne = process.env.MC_SONDE_HORS_LIGNE;
+  if (modeHorsLigne === "1" || modeHorsLigne === "2") {
+    let h: Resultat;
+    try {
+      h = await sondeHorsLigne(modeHorsLigne);
+    } catch (e) {
+      h = { erreurSonde: e instanceof Error ? e.message.split("\n")[0] : "erreur" };
+    }
+    writeFileSync(path.join(app.getAppPath(), `sonde-hors-ligne-${modeHorsLigne}.json`), JSON.stringify(h, null, 2) + "\n");
+    app.quit();
+    return;
+  }
+
   try {
     // 1. versions
     r.versions = {
