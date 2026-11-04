@@ -101,9 +101,18 @@ describe("Aperçu de la pharmacie", () => {
     ).toBeTruthy();
   });
 
-  it("invite à remplir un stock vide", async () => {
+  it("sans droit d'import, un stock vide n'évoque pas l'import et n'offre aucun lien vers lui", async () => {
     vi.mocked(getMyStock).mockResolvedValue(stockDe([]));
     afficher();
+    expect(await screen.findByText("Votre stock est vide")).toBeTruthy();
+    expect(screen.getByText("Ajoutez vos médicaments pour suivre ici vos ruptures et vos dates de péremption.")).toBeTruthy();
+    expect(screen.queryByText(/Excel/)).toBeNull();
+    expect(screen.queryByRole("link", { name: "Importer un fichier Excel" })).toBeNull();
+  });
+
+  it("invite à remplir un stock vide", async () => {
+    vi.mocked(getMyStock).mockResolvedValue(stockDe([]));
+    afficher({ peutImporter: true });
     expect(await screen.findByText("Votre stock est vide")).toBeTruthy();
     expect(screen.getByRole("link", { name: "Ouvrir le stock" }).getAttribute("href")).toBe("/dashboard/stock");
     expect(screen.getByRole("link", { name: "Importer un fichier Excel" }).getAttribute("href")).toBe(

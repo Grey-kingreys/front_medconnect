@@ -45,7 +45,7 @@ describe("raccourcis de la pharmacie", () => {
   });
 
   it("ajoute l'import et le catalogue quand l'administrateur a les droits du stock", () => {
-    const ctx = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "stock:read", "stock:write"]);
+    const ctx = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "stock:read", "stock:write", "reception:write"]);
     const menu = hrefs(sectionsMenu(ctx));
     expect(menu).toContain("/dashboard/stock");
     expect(menu).toContain(CATALOGUE);
@@ -60,7 +60,7 @@ describe("raccourcis de la pharmacie", () => {
   });
 
   it("place les deux accès rapides après le stock pour le pharmacien", () => {
-    const r = raccourcis(contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN));
+    const r = raccourcis(contexte("PHARMACIEN", "PHARMACIE", [...PHARMACIEN, "reception:write"]));
     expect(r.map((x) => x.href)).toEqual([
       "/dashboard/chat",
       "/dashboard/ordonnances",
@@ -72,6 +72,12 @@ describe("raccourcis de la pharmacie", () => {
     ]);
     expect(r.find((x) => x.href === IMPORT)?.libelle).toBe("Importer le stock");
     expect(r.find((x) => x.href === CATALOGUE)?.libelle).toBe("Catalogue des médicaments");
+  });
+
+  it("n'affiche pas « Importer le stock » au pharmacien par défaut, sans droit de réception ni d'inventaire", () => {
+    const r = raccourcis(contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN));
+    expect(r.map((x) => x.href)).not.toContain(IMPORT);
+    expect(r.map((x) => x.libelle)).not.toContain("Importer le stock");
   });
 
   it("ne propose rien de tout cela à un médecin d'hôpital", () => {
@@ -101,6 +107,15 @@ describe("raccourcis de la pharmacie", () => {
     expect(estRouteAutorisee("/dashboard/ventes", ctx)).toBe(true);
   });
 
+  it("montre Ma caisse au rôle Pharmacien qui a caisse:utiliser, pas sans ce droit ni en hôpital", () => {
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", [...PHARMACIEN, "vente:write", "caisse:utiliser"]);
+    expect(hrefs(sectionsMenu(vendeur))).toContain("/dashboard/caisse");
+    expect(estRouteAutorisee("/dashboard/caisse", vendeur)).toBe(true);
+    expect(raccourcis(vendeur).find((x) => x.href === "/dashboard/caisse")?.libelle).toBe("Ma caisse");
+    expect(estRouteAutorisee("/dashboard/caisse", contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN))).toBe(false);
+    expect(estRouteAutorisee("/dashboard/caisse", contexte("PHARMACIEN", "HOPITAL", ["caisse:utiliser"]))).toBe(false);
+  });
+
   it("n'ouvre pas Ventes du jour en hôpital, sans droit de lecture ni en repli", () => {
     const hopital = contexte("PHARMACIEN", "HOPITAL", ["vente:read", "vente:write"]);
     expect(hrefs(sectionsMenu(hopital))).not.toContain("/dashboard/ventes");
@@ -109,6 +124,55 @@ describe("raccourcis de la pharmacie", () => {
     const repli = enRepli("PHARMACIEN");
     expect(hrefs(sectionsMenu(repli))).not.toContain("/dashboard/ventes");
     expect(raccourcis(repli).map((x) => x.href)).not.toContain("/dashboard/ventes");
+  });
+
+  it("montre Réceptions avec reception:write, la cache et la refuse au rôle Pharmacien (D704)", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "reception:write"]);
+    expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/receptions");
+    expect(estRouteAutorisee("/dashboard/receptions", titulaire)).toBe(true);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(vendeur))).not.toContain("/dashboard/receptions");
+    expect(estRouteAutorisee("/dashboard/receptions", vendeur)).toBe(false);
+  });
+
+  it("montre Inventaire avec inventaire:write et la refuse au rôle Pharmacien (D704)", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "inventaire:write"]);
+    expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/inventaire");
+    expect(estRouteAutorisee("/dashboard/inventaire", titulaire)).toBe(true);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(vendeur))).not.toContain("/dashboard/inventaire");
+    expect(estRouteAutorisee("/dashboard/inventaire", vendeur)).toBe(false);
+  });
+
+  it("montre Clôture de caisse avec cloture:gerer et la refuse au rôle Pharmacien (D704)", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "cloture:gerer"]);
+    expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/clotures");
+    expect(estRouteAutorisee("/dashboard/clotures", titulaire)).toBe(true);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(vendeur))).not.toContain("/dashboard/clotures");
+    expect(estRouteAutorisee("/dashboard/clotures", vendeur)).toBe(false);
+  });
+
+  it("montre Anomalies avec anomalie:gerer et la refuse au rôle Pharmacien", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "anomalie:gerer"]);
+    expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/anomalies");
+    expect(estRouteAutorisee("/dashboard/anomalies", titulaire)).toBe(true);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(vendeur))).not.toContain("/dashboard/anomalies");
+    expect(estRouteAutorisee("/dashboard/anomalies", vendeur)).toBe(false);
+  });
+
+  it("garde la saisie et le détail d'une réception sous reception:write", () => {
+    const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "reception:write"]);
+    const vendeur = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    for (const chemin of ["/dashboard/receptions/nouvelle", "/dashboard/receptions/nouvelle/", "/dashboard/receptions/r-123"]) {
+      expect(estRouteAutorisee(chemin, titulaire)).toBe(true);
+      expect(estRouteAutorisee(chemin, vendeur)).toBe(false);
+    }
+    // Le préfixe s'arrête au séparateur : une autre adresse qui commence pareil n'est pas couverte.
+    expect(estRouteAutorisee("/dashboard/receptionsX", vendeur)).toBe(true);
+    // Les autres entrées gardent leur comportement exact : une sous-page du stock n'est pas filtrée ici.
+    expect(estRouteAutorisee("/dashboard/stock/import", contexte("PATIENT", null, []))).toBe(true);
   });
 
   it("ne crée aucune entrée de menu avec une adresse paramétrée", () => {

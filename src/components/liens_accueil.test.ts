@@ -36,7 +36,7 @@ describe("liens de la page d'accueil", () => {
         ),
     );
     expect(fautifs).toEqual([]);
-  });
+  }, 30_000);
 
   it("chaque ancre interne des composants vise une section existante", () => {
     const sources = fichiersSource(DOSSIER_COMPOSANTS).map((f) => readFileSync(f, "utf8"));

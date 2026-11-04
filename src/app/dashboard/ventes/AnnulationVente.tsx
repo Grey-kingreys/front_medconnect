@@ -3,12 +3,9 @@
 import { useRef, useState } from "react";
 import { Ban, Loader2 } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { CHAMP, FOCUS } from "@/components/pharmacie/classes";
 import { formaterGNF } from "@/lib/format_gnf";
 import { LONGUEUR_MAX_MOTIF, motifValide } from "./affichage";
-
-const CHAMP =
-  "w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm text-slate-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-all";
-const FOCUS = "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500";
 
 interface AnnulationVenteProps {
   isOpen: boolean;
@@ -16,6 +13,8 @@ interface AnnulationVenteProps {
   total: number;
   envoiEnCours: boolean;
   erreur: string | null;
+  /** Vrai quand un nouvel essai ne servirait à rien : seul le bouton de fermeture reste actif. */
+  confirmationBloquee?: boolean;
   onClose: () => void;
   onConfirmer: (motif: string) => void;
 }
@@ -33,6 +32,7 @@ function ContenuAnnulation({
   total,
   envoiEnCours,
   erreur,
+  confirmationBloquee = false,
   onClose,
   onConfirmer,
   dialogProps,
@@ -71,7 +71,7 @@ function ContenuAnnulation({
           <div className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
             <p className="font-bold text-slate-900 dark:text-white">Montant : {formaterGNF(total)}</p>
             <p>
-              Les quantités seront remises dans votre stock. La vente restera visible dans la liste, marquée « Annulée ».
+              Les quantités seront remises dans votre stock et le remboursement sera enregistré dans votre caisse. Une pièce d&apos;annulation est créée ; la vente reste visible, marquée « Annulée ».
             </p>
           </div>
 
@@ -118,12 +118,12 @@ function ContenuAnnulation({
               disabled={envoiEnCours}
               className={`flex-1 px-4 py-3 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-50 ${FOCUS}`}
             >
-              Garder la vente
+              {confirmationBloquee ? "Fermer" : "Garder la vente"}
             </button>
             <button
               type="button"
               onClick={confirmer}
-              disabled={envoiEnCours}
+              disabled={envoiEnCours || confirmationBloquee}
               className={`flex-[2] flex items-center justify-center gap-2 px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-sm font-bold transition-colors disabled:opacity-60 ${FOCUS}`}
             >
               {envoiEnCours && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
@@ -136,7 +136,7 @@ function ContenuAnnulation({
   );
 }
 
-/** Dialogue qui demande le motif avant d'annuler une vente du jour. */
+/** Dialogue qui demande le motif avant d'annuler une vente. */
 export function AnnulationVente({ isOpen, onClose, envoiEnCours, ...reste }: AnnulationVenteProps) {
   const { dialogProps, titleId } = useDialogA11y({ isOpen, onClose, closeOnEscape: !envoiEnCours });
 

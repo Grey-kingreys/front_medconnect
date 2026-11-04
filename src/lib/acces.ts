@@ -40,7 +40,14 @@ export type CodePermission =
   | "platform:admin"
   | "vente:read"
   | "vente:write"
-  | "vente:annuler";
+  | "vente:annuler"
+  | "caisse:utiliser"
+  | "caisse:superviser"
+  | "cloture:gerer"
+  | "inventaire:write"
+  | "reception:write"
+  | "marge:read"
+  | "anomalie:gerer";
 
 export interface ContexteAcces {
   mode: "permissions" | "repli";

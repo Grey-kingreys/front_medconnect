@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-li
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
 import { getMyStock } from "@/lib/api_pharmacie";
+import { getAlertesPeremption, getRapportMarge, listerAnomalies } from "@/lib/api_pilotage";
 import { getMyStructure } from "@/lib/api_structure";
 import type { StatutVente, VenteResume } from "@/lib/api_ventes";
 import { listerVentes } from "@/lib/api_ventes";
@@ -11,6 +12,7 @@ import PilotagePharmacie, { liensPilotage, type DroitsPilotage } from "./Pilotag
 vi.mock("@/lib/api_ventes", () => ({ listerVentes: vi.fn() }));
 vi.mock("@/lib/api_structure", () => ({ getMyStructure: vi.fn() }));
 vi.mock("@/lib/api_pharmacie", () => ({ getMyStock: vi.fn() }));
+vi.mock("@/lib/api_pilotage", () => ({ listerAnomalies: vi.fn(), getAlertesPeremption: vi.fn(), getRapportMarge: vi.fn() }));
 
 const reponse = (data: unknown) => ({ data, message: "ok", success: true }) as never;
 
@@ -20,7 +22,32 @@ const DROITS: DroitsPilotage = {
   peutVoirVentes: true,
   peutAnnuler: true,
   peutVoirStock: true,
+  peutVoirAnomalies: false,
+  peutVoirMarge: false,
 };
+
+const alertesVides = () =>
+  reponse({
+    jour: "2026-11-03",
+    horizons: [],
+    perimes: { nombreLots: 0, valeurVente: null, nombreLotsSansPrix: 0, lots: [] },
+    sansDate: { nombreLots: 0 },
+  });
+
+const rapportVide = () =>
+  reponse({
+    du: "2026-11-01",
+    au: "2026-11-03",
+    debutFiabilite: null,
+    periodeAvantFiabilite: false,
+    nombrePieces: 0,
+    chiffreAffairesTotal: 0,
+    chiffreAffairesValorise: 0,
+    coutAlloue: 0,
+    marge: 0,
+    nonValorisable: { nombreVentes: 0, chiffreAffaires: 0 },
+    provisoires: { nombreLignes: 0, chiffreAffaires: 0 },
+  });
 
 const vente = (id: string, statut: StatutVente): VenteResume => ({
   id,
@@ -31,6 +58,21 @@ const vente = (id: string, statut: StatutVente): VenteResume => ({
   nombreArticles: 1,
   vendeur: { id: "u1", nom: "Keita" },
   clientNom: null,
+  typePiece: "VENTE",
+  numeroTicket: Number(id),
+  jourMetier: "2026-10-22",
+  venteOrigine: null,
+  annulation: null,
+});
+
+/** Pièce d'annulation du jour : total négatif, sans numéro de ticket. */
+const pieceAnnulation = (id: string): VenteResume => ({
+  ...vente(id, "VALIDEE"),
+  numero: `A-V-${id}`,
+  total: -1000,
+  typePiece: "ANNULATION",
+  numeroTicket: null,
+  venteOrigine: { id: "origine", numero: "V-0" },
 });
 
 const journee = (surcharge: Record<string, unknown> = {}) =>
@@ -41,7 +83,7 @@ const journee = (surcharge: Record<string, unknown> = {}) =>
     page: 1,
     parPage: 50,
     totalPages: 1,
-    ventes: [vente("1", "VALIDEE"), vente("2", "ANNULEE"), vente("3", "ANNULEE"), vente("4", "VALIDEE")],
+    ventes: [vente("1", "VALIDEE"), pieceAnnulation("2"), pieceAnnulation("3"), vente("4", "VALIDEE")],
     ...surcharge,
   });
 
@@ -74,6 +116,8 @@ describe("Pilotage de la pharmacie", () => {
     vi.mocked(getMyStock).mockResolvedValue(stockVide());
     vi.mocked(getMyStructure).mockResolvedValue(equipe());
     vi.mocked(listerVentes).mockResolvedValue(journee());
+    vi.mocked(getAlertesPeremption).mockResolvedValue(alertesVides());
+    vi.mocked(getRapportMarge).mockResolvedValue(rapportVide());
   });
   afterEach(() => {
     cleanup();
@@ -140,6 +184,35 @@ describe("Pilotage de la pharmacie", () => {
     afficher({ peutModifier: false });
     expect(screen.queryByRole("link", { name: "Modifier ma pharmacie" })).toBeNull();
     expect(screen.getByRole("link", { name: "Équipe" })).toBeTruthy();
+  });
+
+  it("affiche la carte Anomalies à traiter avec un lien vers la file", async () => {
+    vi.mocked(listerAnomalies).mockResolvedValue(reponse({ anomalies: [], page: 1, parPage: 20, total: 4, ouvertes: 4 }));
+    afficher({ peutVoirAnomalies: true });
+    await waitFor(() => expect(groupe("Anomalies à traiter").getByText("4")).toBeTruthy());
+    expect(groupe("Anomalies à traiter").getByText("Ouvrez la file pour les traiter")).toBeTruthy();
+    const liens = screen.getAllByRole("link").filter((l) => l.getAttribute("href") === "/dashboard/anomalies");
+    expect(liens.length).toBeGreaterThanOrEqual(1);
+    expect(listerAnomalies).toHaveBeenCalledWith("s1");
+  });
+
+  it("n'affiche pas la carte des anomalies sans le droit", () => {
+    afficher();
+    expect(screen.queryByRole("group", { name: "Anomalies à traiter" })).toBeNull();
+    expect(listerAnomalies).not.toHaveBeenCalled();
+  });
+
+  it("n'affiche pas le bloc Marge et ne demande rien au serveur sans marge:read", async () => {
+    afficher({ peutVoirMarge: false });
+    await waitFor(() => expect(groupe("Médicaments disponibles").getByText("1")).toBeTruthy());
+    expect(screen.queryByRole("heading", { name: "Marge" })).toBeNull();
+    expect(getRapportMarge).not.toHaveBeenCalled();
+  });
+
+  it("affiche le bloc Péremptions à surveiller avec le droit sur le stock", async () => {
+    afficher({ peutVoirStock: true });
+    expect(await screen.findByRole("heading", { name: "Péremptions à surveiller" })).toBeTruthy();
+    expect(getAlertesPeremption).toHaveBeenCalledWith("s1");
   });
 
   it("construit les raccourcis selon les droits", () => {

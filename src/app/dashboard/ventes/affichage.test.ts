@@ -6,8 +6,10 @@ import {
   formaterJour,
   jourConakry,
   libelleArticles,
+  libelleLigneVente,
   lireFormatRecu,
   motifValide,
+  prixUnitaireAffiche,
 } from "./affichage";
 
 beforeEach(() => {
@@ -87,5 +89,33 @@ describe("libelleArticles", () => {
   it("accorde le mot article", () => {
     expect(libelleArticles(1)).toBe("1 article");
     expect(libelleArticles(3)).toBe("3 articles");
+    expect(libelleArticles(-3)).toBe("3 articles");
+    expect(libelleArticles(-1)).toBe("1 article");
+  });
+});
+
+describe("ligne de vente", () => {
+  it("écrit une ligne en boîtes", () => {
+    expect(libelleLigneVente({ uniteAffichee: "BOITE", nombreAffiche: 2, nomMedicament: "Paracétamol" })).toBe(
+      "2 boîtes de Paracétamol",
+    );
+    expect(libelleLigneVente({ uniteAffichee: "BOITE", nombreAffiche: 1, nomMedicament: "Amoxicilline" })).toBe(
+      "1 boîte d'Amoxicilline",
+    );
+  });
+
+  it("écrit une ligne en unités", () => {
+    expect(libelleLigneVente({ uniteAffichee: "UNITE", nombreAffiche: 6, nomMedicament: "Paracétamol" })).toBe(
+      "6 unités de Paracétamol",
+    );
+    expect(libelleLigneVente({ uniteAffichee: "UNITE", nombreAffiche: 1, nomMedicament: "Paracétamol" })).toBe(
+      "1 unité de Paracétamol",
+    );
+  });
+
+  it("affiche le prix d'une boîte ou d'une unité comme le sous-total divisé par le nombre, arrondi", () => {
+    expect(prixUnitaireAffiche({ sousTotal: 3000, nombreAffiche: 2 })).toBe(1500);
+    expect(prixUnitaireAffiche({ sousTotal: 1000, nombreAffiche: 3 })).toBe(333);
+    expect(prixUnitaireAffiche({ sousTotal: 2000, nombreAffiche: 3 })).toBe(667);
   });
 });

@@ -16,7 +16,11 @@ import {
   FORMATS_RECU,
   enregistrerFormatRecu,
   formaterDateHeure,
+  formaterJour,
+  jourConakry,
+  libelleLigneVente,
   lireFormatRecu,
+  prixUnitaireAffiche,
   type FormatRecu,
 } from "../../affichage";
 
@@ -169,6 +173,13 @@ export default function RecuVentePage() {
   const { pharmacie } = vente;
   const hauteurLogo = HAUTEUR_LOGO[format];
   const lignesAdresse = [pharmacie.adresse, pharmacie.ville].filter((v): v is string => v !== null && v !== "");
+  const titrePiece =
+    vente.typePiece === "ANNULATION"
+      ? "Pièce d'annulation n°"
+      : vente.typePiece === "REGULARISATION"
+        ? "Régularisation n°"
+        : "Reçu n°";
+  const jourDeLaPiece = jourConakry(new Date(vente.createdAt));
 
   return (
     <div className="max-w-4xl mx-auto print:max-w-none print:m-0 animate-fade-in">
@@ -231,7 +242,16 @@ export default function RecuVentePage() {
             <p role="status" className="border-2 border-black font-extrabold tracking-widest text-center py-1">
               ANNULÉE
             </p>
-            {vente.annuleeLe && <p className="text-center mt-1">Annulée le {formaterDateHeure(vente.annuleeLe)}</p>}
+            {vente.annulation ? (
+              <>
+                <p className="text-center mt-1">
+                  {`Annulée le ${formaterDateHeure(vente.annulation.le)} par ${vente.annulation.par.nom} (pièce ${vente.annulation.numero})`}
+                </p>
+                {vente.annulation.motif && <p className="text-center">Motif : {vente.annulation.motif}</p>}
+              </>
+            ) : (
+              vente.annuleeLe && <p className="text-center mt-1">Annulée le {formaterDateHeure(vente.annuleeLe)}</p>
+            )}
             <div className={SEPARATEUR} />
           </>
         )}
@@ -253,8 +273,17 @@ export default function RecuVentePage() {
         <div className={SEPARATEUR} />
 
         <div className="space-y-0.5">
-          <p>Reçu n° {vente.numero}</p>
+          <p>
+            {titrePiece} {vente.numero}
+          </p>
+          {vente.typePiece === "ANNULATION" && (
+            <>
+              {vente.venteOrigine && <p>Annule la vente n° {vente.venteOrigine.numero}</p>}
+              {vente.motif && <p>Motif : {vente.motif}</p>}
+            </>
+          )}
           <p>Le {formaterDateHeure(vente.createdAt)}</p>
+          {vente.jourMetier !== jourDeLaPiece && <p>Comptée pour le {formaterJour(vente.jourMetier)}</p>}
           <p>Vendeur : {vente.vendeur.nom}</p>
           {vente.clientNom && <p>Client : {vente.clientNom}</p>}
           {vente.clientTelephone && <p>Téléphone du client : {vente.clientTelephone}</p>}
@@ -265,8 +294,8 @@ export default function RecuVentePage() {
         <ul className="space-y-1.5">
           {vente.lignes.map((ligne) => (
             <li key={ligne.id}>
-              <p>{ligne.nomMedicament}</p>
-              <p className="text-right">{`${ligne.quantite} × ${formaterGNF(ligne.prixUnitaire)} = ${formaterGNF(ligne.sousTotal)}`}</p>
+              <p>{libelleLigneVente(ligne)}</p>
+              <p className="text-right">{`${ligne.nombreAffiche} × ${formaterGNF(prixUnitaireAffiche(ligne))} = ${formaterGNF(ligne.sousTotal)}`}</p>
             </li>
           ))}
         </ul>
@@ -277,6 +306,19 @@ export default function RecuVentePage() {
           <span>Total</span>
           <span>{formaterGNF(vente.total)}</span>
         </p>
+
+        {vente.paiements.length > 0 && (
+          <ul className="mt-1 space-y-0.5">
+            {vente.paiements.map((p) => (
+              <li key={p.id}>
+                <p>{`${p.libelle} : ${formaterGNF(p.montant)}`}</p>
+                {p.reference && <p>{`Référence : ${p.reference}`}</p>}
+                {p.montantRecu !== null && <p>{`Reçu : ${formaterGNF(p.montantRecu)}`}</p>}
+                {p.rendu !== null && <p>{`Rendu : ${formaterGNF(p.rendu)}`}</p>}
+              </li>
+            ))}
+          </ul>
+        )}
 
         <div className={SEPARATEUR} />
 
