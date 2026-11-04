@@ -9,6 +9,14 @@ const withSerwist = withSerwistInit({
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {},
+  // Sortie autonome, seulement pour l'application de bureau (desktop/).
+  ...(process.env.NEXT_OUTPUT === "standalone"
+    ? {
+        output: "standalone" as const,
+        outputFileTracingRoot: process.cwd(),
+        outputFileTracingExcludes: { "/*": ["desktop/**"] },
+      }
+    : {}),
   async headers() {
     return [
       {

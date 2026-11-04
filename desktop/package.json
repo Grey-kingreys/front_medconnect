@@ -1,0 +1,25 @@
+{
+  "name": "medconnecte-caisse",
+  "productName": "MedConnecte Caisse",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/main.cjs",
+  "scripts": {
+    "preparer": "node node_modules/electron/install.js",
+    "construire:front": "node scripts/construire-front.mjs",
+    "construire": "node scripts/construire-electron.mjs",
+    "demarrer": "npm run construire && electron .",
+    "test": "vitest run",
+    "types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "13.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "24.0.0",
+    "electron": "45.2.2",
+    "esbuild": "0.28.2",
+    "typescript": "5.9.3",
+    "vitest": "4.1.11"
+  }
+}

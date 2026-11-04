@@ -11,6 +11,8 @@ import { useEffect } from "react";
  */
 export function ServiceWorkerRegistration() {
   useEffect(() => {
+    // Application de bureau : le service worker n'y sert à rien.
+    if (window.medconnecteDesktop) return;
     if (!("serviceWorker" in navigator)) return;
     // Pas d'enregistrement depuis une iframe (aperçus, intégrations tierces).
     if (window.self !== window.top) return;
