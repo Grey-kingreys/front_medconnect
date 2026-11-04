@@ -42,7 +42,7 @@ Arrêt obligatoire avant le desktop (PD01 à PD05) : le porteur teste d'abord.
 - (lot4) Emplacement exact de `invitationEnvoyee` (data ou racine) et forme du 503 EMAIL_INDISPONIBLE : à confirmer avec orch/lot4-back ; le front accepte les deux (lot4 D01, D02)
 - (lot5) Règles du mot de passe dans `UserModal` (création d'utilisateur par un administrateur, 8 caractères seulement) : à aligner si le back exige aussi majuscule, minuscule et chiffre (lot5 D20)
 - (lot7) Lecture du stock par le vendeur : `GET /pharmacie/stock/:structureId` exige `stock:read` ET `stock:write` (lot7 D06, lot7b D02) ; à revoir avec la tranche pharmacie 1
-- (pharmacie-t1) Le rôle Pharmacien n'a ni `reception:write` ni `inventaire:write` (D598, D704) : le porteur dit s'il faut les lui donner
+- (pharmacie-t1) Rôle Pharmacien : `reception:write` accordé par le porteur (D732) ; `inventaire:write` reste au titulaire (D598)
 
 ## Dernières décisions (5 max, historique complet dans le decisions.md du run, dépôt back)
 
