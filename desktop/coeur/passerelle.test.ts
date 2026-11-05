@@ -198,6 +198,31 @@ describe("rattachement (D741)", () => {
   });
 });
 
+describe("envoi des événements de caisse", () => {
+  it("ouvrir puis fermer la caisse lance un cycle d'envoi, comme une vente (sinon la fermeture attendait le battement de 5 min)", async () => {
+    const { p, deps } = monter();
+    p.confirmerIdentite(UTILISATEUR);
+    const ouverture = await p.appeler("ouvrirSession", ["ph1", { id: uuid(7, "dddddddd") }]);
+    expect(ouverture).toMatchObject({ ok: true });
+    expect(deps.apresVente).toHaveBeenCalledTimes(1);
+    const sessionId = (ouverture as { data: { id: string } }).data.id;
+    const fermeture = await p.appeler("fermerSession", [
+      "ph1",
+      sessionId,
+      { comptageFermeture: { id: uuid(8, "dddddddd"), coupures: [{ valeurFaciale: 1000, nombre: 0 }] } },
+    ]);
+    expect(fermeture).toMatchObject({ ok: true });
+    expect(deps.apresVente).toHaveBeenCalledTimes(2);
+  });
+
+  it("une simple lecture de caisse ne lance aucun cycle", async () => {
+    const { p, deps } = monter();
+    p.confirmerIdentite(UTILISATEUR);
+    await p.appeler("getVente", ["ph1", uuid(9)]);
+    expect(deps.apresVente).not.toHaveBeenCalled();
+  });
+});
+
 describe("appels du cœur", () => {
   it("enregistre une vente, lance un cycle sans l'attendre et prévient le rendu", async () => {
     const { p, deps, coeur } = monter();

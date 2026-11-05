@@ -165,7 +165,11 @@ export class Passerelle {
     try {
       const reponse = this.executer(methode, valeurs, this.utilisateur as UtilisateurPoste);
       if (ECRITURES.has(methode)) this.deps.etatChange();
-      if (methode === "creerVente") this.deps.apresVente();
+      // Une ouverture, un comptage, un mouvement ou une fermeture de caisse sont des événements à envoyer comme une vente :
+      // sans cela, ils attendaient le prochain battement (jusqu'à 5 min) et l'annulation en ligne restait refusée entre-temps.
+      if (methode === "creerVente" || methode === "ouvrirSession" || methode === "saisirComptage" || methode === "enregistrerMouvement" || methode === "fermerSession") {
+        this.deps.apresVente();
+      }
       if (methode === "enregistrerAnnulationServeur") this.deps.apresAnnulation?.();
       return reponse;
     } catch (e) {

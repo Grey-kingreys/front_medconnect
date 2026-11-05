@@ -11,8 +11,10 @@ import {
   sessionOuverteLigne,
   versSession,
 } from "./caisse_session";
+import type { InfosPoste, ReglagesPoste } from "@/lib/caisse/contrat_desktop";
 import { Contexte, type Outils, type Referentiels } from "./contexte";
 import { plageRestante } from "./plages_locales";
+import { enregistrerReglages, lireReglages } from "./reglages";
 import type { Stockage } from "./stockage";
 import type { ComptageEntree, EtatLocal, FermetureEntree, MouvementEntree, Utilisateur } from "./types_caisse";
 import type {
@@ -115,6 +117,22 @@ export class CoeurCaisse {
 
   structureRattachee(): string | null {
     return this.etat().structureId;
+  }
+
+  /** Réglages d'impression de ce poste (PD05). */
+  lireReglages(): ReglagesPoste {
+    return lireReglages(this.stockage);
+  }
+
+  enregistrerReglages(modif: Partial<ReglagesPoste>): ReglagesPoste {
+    return enregistrerReglages(this.stockage, modif);
+  }
+
+  /** Poste et dernière vente locale, pour la page « Ce poste » (ticket d'essai). */
+  infosPoste(): InfosPoste {
+    const poste = this.poste();
+    const derniere = this.stockage.lireUn<{ id: string }>("SELECT id FROM ventes WHERE typePiece = 'VENTE' ORDER BY createdAt DESC, sequence DESC LIMIT 1");
+    return { posteCode: poste?.code ?? null, posteLibelle: poste?.libelle ?? null, derniereVenteId: derniere?.id ?? null };
   }
 
   enregistrerPoste(p: { id: string; code: string; libelle: string }): void {

@@ -114,6 +114,9 @@ describe("aucun refus de stock (CA24, D713.2)", () => {
     const v = c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 2 }] }, cle(1), VENDEUR);
 
     expect(v.provisoire).toBe(true);
+    // Le ticket du poste connaît l'unité de la fiche et mentionne la part à régulariser (le web et l'API n'ont pas ces champs).
+    expect(v.aRegulariserLocal).toBe(true);
+    expect(typeof v.lignes[0].uniteMinimale).toBe("string");
     expect(v.lignes[0].allocations).toEqual([
       { lotId: null, numeroLot: null, dateExpiration: null, quantite: 2, statut: "PROVISOIRE", sortieManuelle: false, motif: null, lotTechnique: false },
     ]);

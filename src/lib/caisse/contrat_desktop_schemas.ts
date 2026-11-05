@@ -97,6 +97,25 @@ export const schemasPont = {
 
 export type NomMethodeCaisse = keyof typeof schemasPont;
 
+/** Messages d'impression : identifiant de vente en UUID, réglages partiels et stricts. */
+export const schemasImpression = {
+  listerImprimantes: z.tuple([]),
+  lireReglages: z.tuple([]),
+  enregistrerReglages: z.tuple([
+    z
+      .object({
+        imprimante: z.string().min(1).max(300).nullable().optional(),
+        formatRecu: z.enum(["58", "80", "A4"]).optional(),
+        impressionAutomatique: z.boolean().optional(),
+      })
+      .strict(),
+  ]),
+  lireInfosPoste: z.tuple([]),
+  imprimerVente: z.tuple([z.string().uuid()]),
+} as const;
+
+export type NomMethodeImpression = keyof typeof schemasImpression;
+
 export const schemaJeton = z.tuple([z.string().min(1).max(8192).nullable()]);
 
 export const schemaUtilisateur = z.tuple([

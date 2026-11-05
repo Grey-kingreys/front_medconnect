@@ -6,6 +6,7 @@ import { writeFileSync } from "node:fs";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { CoeurCaisse } from "../coeur/coeur";
+import type { ServiceImpression } from "./impression";
 import { jouerScenario } from "./sonde_scenario";
 
 type Resultat = Record<string, unknown>;
@@ -21,6 +22,8 @@ export async function lancerSonde(opts: {
   urlApi: string;
   /** Lance un cycle de synchronisation (scénario PD04c). */
   declencher?: () => void;
+  /** Service d'impression du poste (scénario PD05). */
+  impression?: ServiceImpression;
 }): Promise<void> {
   const { fenetre, origine } = opts;
   // Scénario de preuve PD04c : phase donnée par MC_SCENARIO, sortie dans MC_SONDE_SORTIE.
@@ -32,6 +35,7 @@ export async function lancerSonde(opts: {
       dossier: opts.dossier,
       urlApi: opts.urlApi,
       declencher: opts.declencher ?? (() => undefined),
+      impression: opts.impression,
       phase: process.env.MC_SCENARIO,
     });
     return;

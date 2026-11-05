@@ -72,6 +72,37 @@ export interface CorpsFermeture {
   commentaire?: string;
 }
 
+/** Format du ticket : rouleau de 58 ou 80 mm, ou feuille A4. */
+export type FormatTicket = "58" | "80" | "A4";
+
+/** Réglages d'impression de ce poste, gardés dans sa base locale. */
+export interface ReglagesPoste {
+  /** Nom système de l'imprimante choisie, null tant qu'aucune n'est choisie. */
+  imprimante: string | null;
+  formatRecu: FormatTicket;
+  /** Vrai par défaut dès qu'une imprimante est choisie (D746). */
+  impressionAutomatique: boolean;
+}
+
+export interface ImprimanteSysteme {
+  name: string;
+  displayName: string;
+  isDefault: boolean;
+}
+
+/** Ce que la page « Ce poste » affiche en plus des réglages. */
+export interface InfosPoste {
+  posteCode: string | null;
+  posteLibelle: string | null;
+  derniereVenteId: string | null;
+}
+
+/** Codes d'échec d'une impression (ReponsePont, `code`). */
+export const CODE_IMPRIMANTE_NON_CHOISIE = "IMPRIMANTE_NON_CHOISIE";
+export const CODE_IMPRESSION_ECHOUEE = "IMPRESSION_ECHOUEE";
+export const MESSAGE_IMPRESSION_ECHOUEE =
+  "Le ticket n'a pas pu être imprimé. Vérifiez que l'imprimante est allumée et réessayez. La vente est bien enregistrée.";
+
 export interface PontDesktop {
   version: string;
   /** Le rendu ne pousse que le jeton : le processus principal en tire l'identité auprès du serveur (`/auth/me`). */
@@ -96,6 +127,16 @@ export interface PontDesktop {
     listerVentes(s: string, options: { date?: string; page?: number }): Promise<ReponsePont<VentesDuJour>>;
     getVente(s: string, venteId: string): Promise<ReponsePont<Vente | null>>;
     enregistrerAnnulationServeur(reponse: Vente): Promise<ReponsePont<null>>;
+  };
+  impression: {
+    listerImprimantes(): Promise<ReponsePont<ImprimanteSysteme[]>>;
+    lireReglages(): Promise<ReponsePont<ReglagesPoste>>;
+    enregistrerReglages(modif: Partial<ReglagesPoste>): Promise<ReponsePont<ReglagesPoste>>;
+    lireInfosPoste(): Promise<ReponsePont<InfosPoste>>;
+    /** Imprime le ticket de la vente locale sans dialogue, avec l'imprimante et le format réglés. */
+    imprimerVente(venteId: string): Promise<ReponsePont<null>>;
+    /** Appelé par la fenêtre cachée d'impression quand le reçu est rendu (logo chargé ou replié). */
+    signalerPret(): Promise<void>;
   };
 }
 

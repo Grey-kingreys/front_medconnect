@@ -6,6 +6,7 @@ import { AlertCircle, Ban, Loader2, Printer, ShoppingCart, X } from "lucide-reac
 import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
+import { MESSAGE_IMPRESSION_ECHOUEE, pontDesktop } from "@/lib/caisse/contrat_desktop";
 import { sourceCaisse } from "@/lib/caisse/source_active";
 import { etatPosteAttendu, horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
 import {
@@ -117,6 +118,8 @@ export default function VentesDuJourPage() {
   const [bandeau, setBandeau] = useState<{ texte: string; ton: "succes" | "erreur" } | null>(null);
   // Refus qu'un nouvel essai ne changerait pas, ou issue inconnue : la confirmation est bloquée.
   const [sansReessai, setSansReessai] = useState(false);
+  const [reimpression, setReimpression] = useState<string | null>(null);
+  const pont = pontDesktop();
   const [aVerifier, setAVerifier] = useState(false);
   const envoiEnCours = useRef(false);
 
@@ -166,6 +169,21 @@ export default function VentesDuJourPage() {
     if (aVerifier) {
       setAVerifier(false);
       recharger();
+    }
+  };
+
+  /** Poste desktop : le ticket part directement à l'imprimante réglée, sans passer par l'écran du reçu. */
+  const reimprimer = async (vente: VenteResume) => {
+    if (pont === null) return;
+    setReimpression(vente.id);
+    try {
+      const rep = await pont.impression.imprimerVente(vente.id);
+      if (rep.ok) setBandeau({ texte: `Le ticket ${vente.numero} a été envoyé à l'imprimante.`, ton: "succes" });
+      else setBandeau({ texte: rep.message, ton: "erreur" });
+    } catch {
+      setBandeau({ texte: MESSAGE_IMPRESSION_ECHOUEE, ton: "erreur" });
+    } finally {
+      setReimpression(null);
     }
   };
 
@@ -349,14 +367,27 @@ export default function VentesDuJourPage() {
                         En cours d&apos;envoi
                       </span>
                     )}
-                    <Link
-                      href={`/dashboard/ventes/${encodeURIComponent(v.id)}/recu`}
-                      aria-label={`Réimprimer le reçu ${v.numero}`}
-                      className={`inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 ${FOCUS}`}
-                    >
-                      <Printer className="w-4 h-4" aria-hidden="true" />
-                      Réimprimer
-                    </Link>
+                    {pont === null ? (
+                      <Link
+                        href={`/dashboard/ventes/${encodeURIComponent(v.id)}/recu`}
+                        aria-label={`Réimprimer le reçu ${v.numero}`}
+                        className={`inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 ${FOCUS}`}
+                      >
+                        <Printer className="w-4 h-4" aria-hidden="true" />
+                        Réimprimer
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => void reimprimer(v)}
+                        disabled={reimpression !== null}
+                        aria-label={`Réimprimer le reçu ${v.numero}`}
+                        className={`inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 disabled:opacity-60 disabled:cursor-not-allowed ${FOCUS}`}
+                      >
+                        <Printer className="w-4 h-4" aria-hidden="true" />
+                        Réimprimer
+                      </button>
+                    )}
                     {peutAnnuler && v.typePiece === "VENTE" && v.statut === "VALIDEE" && (
                       <button
                         type="button"

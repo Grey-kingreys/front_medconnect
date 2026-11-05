@@ -17,6 +17,7 @@ import {
   type Vente,
 } from "@/lib/api_ventes";
 import { estErreurReseau } from "@/lib/erreurs_api";
+import { MESSAGE_IMPRESSION_ECHOUEE, pontDesktop } from "@/lib/caisse/contrat_desktop";
 import { sourceCaisse } from "@/lib/caisse/source_active";
 import { etatPosteAttendu, horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
 import type { EtatCaisse } from "@/lib/caisse/source";
@@ -144,6 +145,9 @@ export default function NouvelleVentePage() {
   const [sortie, setSortie] = useState<SortieEnCours | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [succes, setSucces] = useState<Vente | null>(null);
+  // Porte la vente concernée : un échec peut arriver jusqu'à une minute plus tard, une autre vente étant déjà à l'écran.
+  const [echecImpression, setEchecImpression] = useState<{ vente: Vente; message: string } | null>(null);
+  const [reimpressionEnCours, setReimpressionEnCours] = useState(false);
   const [erreurTelephone, setErreurTelephone] = useState(false);
   const [erreurOrdonnance, setErreurOrdonnance] = useState(false);
 
@@ -412,6 +416,35 @@ export default function NouvelleVentePage() {
     }
   };
 
+  /** Poste desktop : le ticket part sans attendre si l'impression automatique est active. La vente n'en dépend jamais. */
+  const imprimerApresVente = (vente: Vente) => {
+    const pont = pontDesktop();
+    if (pont === null) return;
+    void pont.impression
+      .lireReglages()
+      .then((reglages) => {
+        if (!reglages.ok || !reglages.data.impressionAutomatique) return undefined;
+        return pont.impression.imprimerVente(vente.id).then((rep) => {
+          if (!rep.ok) setEchecImpression({ vente, message: rep.message });
+        });
+      })
+      .catch(() => setEchecImpression({ vente, message: MESSAGE_IMPRESSION_ECHOUEE }));
+  };
+
+  const reimprimer = (vente: Vente) => {
+    const pont = pontDesktop();
+    if (pont === null) return;
+    setEchecImpression(null);
+    setReimpressionEnCours(true);
+    void pont.impression
+      .imprimerVente(vente.id)
+      .then((rep) => {
+        if (!rep.ok) setEchecImpression({ vente, message: rep.message });
+      })
+      .catch(() => setEchecImpression({ vente, message: MESSAGE_IMPRESSION_ECHOUEE }))
+      .finally(() => setReimpressionEnCours(false));
+  };
+
   const envoyerVente = (paiements: PaiementDemande[] | null, base: PanierVente = panier) => {
     if (envoiEnCours.current) return;
     let cle = base.cleIdempotence;
@@ -437,6 +470,8 @@ export default function NouvelleVentePage() {
         setPanier(PANIER_VIDE);
         setDerniereCle(null);
         setSucces(vente);
+        setEchecImpression(null);
+        imprimerApresVente(vente);
         // Sur le poste, le stock local est relu : la liste montre la quantité diminuée.
         if (sourceCaisse().enLigneSeulement === false) {
           sourceCaisse()
@@ -582,6 +617,20 @@ export default function NouvelleVentePage() {
             <p role="status" className={ALERTE_INFO}>
               Vente comptée pour le {formaterJour(succes.jourMetier)} (journée d&apos;aujourd&apos;hui déjà clôturée).
             </p>
+          )}
+          {echecImpression !== null && (
+            <div role="alert" className={ALERTE_INFO}>
+              {echecImpression.vente.id !== succes.id && <p className="font-medium">Ticket {echecImpression.vente.numero}</p>}
+              <p>{echecImpression.message}</p>
+              <button
+                type="button"
+                onClick={() => reimprimer(echecImpression.vente)}
+                disabled={reimpressionEnCours}
+                className={`mt-2 px-3 py-2 rounded-xl text-sm font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 disabled:opacity-60 ${FOCUS}`}
+              >
+                Réimprimer
+              </button>
+            </div>
           )}
           <div className="flex flex-col sm:flex-row gap-3">
             <Link href={`/dashboard/ventes/${encodeURIComponent(succes.id)}/recu`} className={BOUTON_PRIMAIRE}>

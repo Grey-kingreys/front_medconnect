@@ -20,6 +20,7 @@ import {
   LayoutDashboard,
   MapPin,
   MessageSquare,
+  Monitor,
   Package,
   Pill,
   Receipt,
@@ -59,6 +60,8 @@ interface EntreeTableauDeBord {
   rolesRepli: readonly RoleUtilisateur[];
   /** Vrai : la même règle d'accès garde aussi les pages sous `href` (`href/...`), absentes du menu. */
   couvreSousPages?: boolean;
+  /** Vrai : l'entrée n'existe que dans l'application de caisse (desktop). La page, elle, répond « introuvable » sur le web. */
+  desktopSeulement?: boolean;
   raccourci?: {
     libelle?: TexteSelonType;
     description: TexteSelonType;
@@ -407,6 +410,16 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
     },
   },
   {
+    id: "poste",
+    section: "activite",
+    href: "/dashboard/poste",
+    icone: Monitor,
+    libelle: { defaut: "Ce poste" },
+    acces: { genre: "tous" },
+    rolesRepli: TOUS_LES_ROLES,
+    desktopSeulement: true,
+  },
+  {
     id: "clotures",
     section: "activite",
     href: "/dashboard/clotures",
@@ -667,6 +680,7 @@ export function sectionsMenu(ctx: ContexteAcces): SectionMenu[] {
   const dejaVus = new Set<string>();
   const liens = new Map<IdSection, LienMenu[]>();
   for (const entree of ENTREES) {
+    if (entree.desktopSeulement === true && ctx.desktop !== true) continue;
     if (!estVisible(entree.acces, entree.rolesRepli, ctx)) continue;
     if (dejaVus.has(entree.href)) continue;
     dejaVus.add(entree.href);

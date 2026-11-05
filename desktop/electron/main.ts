@@ -1,5 +1,5 @@
 // Processus principal : fenêtre, serveur Next local, garde-fous de navigation.
-import { app, BrowserWindow, Menu, session, shell } from "electron";
+import { app, BrowserWindow, Menu, session, shell, type WebPreferences } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -7,6 +7,7 @@ import os from "node:os";
 import { retirerEtControlerCookieRefresh } from "../coeur/cookie_session";
 import { Passerelle, construireEtat } from "../coeur/passerelle";
 import { ouvrirCaisse, type CaisseOuverte } from "./demarrage";
+import { creerServiceImpression } from "./impression";
 import { enregistrerIpc } from "./ipc";
 import { demarrerMesureMemoire } from "./memoire";
 import { lancerSonde } from "./sonde";
@@ -22,6 +23,20 @@ const sondeActive = process.env.MC_SONDE === "1" && !app.isPackaged;
 let fenetre: BrowserWindow | null = null;
 let origine = "";
 
+/** Mêmes préférences pour la fenêtre principale et la fenêtre cachée d'impression (préchargement compris). */
+function preferencesPage(): WebPreferences {
+  return {
+    contextIsolation: true,
+    nodeIntegration: false,
+    sandbox: true,
+    webSecurity: true,
+    devTools: !app.isPackaged,
+    backgroundThrottling: false,
+    preload: path.join(__dirname, "preload.cjs"),
+    additionalArguments: [`--mc-version=${app.getVersion()}`],
+  };
+}
+
 function creerFenetre(): BrowserWindow {
   const win = new BrowserWindow({
     width: 1280,
@@ -29,16 +44,7 @@ function creerFenetre(): BrowserWindow {
     show: !sondeActive,
     backgroundColor: "#f8fafc",
     title: "MedConnecte Caisse",
-    webPreferences: {
-      contextIsolation: true,
-      nodeIntegration: false,
-      sandbox: true,
-      webSecurity: true,
-      devTools: !app.isPackaged,
-      backgroundThrottling: false,
-      preload: path.join(__dirname, "preload.cjs"),
-      additionalArguments: [`--mc-version=${app.getVersion()}`],
-    },
+    webPreferences: preferencesPage(),
   });
 
   const urlAttente = pathToFileURL(path.join(__dirname, "attente.html")).href;
@@ -159,10 +165,23 @@ if (!premiereInstance) {
       etatChange: notifier,
       journal,
     });
+    const impression = creerServiceImpression({
+      lireReglages: () => coeur.lireReglages(),
+      origine: () => origine,
+      preferences: preferencesPage,
+      contenuPrincipal: () => fenetre?.webContents ?? null,
+      journal,
+    });
     enregistrerIpc({
       passerelle,
       origine: () => origine,
       contenuAutorise: () => fenetre?.webContents ?? null,
+      impression,
+      reglages: {
+        lire: () => coeur.lireReglages(),
+        enregistrer: (modif) => coeur.enregistrerReglages(modif),
+        infosPoste: () => coeur.infosPoste(),
+      },
       definirJeton: (jeton) => service!.definirJeton(jeton),
       deconnecter: () => {
         service!.deconnecter();
@@ -187,6 +206,7 @@ if (!premiereInstance) {
         dossier: caisse.dossier,
         urlApi: URL_API,
         declencher: () => service!.declencher("minuterie"),
+        impression,
       });
     } else {
       await fenetre.loadURL(`${origine}/dashboard`);

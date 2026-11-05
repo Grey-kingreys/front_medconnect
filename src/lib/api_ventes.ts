@@ -77,6 +77,8 @@ export interface LigneVente {
   nombreAffiche: number;
   coefficientApplique: number;
   allocations: AllocationVente[];
+  /** Unité minimale de la fiche (« PLAQUETTE », « COMPRIME »...) : renseignée seulement par la vente locale du poste desktop, absente de l'API. */
+  uniteMinimale?: string;
 }
 export interface PaiementVente {
   id: string;
@@ -130,6 +132,8 @@ export interface Vente {
   numeroTicket: number | null;
   jourMetier: string;
   provisoire: boolean;
+  /** Vrai seulement pour une vente locale du poste desktop dont une part reste à régulariser : le ticket le mentionne. Absent de l'API. */
+  aRegulariserLocal?: boolean;
   poste: { id: string; code: string };
   session: { id: string; ouverteAutomatiquement: boolean };
   paiements: PaiementVente[];

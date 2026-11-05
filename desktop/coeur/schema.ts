@@ -133,6 +133,13 @@ const ETAPES: string[] = [
   `
   ALTER TABLE etat_poste ADD COLUMN plageDemandeeId TEXT;
   `,
+  // Version 4 (PD05) : réglages du poste (imprimante, format du ticket, impression automatique), clé et valeur en texte.
+  `
+  CREATE TABLE reglages (
+    cle TEXT PRIMARY KEY,
+    valeur TEXT NOT NULL
+  );
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

@@ -393,6 +393,7 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
         nombreAffiche: x.calcul.nombreAffiche,
         coefficientApplique: x.calcul.coefficientApplique,
         allocations,
+        uniteMinimale: x.fiche.uniteMinimale,
       };
     });
     const paiementsReponse: PaiementVente[] = prepares.paiements.map((p, index) => ({
@@ -453,6 +454,7 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       numeroTicket,
       jourMetier: jourSession,
       provisoire,
+      ...(provisoire ? { aRegulariserLocal: true } : {}),
       poste: { id: ref.posteId, code: ref.posteCode },
       session: { id: sessionId, ouverteAutomatiquement: ouverte === undefined },
       paiements: paiementsReponse,

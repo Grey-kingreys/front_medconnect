@@ -39,4 +39,12 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
     getVente: (s: string, venteId: string) => appeler("caisse:getVente", s, venteId),
     enregistrerAnnulationServeur: (reponse: unknown) => appeler("caisse:enregistrerAnnulationServeur", reponse),
   },
+  impression: {
+    listerImprimantes: () => appeler("impression:listerImprimantes"),
+    lireReglages: () => appeler("impression:lireReglages"),
+    enregistrerReglages: (modif: unknown) => appeler("impression:enregistrerReglages", modif),
+    lireInfosPoste: () => appeler("impression:lireInfosPoste"),
+    imprimerVente: (venteId: string) => appeler("impression:imprimerVente", venteId),
+    signalerPret: () => appeler("impression:signalerPret"),
+  },
 });
