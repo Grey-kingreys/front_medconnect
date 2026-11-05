@@ -93,6 +93,16 @@ export default function PostePage() {
     }
   };
 
+  const installerMaintenant = async () => {
+    setBandeau(null);
+    try {
+      const rep = await pont.maj.installer();
+      if (!rep.ok) setBandeau({ texte: rep.message, ton: "erreur" });
+    } catch {
+      setBandeau({ texte: MESSAGE_CHARGEMENT, ton: "erreur" });
+    }
+  };
+
   const peutEssayer = reglages?.imprimante != null && infos?.derniereVenteId != null;
   // Une imprimante réglée mais absente de la liste (débranchée) reste choisie : elle est proposée telle quelle.
   const choisieAbsente = reglages?.imprimante != null && !imprimantes.some((p) => p.name === reglages.imprimante);
@@ -245,7 +255,33 @@ export default function PostePage() {
               {etat?.dernierContactLe ? formaterDateHeure(etat.dernierContactLe) : "Aucun pour le moment"}
             </dd>
           </div>
+          {infos?.adresseApi ? (
+            <div className="sm:col-span-2">
+              <dt className="text-slate-600 dark:text-slate-400">Adresse du serveur</dt>
+              <dd className="font-medium text-slate-900 dark:text-white break-all">{infos.adresseApi}</dd>
+            </div>
+          ) : null}
         </dl>
+
+        <div className="space-y-2 pt-2">
+          {etat?.majPrete ? (
+            <>
+              <p className="text-sm text-slate-800 dark:text-slate-200">{`Mise à jour ${etat.majPrete} prête : elle s'installera à la fermeture.`}</p>
+              <button type="button" onClick={() => void installerMaintenant()} disabled={!etat.majInstallable} className={BOUTON_PRIMAIRE}>
+                Installer maintenant
+              </button>
+              {!etat.majInstallable && (
+                <p className="text-sm text-slate-600 dark:text-slate-400">Fermez d&apos;abord la caisse et attendez l&apos;envoi des ventes.</p>
+              )}
+            </>
+          ) : infos?.majAutomatique === false ? (
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Les mises à jour se font à la main : MedConnecte vous donnera le nouveau programme à installer.
+            </p>
+          ) : infos?.majAutomatique ? (
+            <p className="text-sm text-slate-600 dark:text-slate-400">L&apos;application est à jour. Les mises à jour arrivent toutes seules.</p>
+          ) : null}
+        </div>
       </section>
     </div>
   );

@@ -47,6 +47,10 @@ export interface EtatPosteDesktop {
   photographieLe: string | null;
   /** Message de `moteur.etat().erreur` (envoi bloqué D754, refus 403), null sinon. */
   messageEnvoi: string | null;
+  /** Version d'une mise à jour téléchargée, prête à s'installer à la fermeture. Absent ou null : aucune. */
+  majPrete?: string | null;
+  /** Vrai si la règle autorise l'installation tout de suite (caisse fermée, ventes toutes envoyées). */
+  majInstallable?: boolean;
 }
 
 export interface CorpsOuverture {
@@ -95,6 +99,10 @@ export interface InfosPoste {
   posteCode: string | null;
   posteLibelle: string | null;
   derniereVenteId: string | null;
+  /** Adresse de l'API figée à la construction de l'application (adresse seule). Absent côté base locale, ajouté par le processus principal. */
+  adresseApi?: string;
+  /** Vrai si les mises à jour se font toutes seules, faux si elles sont manuelles. */
+  majAutomatique?: boolean;
 }
 
 /** Codes d'échec d'une impression (ReponsePont, `code`). */
@@ -127,6 +135,10 @@ export interface PontDesktop {
     listerVentes(s: string, options: { date?: string; page?: number }): Promise<ReponsePont<VentesDuJour>>;
     getVente(s: string, venteId: string): Promise<ReponsePont<Vente | null>>;
     enregistrerAnnulationServeur(reponse: Vente): Promise<ReponsePont<null>>;
+  };
+  maj: {
+    /** Installe la mise à jour prête et relance l'application ; refusé si une caisse est ouverte ou si des ventes attendent. */
+    installer(): Promise<ReponsePont<null>>;
   };
   impression: {
     listerImprimantes(): Promise<ReponsePont<ImprimanteSysteme[]>>;

@@ -35,17 +35,28 @@ function ecrireAppareilId(dossier: string, id: string): void {
 /**
  * Fixe l'identifiant du poste. Base sans identifiant et fichier valide : le fichier fait foi (même poste au
  * serveur après une remise à vide). Sinon l'identifiant de la base est créé si besoin et écrit dans le fichier
- * s'il manque. Fichier et base en désaccord : la base fait foi, une alerte est journalisée et le fichier corrigé.
+ * s'il manque. Fichier valide et base qui porte déjà un autre identifiant : la base a été remplacée ; rien n'est écrit
+ * (ni fichier, ni base), l'erreur `PosteIncoherent` est levée et l'appelant s'arrête.
  */
+export class PosteIncoherent extends Error {
+  constructor() {
+    super(MESSAGE_POSTE_INCOHERENT);
+    this.name = "PosteIncoherent";
+  }
+}
+
+export const MESSAGE_POSTE_INCOHERENT =
+  "Les données de ce poste ne correspondent pas à son identifiant. N'enregistrez rien et contactez l'assistance.";
+
 export function fixerAppareil(coeur: CoeurCaisse, dossier: string, journal: (message: string) => void = () => undefined): string {
   const dansFichier = lireAppareilId(dossier);
+  const dansBase = coeur.appareilIdConnu();
+  if (dansFichier !== null && dansBase && dansBase !== dansFichier) {
+    journal("arrêt : appareil.json et la base ne donnent pas le même identifiant de poste ; aucun fichier n'est modifié");
+    throw new PosteIncoherent();
+  }
   if (dansFichier !== null) coeur.fixerAppareilId(dansFichier);
   const id = coeur.appareilId();
-  if (dansFichier !== id) {
-    if (dansFichier !== null) {
-      journal("alerte : appareil.json et la base ne donnent pas le même identifiant de poste ; le fichier est corrigé sur la base");
-    }
-    ecrireAppareilId(dossier, id);
-  }
+  if (dansFichier === null) ecrireAppareilId(dossier, id);
   return id;
 }

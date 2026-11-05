@@ -64,6 +64,11 @@ export class CoeurCaisse {
     return this.ctx.etat();
   }
 
+  /** Identifiant du poste déjà porté par la base, sans jamais en créer un. */
+  appareilIdConnu(): string | null {
+    return this.etat().appareilId ?? null;
+  }
+
   /** Crée l'UUID de l'appareil au premier appel ; il ne change jamais ensuite. */
   appareilId(): string {
     const existant = this.etat().appareilId;

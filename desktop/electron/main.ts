@@ -9,13 +9,26 @@ import { Passerelle, construireEtat } from "../coeur/passerelle";
 import { ouvrirCaisse, type CaisseOuverte } from "./demarrage";
 import { creerServiceImpression } from "./impression";
 import { enregistrerIpc } from "./ipc";
+import { creerJournalFichier } from "./journal_fichier";
 import { demarrerMesureMemoire } from "./memoire";
+import { creerServiceMaj, type ServiceMaj } from "./maj";
 import { lancerSonde } from "./sonde";
 import { arreterServeur, demarrerServeur, erreurFatale, pidServeur } from "./serveur-next";
 import { creerServiceSynchro } from "./synchro";
 
 // Adresse de l'API : figée au build par esbuild (`define`), jamais lue d'un fichier.
 const URL_API = process.env.NEXT_PUBLIC_API_URL ?? "";
+// Adresse des mises à jour : figée au build aussi. Absente : mises à jour manuelles.
+const URL_MAJ: string | undefined = process.env.MC_MAJ_URL;
+
+/** Adresse de l'API telle qu'affichée dans « Ce poste » : l'adresse seule, sans chemin. */
+function adresseApiAffichee(): string {
+  try {
+    return new URL(URL_API).origin;
+  } catch {
+    return "";
+  }
+}
 
 // Réduction de mémoire (fiche PD01, section 5, étape a).
 app.disableHardwareAcceleration();
@@ -96,6 +109,7 @@ if (!premiereInstance) {
 
   let caisse: CaisseOuverte | null = null;
   let service: ReturnType<typeof creerServiceSynchro> | null = null;
+  let maj: ServiceMaj | null = null;
 
   // Fermeture : plus de nouveau cycle, on attend la fin de celui qui est en vol (quelques secondes au plus), puis on ferme la base.
   let fermetureFaite = false;
@@ -103,7 +117,10 @@ if (!premiereInstance) {
     if (fermetureFaite) return;
     fermetureFaite = true;
     evenement.preventDefault();
+    // La règle d'installation se lit avant tout arrêt : caisse fermée et ventes toutes envoyées.
+    const installationAutorisee = maj !== null && maj.versionPrete() !== null && maj.installable();
     service?.arreter();
+    maj?.arreter();
     arreterServeur();
     const borne = new Promise<void>((ok) => setTimeout(ok, 4000));
     void Promise.race([service?.attendreFinCycle() ?? Promise.resolve(), borne]).finally(() => {
@@ -112,6 +129,8 @@ if (!premiereInstance) {
       } catch {
         // Déjà fermée.
       }
+      // La base est fermée : le programme d'installation peut remplacer les fichiers de l'application.
+      maj?.installerALaFermeture(installationAutorisee);
       // Tout est fermé : sortie directe (un second app.quit() dans will-quit ne ramenait pas toujours l'arrêt).
       app.exit(0);
     });
@@ -131,13 +150,22 @@ if (!premiereInstance) {
     demarrerMesureMemoire();
     fenetre = creerFenetre();
 
-    const journal = (message: string) => console.log(`[caisse] ${message}`);
+    // En paquet, la console n'existe pas : le journal va aussi dans journal.log (états et noms de routes, ni jeton ni vente).
+    const journalFichier = creerJournalFichier(caisse.dossier);
+    const journal = (message: string) => {
+      console.log(`[caisse] ${message}`);
+      journalFichier(message);
+    };
     const envoyer = (canal: string, donnee?: unknown) => {
       const contenu = fenetre?.webContents;
       if (contenu && !contenu.isDestroyed()) contenu.send(canal, donnee);
     };
     let passerelle: Passerelle;
-    const etatPoste = () => construireEtat(coeur, service!.etat(), passerelle.utilisateurCourant());
+    const etatPoste = () => ({
+      ...construireEtat(coeur, service!.etat(), passerelle.utilisateurCourant()),
+      majPrete: maj?.versionPrete() ?? null,
+      majInstallable: maj?.installable() ?? false,
+    });
     const notifier = () => envoyer("etat", etatPoste());
     service = creerServiceSynchro({
       coeur,
@@ -152,6 +180,13 @@ if (!premiereInstance) {
         effacer: () => passerelle.effacerIdentite(),
         idCourant: () => passerelle.utilisateurCourant()?.id ?? null,
       },
+      journal,
+    });
+    maj = creerServiceMaj({
+      adresse: URL_MAJ,
+      coeur,
+      enLigne: () => service!.etat().etat === "EN_LIGNE",
+      notifier,
       journal,
     });
     passerelle = new Passerelle({
@@ -180,8 +215,9 @@ if (!premiereInstance) {
       reglages: {
         lire: () => coeur.lireReglages(),
         enregistrer: (modif) => coeur.enregistrerReglages(modif),
-        infosPoste: () => coeur.infosPoste(),
+        infosPoste: () => ({ ...coeur.infosPoste(), adresseApi: adresseApiAffichee(), majAutomatique: maj?.automatique ?? false }),
       },
+      installerMaj: () => maj?.installerMaintenant() ?? false,
       definirJeton: (jeton) => service!.definirJeton(jeton),
       deconnecter: () => {
         service!.deconnecter();

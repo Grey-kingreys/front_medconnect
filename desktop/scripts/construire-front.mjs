@@ -1,6 +1,6 @@
 // Construit le front en sortie autonome et le copie dans desktop/dist-front/serveur.
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, rmSync, statSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { exigerAdresseApi } from "./adresse_api.mjs";
@@ -11,6 +11,23 @@ const cible = path.join(racine, "dist-front", "serveur");
 
 exigerAdresseApi();
 
+// Aucun fichier .env* n'est une entrée de ce build : Next les lit à la racine du front et inlinerait leurs
+// variables NEXT_PUBLIC_*. Une variable déjà définie dans l'environnement n'est jamais écrasée par un fichier :
+// on définit donc (vides) toutes celles que ces fichiers nomment, sans jamais lire ni afficher leurs valeurs.
+const environnementBuild = { ...process.env };
+let variablesNeutralisees = 0;
+for (const nomFichier of readdirSync(racineFront)) {
+  if (!nomFichier.startsWith(".env") || !statSync(path.join(racineFront, nomFichier)).isFile()) continue;
+  for (const ligne of readFileSync(path.join(racineFront, nomFichier), "utf8").split(/\r?\n/)) {
+    const lue = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=/.exec(ligne);
+    if (lue && !["NODE_ENV", "NEXT_OUTPUT"].includes(lue[1]) && environnementBuild[lue[1]] === undefined) {
+      environnementBuild[lue[1]] = "";
+      variablesNeutralisees += 1;
+    }
+  }
+}
+console.log(`Variables des fichiers .env* neutralisées pour ce build : ${variablesNeutralisees}.`);
+
 const args = ["next", "build"];
 if (process.argv.includes("--webpack")) args.push("--webpack");
 
@@ -19,7 +36,7 @@ const build = spawnSync("npx", args, {
   stdio: "inherit",
   shell: true,
   env: {
-    ...process.env,
+    ...environnementBuild,
     NEXT_OUTPUT: "standalone",
     NEXT_PUBLIC_BASE_URL: "http://127.0.0.1:47613",
     NEXT_TELEMETRY_DISABLED: "1",
@@ -69,6 +86,29 @@ parcourir(cible, (chemin, nom, estDossier) => {
 });
 for (const chemin of aSupprimer) rmSync(chemin, { force: true });
 
+// Aucune carte de source (.map) : elles redonneraient le code d'origine (D759).
+const cartes = [];
+parcourir(cible, (chemin, nom, estDossier) => {
+  if (!estDossier && nom.endsWith(".map")) cartes.push(chemin);
+});
+for (const chemin of cartes) rmSync(chemin, { force: true });
+
+// Chemins du poste de build (D751) : remplacés par `.` dans les deux fichiers qui les portent, sans toucher au reste.
+// Le chemin apparaît avec des antislashs doublés (JSON, chaîne JS), simples, ou avec des barres obliques.
+const racineAbsolue = racineFront;
+const variantes = [racineAbsolue.replaceAll("\\", "\\\\"), racineAbsolue, racineAbsolue.replaceAll("\\", "/")];
+let remplacements = 0;
+for (const relatif of ["server.js", path.join(".next", "required-server-files.json")]) {
+  const fichier = path.join(cible, relatif);
+  let texte = readFileSync(fichier, "utf8");
+  for (const variante of variantes) {
+    const morceaux = texte.split(variante);
+    remplacements += morceaux.length - 1;
+    texte = morceaux.join(".");
+  }
+  writeFileSync(fichier, texte);
+}
+
 const restants = [];
 const taille = parcourir(cible, (chemin, nom, estDossier) => {
   if (!estDossier && nom.startsWith(".env")) restants.push(chemin);
@@ -83,5 +123,5 @@ if (!existsSync(path.join(cible, "server.js"))) {
   process.exit(1);
 }
 
-console.log(`Fichiers .env* retirés : ${aSupprimer.length}.`);
+console.log(`Fichiers .env* retirés : ${aSupprimer.length}. Cartes de source retirées : ${cartes.length}. Chemins du poste remplacés : ${remplacements}.`);
 console.log(`Taille de la sortie : ${(taille / 1024 / 1024).toFixed(1)} Mo.`);

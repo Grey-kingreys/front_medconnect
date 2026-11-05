@@ -6,6 +6,7 @@ import { ipcMain, type IpcMainInvokeEvent, type WebContents } from "electron";
 import { schemaJeton, schemasImpression, schemasPont, type NomMethodeImpression } from "@/lib/caisse/contrat_desktop_schemas";
 import type { EtatPosteDesktop, InfosPoste, ReglagesPoste, ReponsePont } from "@/lib/caisse/contrat_desktop";
 import { lectureAutoriseeDepuisImpression } from "../coeur/impression_file";
+import { MESSAGE_MAJ_INTERDITE } from "../coeur/maj_regle";
 import { origineAutorisee, type Passerelle } from "../coeur/passerelle";
 import type { ServiceImpression } from "./impression";
 
@@ -18,6 +19,8 @@ export interface DepsIpc {
   definirJeton: (jeton: string | null) => void;
   deconnecter: () => void;
   etat: () => EtatPosteDesktop;
+  /** Installe la mise à jour prête si la règle le permet ; faux sinon. */
+  installerMaj: () => boolean;
   impression: ServiceImpression;
   reglages: {
     lire: () => ReglagesPoste;
@@ -105,6 +108,13 @@ export function enregistrerIpc(deps: DepsIpc): void {
       }
     });
   }
+
+  // Mise à jour sur demande : fenêtre principale seulement, la règle est contrôlée par le service.
+  ipcMain.handle("maj:installer", (evenement): ReponsePont<null> => {
+    if (!expediteurAutorise(evenement)) return REFUS;
+    if (deps.installerMaj()) return ok(null, "La mise à jour va s'installer.");
+    return { ok: false, status: 409, code: "MAJ_INTERDITE", message: MESSAGE_MAJ_INTERDITE };
+  });
 
   // Signal de la fenêtre d'impression : seule une fenêtre d'impression en cours peut le donner.
   ipcMain.handle("impression:signalerPret", (evenement) => {

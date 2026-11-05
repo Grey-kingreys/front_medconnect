@@ -9,7 +9,8 @@ import { MESSAGE_BASE_ILLISIBLE, traiterBaseIllisible, type ChoixBaseIllisible }
 import { CoeurCaisse } from "../coeur/coeur";
 import { migrer } from "../coeur/schema";
 import type { Stockage } from "../coeur/stockage";
-import { fixerAppareil } from "./appareil";
+import { MESSAGE_POSTE_INCOHERENT, PosteIncoherent, fixerAppareil } from "./appareil";
+import { creerJournalFichier } from "./journal_fichier";
 import { fichiersReels } from "./fichiers";
 
 const TITRE = "MedConnecte Caisse";
@@ -77,6 +78,23 @@ export async function ouvrirCaisse(options: { sansInterface: boolean }): Promise
   }
 
   const coeur = new CoeurCaisse(stockage, { horloge: () => new Date(), genererId: () => randomUUID() });
-  fixerAppareil(coeur, dossier, (message) => console.warn(`[caisse] ${message}`));
+  const journalFichier = creerJournalFichier(dossier);
+  try {
+    fixerAppareil(coeur, dossier, (message) => {
+      console.warn(`[caisse] ${message}`);
+      journalFichier(message);
+    });
+  } catch (erreur) {
+    stockage.fermer();
+    if (erreur instanceof PosteIncoherent) {
+      // Sonde sans interface : aucune boîte à cliquer, l'arrêt suffit.
+      if (options.sansInterface) {
+        app.exit(1);
+        return null;
+      }
+      return arret(MESSAGE_POSTE_INCOHERENT);
+    }
+    return arret(messageLisible(erreur));
+  }
   return { coeur, stockage, dossier };
 }

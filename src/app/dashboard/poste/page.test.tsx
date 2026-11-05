@@ -119,4 +119,42 @@ describe("Réglages de ce poste", () => {
 
     expect(await screen.findByRole("alert")).toHaveTextContent("Le ticket n'a pas pu être imprimé.");
   });
+
+  it("affiche l'adresse du serveur et annonce des mises à jour à la main", async () => {
+    installerPont();
+    lireInfosPoste.mockResolvedValue({
+      ok: true,
+      data: { posteCode: "D3", posteLibelle: "Comptoir", derniereVenteId: null, adresseApi: "http://127.0.0.1:3101", majAutomatique: false },
+      message: "ok",
+    });
+    render(<PostePage />);
+
+    expect(await screen.findByText("http://127.0.0.1:3101")).toBeInTheDocument();
+    expect(screen.getByText(/mises à jour se font à la main/)).toBeInTheDocument();
+  });
+
+  it("propose d'installer une mise à jour prête, désactivé tant que la règle l'interdit", async () => {
+    installerPont();
+    const pont = window.medconnecteDesktop as unknown as { etat: ReturnType<typeof vi.fn> };
+    pont.etat.mockResolvedValue({ dernierContactLe: null, majPrete: "0.1.1", majInstallable: false });
+    render(<PostePage />);
+
+    expect(await screen.findByText("Mise à jour 0.1.1 prête : elle s'installera à la fermeture.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Installer maintenant" })).toBeDisabled();
+    expect(screen.getByText("Fermez d'abord la caisse et attendez l'envoi des ventes.")).toBeInTheDocument();
+  });
+
+  it("installe maintenant quand la règle l'autorise", async () => {
+    installerPont();
+    const installer = vi.fn().mockResolvedValue({ ok: true, data: null, message: "ok" });
+    const pont = window.medconnecteDesktop as unknown as { etat: ReturnType<typeof vi.fn>; maj: { installer: typeof installer } };
+    pont.etat.mockResolvedValue({ dernierContactLe: null, majPrete: "0.1.1", majInstallable: true });
+    pont.maj = { installer };
+    render(<PostePage />);
+
+    const bouton = await screen.findByRole("button", { name: "Installer maintenant" });
+    await waitFor(() => expect(bouton).not.toBeDisabled());
+    fireEvent.click(bouton);
+    await waitFor(() => expect(installer).toHaveBeenCalled());
+  });
 });
