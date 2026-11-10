@@ -6,11 +6,12 @@ import { randomUUID } from "node:crypto";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { MESSAGE_BASE_ILLISIBLE, traiterBaseIllisible, type ChoixBaseIllisible } from "../coeur/base_illisible";
+import { MESSAGE_BASE_SUSPECTE } from "../coeur/base_suspecte";
 import { CoeurCaisse } from "../coeur/coeur";
 import { migrer } from "../coeur/schema";
 import type { Stockage } from "../coeur/stockage";
-import { MESSAGE_POSTE_INCOHERENT, PosteIncoherent, fixerAppareil } from "./appareil";
-import { creerJournalFichier } from "./journal_fichier";
+import { MESSAGE_POSTE_INCOHERENT, PosteIncoherent, baseSuspecteSurDisque, fixerAppareil, lireAppareilId } from "./appareil";
+import { creerJournalFichier, decrireFichiers } from "./journal_fichier";
 import { fichiersReels } from "./fichiers";
 
 const TITRE = "MedConnecte Caisse";
@@ -57,6 +58,27 @@ export async function ouvrirCaisse(options: { sansInterface: boolean }): Promise
     return response === 1 ? "REPARTIR" : "QUITTER";
   };
 
+  // Avant toute ouverture de la base : l'état des fichiers tel que le poste les a trouvés.
+  const journalFichier = creerJournalFichier(dossier);
+  const idFichier = lireAppareilId(dossier);
+  for (const ligne of decrireFichiers(dossier, idFichier !== null, idFichier)) journalFichier(ligne);
+
+  // Base vue vide avec un -wal alors que appareil.json existe : rien n'est ouvert en écriture ni renommé.
+  let suspecte = false;
+  try {
+    suspecte = baseSuspecteSurDisque(dossier);
+  } catch (erreur) {
+    return arret(messageLisible(erreur));
+  }
+  if (suspecte) {
+    journalFichier("arrêt : base vue vide avec un -wal alors que appareil.json existe ; aucun fichier n'est modifié");
+    if (options.sansInterface) {
+      app.exit(1);
+      return null;
+    }
+    return arret(MESSAGE_BASE_SUSPECTE);
+  }
+
   let stockage: Stockage;
   try {
     const issue = await traiterBaseIllisible(chemin, { demander, fichiers: fichiersReels, horloge: () => new Date() });
@@ -78,12 +100,19 @@ export async function ouvrirCaisse(options: { sansInterface: boolean }): Promise
   }
 
   const coeur = new CoeurCaisse(stockage, { horloge: () => new Date(), genererId: () => randomUUID() });
-  const journalFichier = creerJournalFichier(dossier);
   try {
-    fixerAppareil(coeur, dossier, (message) => {
+    const dansBase = coeur.appareilIdConnu();
+    const retenu = fixerAppareil(coeur, dossier, (message) => {
       console.warn(`[caisse] ${message}`);
       journalFichier(message);
     });
+    let ventes = "inconnu";
+    try {
+      ventes = String(stockage.lireUn<{ n: number }>("SELECT COUNT(*) AS n FROM ventes")?.n ?? "inconnu");
+    } catch {
+      // Le comptage ne doit jamais empêcher le démarrage.
+    }
+    journalFichier(`démarrage : identifiant retenu ${retenu}, identifiant trouvé en base avant ${dansBase ?? "aucun"}, ${ventes} vente(s) locale(s)`);
   } catch (erreur) {
     stockage.fermer();
     if (erreur instanceof PosteIncoherent) {

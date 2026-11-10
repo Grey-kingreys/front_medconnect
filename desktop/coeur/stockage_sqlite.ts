@@ -85,6 +85,36 @@ export function examinerFichier(chemin: string): "absent" | "sain" | "illisible"
   }
 }
 
+/**
+ * Identifiant du poste lu par une connexion en lecture seule, refermée aussitôt (ne touche pas au -wal).
+ * `null` : aucun identifiant (table absente comprise). `"illisible"` : SQLITE_NOTADB ou SQLITE_CORRUPT*.
+ * Les autres erreurs remontent.
+ */
+export function lireAppareilIdEnLectureSeule(chemin: string): string | null | "illisible" {
+  let base: InstanceType<typeof Database>;
+  try {
+    base = new Database(chemin, { readonly: true });
+  } catch (erreur) {
+    if (estIllisible(erreur)) return "illisible";
+    throw erreur;
+  }
+  try {
+    const ligne = base.prepare("SELECT appareilId FROM etat_poste WHERE id = 1").get() as { appareilId?: unknown } | undefined;
+    return typeof ligne?.appareilId === "string" && ligne.appareilId !== "" ? ligne.appareilId : null;
+  } catch (erreur) {
+    if (estIllisible(erreur)) return "illisible";
+    if (erreur instanceof Error && /no such table/i.test(erreur.message)) return null;
+    throw erreur;
+  } finally {
+    base.close();
+  }
+}
+
+function estIllisible(erreur: unknown): boolean {
+  const code = (erreur as { code?: unknown }).code;
+  return typeof code === "string" && (code === "SQLITE_NOTADB" || code.startsWith("SQLITE_CORRUPT"));
+}
+
 /** Contrôle d'intégrité rapide (`PRAGMA quick_check`) : vrai si la base est saine. */
 export function controlerBase(stockage: Stockage): boolean {
   try {

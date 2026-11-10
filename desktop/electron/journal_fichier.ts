@@ -17,3 +17,18 @@ export function creerJournalFichier(dossier: string): (message: string) => void 
     }
   };
 }
+
+/** Une ligne par fichier de données du poste : présent ou absent, taille, date de modification. Aucun contenu. */
+export function decrireFichiers(dossier: string, appareilValide: boolean, appareilId: string | null): string[] {
+  return ["caisse.sqlite", "caisse.sqlite-wal", "caisse.sqlite-shm", "appareil.json"].map((nom) => {
+    const complet = path.join(dossier, nom);
+    try {
+      const stat = statSync(complet);
+      const base = `fichier ${nom} : présent, ${stat.size} octets, modifié le ${stat.mtime.toISOString()}`;
+      if (nom !== "appareil.json") return base;
+      return appareilValide ? `${base}, valide, identifiant ${appareilId}` : `${base}, non valide`;
+    } catch {
+      return `fichier ${nom} : absent`;
+    }
+  });
+}

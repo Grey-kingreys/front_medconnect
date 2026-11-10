@@ -1,8 +1,10 @@
 // Identifiant du poste gardé hors de la base (D752) : une base remise à vide garde le même poste.
 // Aucun import d'electron : le dossier est donné par l'appelant (userData), ce qui rend le module testable.
-import { closeSync, fsyncSync, openSync, readFileSync, renameSync, writeSync } from "node:fs";
+import { closeSync, fsyncSync, openSync, readFileSync, renameSync, statSync, writeSync } from "node:fs";
 import path from "node:path";
+import { baseVueVideSuspecte } from "../coeur/base_suspecte";
 import type { CoeurCaisse } from "../coeur/coeur";
+import { lireAppareilIdEnLectureSeule } from "../coeur/stockage_sqlite";
 
 const NOM_FICHIER = "appareil.json";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -16,6 +18,30 @@ export function lireAppareilId(dossier: string): string | null {
   } catch {
     return null;
   }
+}
+
+function tailleFichier(chemin: string): number | null {
+  try {
+    return statSync(chemin).size;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Examen sans écriture, avant toute ouverture de la base : vrai si elle serait vue vide alors qu'un -wal et
+ * appareil.json existent (voir `base_suspecte`). Une base illisible n'est pas suspecte : `traiterBaseIllisible` s'en charge.
+ */
+export function baseSuspecteSurDisque(dossier: string): boolean {
+  const chemin = path.join(dossier, "caisse.sqlite");
+  const tailleBase = tailleFichier(chemin);
+  const tailleWal = tailleFichier(`${chemin}-wal`);
+  const appareilJsonValide = lireAppareilId(dossier) !== null;
+  // Pas la peine d'ouvrir quoi que ce soit si une des trois premières conditions manque.
+  if (!tailleBase || !tailleWal || !appareilJsonValide) return false;
+  const lu = lireAppareilIdEnLectureSeule(chemin);
+  if (lu === "illisible") return false;
+  return baseVueVideSuspecte({ tailleBase, tailleWal, appareilJsonValide, appareilIdEnBase: lu });
 }
 
 /** Écriture atomique et durable : fichier temporaire, fsync, puis renommage. */
