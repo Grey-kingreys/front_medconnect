@@ -16,6 +16,7 @@ import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { useAuth } from "@/hooks/useAuth";
 import Link from "next/link";
 import { ALERTE_ATTENTION, ALERTE_ERREUR, BOUTON_PRIMAIRE, FOCUS } from "@/components/pharmacie/classes";
+import { ui } from "@/theme/ui";
 import { LIBELLES_UNITE_MINIMALE, aArticle, deOuD, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { manqueVenteAuDetail } from "@/lib/caisse/regles/prix";
 import { formaterGNF } from "@/lib/format_gnf";
@@ -90,11 +91,10 @@ const MESSAGE_RESEAU = "L'enregistrement n'a peut-être pas abouti. Vérifiez vo
 const MESSAGE_CHOIX_CONVERSION = "Indiquez si le stock actuel compte des boîtes ou des unités.";
 const MESSAGE_PAR_DEFAUT = "Une erreur est survenue";
 
-const LABEL = "text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 ml-1";
-const AIDE = "text-xs text-slate-600 dark:text-slate-400 ml-1";
-const SAISIE =
-  "w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white disabled:opacity-60 disabled:cursor-not-allowed";
-const CASE_A_COCHER = "w-5 h-5 rounded border-slate-300 text-primary-500 focus:ring-primary-500";
+const LABEL = ui.label;
+const AIDE = "text-mc-legende text-slate-600 dark:text-slate-400 ml-1";
+const SAISIE = ui.champ;
+const CASE_A_COCHER = "w-5 h-5 rounded-mc-petit border-slate-300 text-primary-500 focus:ring-primary-500";
 
 type Entier = { etat: "vide" } | { etat: "ok"; valeur: number } | { etat: "invalide" };
 
@@ -547,19 +547,19 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-      <div {...dialogProps} className="bg-white dark:bg-[#0f172a] w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 animate-scale-in">
+      <div {...dialogProps} className={ui.dialogue.panneauLarge}>
 
         {/* Header */}
         <div className="p-8 border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between bg-slate-50/50 dark:bg-slate-900/50">
           <div className="flex items-center gap-4">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${editItem ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'bg-primary-500/10 text-primary-700 dark:text-primary-400'}`}>
+            <div className={`w-12 h-12 rounded-mc-grand flex items-center justify-center ${editItem ? 'bg-amber-500/10 text-amber-700 dark:text-amber-400' : 'bg-primary-500/10 text-primary-700 dark:text-primary-400'}`}>
               {editItem ? <Save className="w-6 h-6" aria-hidden="true" /> : <Plus className="w-6 h-6" aria-hidden="true" />}
             </div>
             <div>
-              <h2 id={titleId} className="text-xl font-black text-slate-900 dark:text-white">
+              <h2 id={titleId} className="text-mc-section font-semibold text-slate-900 dark:text-white">
                 {editItem ? "Modifier le stock" : "Ajouter au stock"}
               </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">
+              <p className="text-mc-legende text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-widest">
                 {editItem ? `Gestion du stock : ${editItem.medicament.nom}` : "Nouvel arrivage de médicament"}
               </p>
             </div>
@@ -602,7 +602,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     if (isCreatingNew) setIsCreatingNew(false);
                   }}
                   onFocus={() => search.length >= 2 && !selectedMed && !editItem && setShowDropdown(true)}
-                  className={`w-full pl-12 pr-12 py-4 bg-slate-50 dark:bg-slate-900 border rounded-2xl text-sm focus:outline-none transition-all shadow-inner disabled:opacity-70 disabled:cursor-not-allowed ${selectedMed || isCreatingNew ? 'border-primary-500/50 ring-2 ring-primary-500/10' : 'border-slate-200 dark:border-slate-800 focus:border-primary-500'}`}
+                  className={`w-full h-mc-controle pl-12 pr-12 bg-slate-50 dark:bg-slate-900 border rounded-mc-moyen text-mc-normal focus:outline-none transition-all disabled:opacity-70 disabled:cursor-not-allowed ${selectedMed || isCreatingNew ? 'border-primary-500/50 ring-2 ring-primary-500/10' : 'border-slate-200 dark:border-slate-800 focus:border-primary-500'}`}
                 />
                 {!editItem && (
                   loadingCatalogue ? (
@@ -615,7 +615,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
               {/* Search Results Dropdown */}
               {showDropdown && !editItem && (
-                <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl max-h-[300px] overflow-y-auto scrollbar-thin animate-slide-down">
+                <div className="absolute z-50 left-0 right-0 top-full mt-2 bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-mc-grand shadow-mc max-h-[300px] overflow-y-auto scrollbar-thin animate-slide-down">
                   {catalogue.map((med) => (
                     <button
                       key={med.id}
@@ -623,15 +623,15 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                       onClick={() => handleSelectMed(med)}
                       className="w-full p-4 flex items-center gap-4 hover:bg-primary-500/5 border-b border-slate-50 dark:border-slate-800 last:border-0 transition-colors text-left group"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:bg-primary-500 group-hover:text-white transition-all">
+                      <div className="w-10 h-10 rounded-mc-grand bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 group-hover:bg-primary-500 group-hover:text-white transition-all">
                         <Pill className="w-5 h-5" aria-hidden="true" />
                       </div>
                       <div className="flex-1">
-                        <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{med.nom}</p>
-                        <p className="text-[10px] text-slate-600 dark:text-slate-400 uppercase tracking-widest">{med.nomGenerique || med.categorie}</p>
+                        <p className="font-semibold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{med.nom}</p>
+                        <p className="text-mc-legende text-slate-600 dark:text-slate-400 uppercase tracking-widest">{med.nomGenerique || med.categorie}</p>
                       </div>
                       {ficheDuMedicament(fichesActives, med) && (
-                        <span className="shrink-0 px-2 py-1 rounded-lg bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 text-xs font-bold">
+                        <span className="shrink-0 px-2 py-1 rounded-mc-moyen bg-amber-50 dark:bg-amber-500/15 text-amber-700 dark:text-amber-300 text-mc-legende font-semibold">
                           Déjà en stock
                         </span>
                       )}
@@ -645,12 +645,12 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                       onClick={handleStartCreate}
                       className="w-full p-6 flex items-center gap-4 bg-primary-500 text-white hover:bg-primary-600 transition-colors text-left"
                     >
-                      <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-mc-grand bg-white/20 flex items-center justify-center">
                         <Plus className="w-6 h-6" aria-hidden="true" />
                       </div>
                       <div>
-                        <p className="font-black">&quot;{search}&quot; n&apos;existe pas ?</p>
-                        <p className="text-[10px] uppercase font-bold opacity-80">Cliquer ici pour le créer dans le catalogue</p>
+                        <p className="font-semibold">&quot;{search}&quot; n&apos;existe pas ?</p>
+                        <p className="text-mc-legende uppercase font-semibold opacity-80">Cliquer ici pour le créer dans le catalogue</p>
                       </div>
                     </button>
                   )}
@@ -668,7 +668,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     <p>{`${selectedMed.nom} est déjà dans votre stock.`}</p>
                     <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                       {peutEnregistrerReception ? (
-                        <Link href="/dashboard/receptions/nouvelle" className={`font-bold underline ${FOCUS}`}>
+                        <Link href="/dashboard/receptions/nouvelle" className={`font-semibold underline ${FOCUS}`}>
                           Enregistrer une livraison
                         </Link>
                       ) : (
@@ -678,7 +678,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                         <button
                           type="button"
                           onClick={() => onModifierFiche(ficheExistante)}
-                          className={`font-bold underline ${FOCUS}`}
+                          className={`font-semibold underline ${FOCUS}`}
                         >
                           Modifier ce médicament
                         </button>
@@ -691,32 +691,32 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
             {/* Fields for New Medicament (Conditional) */}
             {isCreatingNew && !editItem && (
-              <div className="p-6 bg-primary-500/5 border border-primary-500/20 rounded-[2rem] space-y-4 animate-fade-in">
+              <div className="p-6 bg-primary-500/5 border border-primary-500/20 rounded-mc-grand space-y-4 animate-fade-in">
                 <div className="flex items-center gap-2 mb-2">
                   <CheckCircle2 className="w-4 h-4 text-primary-600 dark:text-primary-400" aria-hidden="true" />
-                  <p className="text-xs font-black uppercase tracking-widest text-primary-700 dark:text-primary-400">Nouveau médicament à enregistrer</p>
+                  <p className="text-mc-legende font-semibold uppercase tracking-widest text-primary-700 dark:text-primary-400">Nouveau médicament à enregistrer</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-1">
-                    <label htmlFor="stock-categorie" className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 ml-1">Catégorie</label>
+                    <label htmlFor="stock-categorie" className={ui.label}>Catégorie</label>
                     <input
                       id="stock-categorie"
                       type="text"
                       placeholder="Ex: Antipaludéen"
                       value={form.categorie}
                       onChange={(e) => setForm({...form, categorie: e.target.value})}
-                      className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
+                      className={ui.champ}
                     />
                   </div>
                   <div className="space-y-1">
-                    <label htmlFor="stock-dci" className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 ml-1">DCI (Générique)</label>
+                    <label htmlFor="stock-dci" className={ui.label}>DCI (Générique)</label>
                     <input
                       id="stock-dci"
                       type="text"
                       placeholder="Ex: Paracétamol"
                       value={form.nomGenerique}
                       onChange={(e) => setForm({...form, nomGenerique: e.target.value})}
-                      className="w-full p-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
+                      className={ui.champ}
                     />
                   </div>
                 </div>
@@ -727,7 +727,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     onChange={(e) => setForm({...form, ordonnanceRequise: e.target.checked})}
                     className={CASE_A_COCHER}
                   />
-                  <span className="text-xs font-bold text-slate-600 dark:text-slate-400 group-hover:text-primary-500 transition-colors">Ordonnance obligatoire ?</span>
+                  <span className="text-mc-legende font-semibold text-slate-600 dark:text-slate-400 group-hover:text-primary-500 transition-colors">Ordonnance obligatoire ?</span>
                 </label>
               </div>
             )}
@@ -736,11 +736,11 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
             {/* Stock actuel (modification) : la quantité ne se change plus ici */}
             {editItem && (
               <div className="space-y-1">
-                <p className="text-sm font-bold text-slate-900 dark:text-white">
+                <p className="text-mc-normal font-semibold text-slate-900 dark:text-white">
                   Stock actuel : {formaterQuantite(editItem.quantite, coefficientAvant, editItem.uniteMinimale ?? "UNITE")}
                 </p>
                 {aRegulariser !== null && (
-                  <p className="text-sm text-amber-700 dark:text-amber-300">{aRegulariser}</p>
+                  <p className="text-mc-normal text-amber-700 dark:text-amber-300">{aRegulariser}</p>
                 )}
                 <p className={AIDE}>
                   Pour changer la quantité : « Corriger la quantité » dans la liste, ou faites un inventaire.
@@ -751,18 +751,18 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
             {/* Lots en stock (modification) : lecture seule, la date se corrige par lot */}
             {editItem && (
               <div className="space-y-2">
-                <h3 className="text-sm font-bold text-slate-900 dark:text-white">Lots en stock</h3>
+                <h3 className="text-mc-normal font-semibold text-slate-900 dark:text-white">Lots en stock</h3>
                 {lotsEnStock.length === 0 ? (
                   <p className={AIDE}>Aucun lot en stock.</p>
                 ) : (
-                  <ul className="divide-y divide-slate-100 dark:divide-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-2xl">
+                  <ul className="divide-y divide-slate-100 dark:divide-slate-800/50 border border-slate-200 dark:border-slate-800 rounded-mc-grand">
                     {lotsEnStock.map((lot) => (
-                      <li key={lot.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-sm">
+                      <li key={lot.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-3 text-mc-normal">
                         <span className="font-medium text-slate-900 dark:text-white">{lot.numeroLot ?? "Sans numéro"}</span>
                         <span className="text-slate-600 dark:text-slate-400">
                           {lot.dateExpiration ? afficherDatePeremption(lot.dateExpiration) : "Sans date"}
                         </span>
-                        <span className="font-bold text-slate-900 dark:text-white">
+                        <span className="font-semibold text-slate-900 dark:text-white">
                           {formaterQuantite(lot.quantite, lot.coefficientReception ?? coefficientAvant, editItem.uniteMinimale ?? "UNITE")}
                         </span>
                       </li>
@@ -777,7 +777,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
             {/* Vente et prix */}
             <div className="space-y-4">
-              <h3 className="text-sm font-bold text-slate-900 dark:text-white">Vente et prix</h3>
+              <h3 className="text-mc-normal font-semibold text-slate-900 dark:text-white">Vente et prix</h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
@@ -833,7 +833,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     </p>
                   )}
                   {aideNombreAIndiquer && (
-                    <p id="stock-aide-nombre" className="text-xs text-amber-700 dark:text-amber-300 ml-1">
+                    <p id="stock-aide-nombre" className="text-mc-legende text-amber-700 dark:text-amber-300 ml-1">
                       {messageNombreAIndiquer(form.unite)}
                     </p>
                   )}
@@ -863,7 +863,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                   onChange={(e) => maj({ deconditionnable: e.target.checked })}
                   className={CASE_A_COCHER}
                 />
-                <span className="text-sm font-medium text-slate-800 dark:text-slate-200">{`Se vend aussi ${aArticle(LIBELLES_UNITE_MINIMALE[form.unite].article)} (boîte entamée)`}</span>
+                <span className="text-mc-normal font-medium text-slate-800 dark:text-slate-200">{`Se vend aussi ${aArticle(LIBELLES_UNITE_MINIMALE[form.unite].article)} (boîte entamée)`}</span>
               </label>
 
               {form.deconditionnable && (
@@ -901,10 +901,10 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
 
                 {afficherChoix && (
                   <fieldset className="space-y-2">
-                    <legend className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                    <legend className="text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
                       {`Le stock actuel de ${formaterQuantite(editItem.quantite, 1, "UNITE")}${aRegulariser === null ? "" : `, avec ${aRegulariser},`} compte :`}
                     </legend>
-                    <label className="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200">
+                    <label className="flex items-start gap-3 text-mc-normal text-slate-800 dark:text-slate-200">
                       <input
                         type="radio"
                         name="stock-conversion"
@@ -916,7 +916,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                         {`des boîtes : les convertir en unités (${editItem.quantite.toLocaleString("fr-FR")} ${Math.abs(editItem.quantite) > 1 ? "boîtes deviennent" : "boîte devient"} ${unitesEnPlus.toLocaleString("fr-FR")} ${Math.abs(unitesEnPlus) > 1 ? pluriel : singulier})`}
                       </span>
                     </label>
-                    <label className="flex items-start gap-3 text-sm text-slate-800 dark:text-slate-200">
+                    <label className="flex items-start gap-3 text-mc-normal text-slate-800 dark:text-slate-200">
                       <input
                         type="radio"
                         name="stock-conversion"
@@ -937,7 +937,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     onChange={(e) => maj({ confirme: e.target.checked })}
                     className={CASE_A_COCHER}
                   />
-                  <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Je confirme ces informations</span>
+                  <span className="text-mc-normal font-medium text-slate-800 dark:text-slate-200">Je confirme ces informations</span>
                 </label>
               </div>
             )}
@@ -976,7 +976,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                       Comme sur la facture : mois/année (06/28) ou date complète.
                     </p>
                     {dateLue && dateLue.ok && (
-                      <p aria-live="polite" className="text-sm font-medium text-slate-800 dark:text-slate-200 ml-1">
+                      <p aria-live="polite" className="text-mc-normal font-medium text-slate-800 dark:text-slate-200 ml-1">
                         Péremption : {afficherDatePeremption(dateLue.jour)}
                       </p>
                     )}
@@ -987,7 +987,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                         onChange={(e) => maj({ sansPeremption: e.target.checked })}
                         className={CASE_A_COCHER}
                       />
-                      <span className="text-sm font-medium text-slate-800 dark:text-slate-200">Sans date de péremption</span>
+                      <span className="text-mc-normal font-medium text-slate-800 dark:text-slate-200">Sans date de péremption</span>
                     </label>
                   </div>
                 )}
@@ -1021,7 +1021,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                 type="button"
                 onClick={onClose}
                 disabled={saving}
-                className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all disabled:opacity-50"
+                className={`${ui.bouton.secondaire} flex-1`}
               >
                 Annuler
               </button>
@@ -1029,7 +1029,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
               <button
                 type="submit"
                 disabled={saving}
-                className={`flex-[2] py-4 text-white rounded-2xl font-bold shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${editItem ? 'bg-amber-700 hover:bg-amber-800 shadow-amber-500/20' : 'bg-primary-600 hover:bg-primary-700 shadow-primary-500/20'}`}
+                className={`${ui.bouton.primaire} flex-[2]`}
               >
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" /> : <Save className="w-5 h-5" aria-hidden="true" />}
                 {saving ? "Enregistrement..." : (verrou ? "Réessayer" : (editItem ? "Mettre à jour" : (isCreatingNew ? "Créer et ajouter" : "Ajouter au stock")))}

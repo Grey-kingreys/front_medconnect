@@ -18,6 +18,7 @@ import {
 } from "@/lib/api_pharmacie";
 import { messageErreurPour, useToast } from "@/hooks/useToast";
 import Link from "next/link";
+import { ui } from "@/theme/ui";
 import { afficherDatePeremption } from "@/lib/date_peremption";
 import { formaterGNF } from "@/lib/format_gnf";
 
@@ -39,7 +40,7 @@ const renduEvolutionStock = (l: LigneImportStock) => {
     <span className="whitespace-nowrap">
       {avant} <span aria-hidden="true">→</span> <span className="sr-only">devient</span> {Math.max(l.quantiteApres, 0)}
       {aRegulariser > 0 && (
-        <span className="block text-xs text-amber-700 dark:text-amber-300">
+        <span className="block text-mc-legende text-amber-700 dark:text-amber-300">
           {aRegulariser} à régulariser avant cette livraison
         </span>
       )}
@@ -129,7 +130,7 @@ function ChoixModeImport<M extends string>({
   const groupeId = useId();
   return (
     <fieldset className="space-y-2" disabled={desactive}>
-      <legend className="block text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 ml-1 mb-2">
+      <legend className="block text-mc-legende font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400 ml-1 mb-2">
         Que contient votre fichier ?
       </legend>
       {options.map((option) => {
@@ -139,7 +140,7 @@ function ChoixModeImport<M extends string>({
         return (
           <label
             key={option.valeur}
-            className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-colors ${
+            className={`flex items-start gap-3 p-4 rounded-mc-grand border-2 transition-colors ${
               choisi ? "border-primary-600 dark:border-primary-400" : "border-slate-200 dark:border-slate-800 hover:border-slate-400 dark:hover:border-slate-600"
             } ${desactive ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
           >
@@ -154,8 +155,8 @@ function ChoixModeImport<M extends string>({
               className="mt-0.5 w-4 h-4 shrink-0 accent-primary-600"
             />
             <span>
-              <span id={libelleId} className="block text-sm font-bold text-slate-900 dark:text-white">{option.libelle}</span>
-              <span id={explicationId} className="block text-sm text-slate-700 dark:text-slate-300">{option.explication}</span>
+              <span id={libelleId} className="block text-mc-normal font-semibold text-slate-900 dark:text-white">{option.libelle}</span>
+              <span id={explicationId} className="block text-mc-normal text-slate-700 dark:text-slate-300">{option.explication}</span>
             </span>
           </label>
         );
@@ -322,19 +323,19 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
             fermer();
           }
         }}
-        className="bg-white dark:bg-[#0f172a] w-full max-w-3xl max-h-[90vh] flex flex-col rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-in outline-none"
+        className={ui.dialogue.panneauTresLarge}
       >
         {/* En-tête */}
         <div className="p-6 sm:p-8 border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-primary-500/10 text-primary-600 dark:text-primary-400">
+            <div className="w-12 h-12 rounded-mc-grand flex items-center justify-center bg-primary-500/10 text-primary-600 dark:text-primary-400">
               <FileSpreadsheet className="w-6 h-6" />
             </div>
             <div>
-              <h2 id={titreId} className="text-xl font-black text-slate-900 dark:text-white">
+              <h2 id={titreId} className="text-mc-section font-semibold text-slate-900 dark:text-white">
                 {config.titre}
               </h2>
-              <p className="text-xs text-slate-600 dark:text-slate-400 font-bold uppercase tracking-widest">
+              <p className="text-mc-legende text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-widest">
                 {etape === "preparer" ? "Étape 1 sur 3 : préparer le fichier" : etape === "verifier" ? "Étape 2 sur 3 : vérifier" : "Étape 3 sur 3 : terminé"}
               </p>
             </div>
@@ -352,7 +353,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
 
         <div className="p-6 sm:p-8 overflow-y-auto space-y-6">
           {erreur && (
-            <p role="alert" className="text-sm font-bold text-emergency-600 dark:text-emergency-500">
+            <p role="alert" className="text-mc-normal font-semibold text-emergency-600 dark:text-emergency-500">
               {erreur}
             </p>
           )}
@@ -361,11 +362,11 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
           {etape === "preparer" && (
             <>
               {modeUnique && (
-                <p className="text-sm text-slate-700 dark:text-slate-300">
+                <p className="text-mc-normal text-slate-700 dark:text-slate-300">
                   Cet import sert à : <strong className="text-slate-900 dark:text-white">« {modeUnique.libelle} »</strong>. {modeUnique.explication}
                 </p>
               )}
-              <ol className="space-y-2 text-sm text-slate-700 dark:text-slate-300 list-decimal list-inside">
+              <ol className="space-y-2 text-mc-normal text-slate-700 dark:text-slate-300 list-decimal list-inside">
                 {config.consignes.map((consigne, i) => (
                   <li key={i}>{consigne}</li>
                 ))}
@@ -375,14 +376,14 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 type="button"
                 onClick={telechargerModele}
                 disabled={!!chargement}
-                className="inline-flex items-center gap-2 text-sm font-bold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
+                className="inline-flex items-center gap-2 text-mc-normal font-semibold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
               >
                 {chargement === "modele" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 Télécharger le modèle Excel
               </button>
 
               <div className="space-y-2">
-                <label htmlFor={champFichierId} className="block text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 ml-1">
+                <label htmlFor={champFichierId} className={ui.label}>
                   Votre fichier Excel (.xlsx, 2 Mo maximum)
                 </label>
                 <input
@@ -390,7 +391,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                   type="file"
                   accept=".xlsx"
                   onChange={(e) => choisirFichier(e.target.files?.[0] ?? null)}
-                  className="block w-full text-sm text-slate-700 dark:text-slate-300 file:mr-4 file:py-2.5 file:px-4 file:rounded-xl file:border-0 file:bg-slate-100 dark:file:bg-slate-800 file:text-sm file:font-bold file:text-slate-900 dark:file:text-white"
+                  className="block w-full text-mc-normal text-slate-700 dark:text-slate-300 file:mr-4 file:py-2 file:px-4 file:rounded-mc-moyen file:border-0 file:bg-slate-100 dark:file:bg-slate-800 file:text-mc-normal file:font-semibold file:text-slate-900 dark:file:text-white"
                 />
               </div>
 
@@ -402,7 +403,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 type="button"
                 onClick={() => verifier()}
                 disabled={!fichier || !!chargement}
-                className="w-full py-4 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                className={`${ui.bouton.primaire} w-full`}
               >
                 {chargement === "apercu" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
                 Vérifier le fichier
@@ -417,14 +418,14 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 <>
                   <ChoixModeImport options={config.modes} valeur={mode} onChange={changerMode} desactive={!!chargement} />
                   {chargement === "apercu" && (
-                    <p role="status" className="inline-flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                    <p role="status" className="inline-flex items-center gap-2 text-mc-normal text-slate-700 dark:text-slate-300">
                       <Loader2 className="w-4 h-4 animate-spin" /> Nouvelle vérification du fichier avec ce choix...
                     </p>
                   )}
                 </>
               )}
 
-              <p className="text-base font-bold text-slate-900 dark:text-white" aria-live="polite">
+              <p className="text-mc-section font-semibold text-slate-900 dark:text-white" aria-live="polite">
                 {textes.prets(rapport.acceptees)}
                 {rapport.rejetees > 0 && `, ${textes.rejetees(rapport.rejetees)}`}
               </p>
@@ -433,14 +434,14 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
 
               {rapport.acceptees === 0 ? (
                 <div className="space-y-3">
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
+                  <p className="text-mc-normal text-slate-700 dark:text-slate-300">
                     Aucune ligne ne peut être importée. Corrigez le fichier puis choisissez-le à nouveau.
                   </p>
                   <button
                     type="button"
                     onClick={recommencer}
                     disabled={!!chargement}
-                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-900 text-white dark:bg-white dark:text-slate-900 hover:opacity-90 disabled:opacity-50"
+                    className={ui.bouton.secondaire}
                   >
                     <ArrowLeft className="w-4 h-4" /> Choisir un autre fichier
                   </button>
@@ -448,7 +449,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
               ) : null}
 
               {rapport.rejetees > 0 && (
-                <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+                <label className="flex items-center gap-2 text-mc-normal text-slate-700 dark:text-slate-300">
                   <input
                     type="checkbox"
                     checked={seulementACorriger}
@@ -462,16 +463,16 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
               {(() => {
                 const optionChoisie = config.modes?.find((o) => o.valeur === mode);
                 return optionChoisie ? (
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
+                  <p className="text-mc-normal text-slate-700 dark:text-slate-300">
                     Mode choisi : <strong className="text-slate-900 dark:text-white">« {optionChoisie.libelle} »</strong>. {optionChoisie.explication}
                   </p>
                 ) : null;
               })()}
 
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-mc-normal">
                   <thead>
-                    <tr className="text-left text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                    <tr className="text-left text-mc-legende font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
                       <th className="py-2 pr-3">Ligne</th>
                       <th className="py-2 pr-3">Nom saisi</th>
                       {colonnes.map((c, i) => (
@@ -490,7 +491,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                         <td className="py-2 pl-2 pr-3 text-slate-600 dark:text-slate-400">{l.ligne}</td>
                         <td className="py-2 pr-3 text-slate-900 dark:text-white">{l.nom || "-"}</td>
                         {l.statut === "rejetee" ? (
-                          <td colSpan={colonnes.length} className="py-2 font-bold text-emergency-600 dark:text-emergency-500">
+                          <td colSpan={colonnes.length} className="py-2 font-semibold text-emergency-600 dark:text-emergency-500">
                             {l.raison}
                           </td>
                         ) : (
@@ -513,7 +514,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 <div className="space-y-3">
                   {confirmation ? (
                     <div className="space-y-3">
-                      <p className="text-sm font-bold text-slate-900 dark:text-white">
+                      <p className="text-mc-normal font-semibold text-slate-900 dark:text-white">
                         {textes.confirmation(rapport.acceptees, modeApercu)}
                       </p>
                       <div className="flex flex-col sm:flex-row gap-3">
@@ -521,7 +522,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                           type="button"
                           onClick={importer}
                           disabled={!!chargement}
-                          className="flex-1 py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                          className={`${ui.bouton.primaire} flex-1`}
                         >
                           {chargement === "import" && <Loader2 className="w-5 h-5 animate-spin" />}
                           {textes.boutonConfirmer}
@@ -530,7 +531,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                           type="button"
                           onClick={() => setConfirmation(false)}
                           disabled={!!chargement}
-                          className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+                          className={`${ui.bouton.discret} flex-1`}
                         >
                           Annuler
                         </button>
@@ -542,7 +543,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                         type="button"
                         onClick={() => setConfirmation(true)}
                         disabled={!!chargement}
-                        className="flex-1 py-3.5 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-colors disabled:opacity-50"
+                        className={`${ui.bouton.primaire} flex-1`}
                       >
                         {textes.boutonImporter(rapport.acceptees)}
                       </button>
@@ -550,7 +551,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                         type="button"
                         onClick={recommencer}
                         disabled={!!chargement}
-                        className="flex-1 py-3.5 rounded-2xl font-bold text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-50"
+                        className={`${ui.bouton.discret} flex-1`}
                       >
                         Choisir un autre fichier
                       </button>
@@ -565,11 +566,11 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
           {etape === "termine" && rapport && (
             <div className="flex flex-col items-center text-center gap-4 py-6" aria-live="polite">
               <CheckCircle2 className="w-14 h-14 text-secondary-600 dark:text-secondary-400" />
-              <p className="text-lg font-black text-slate-900 dark:text-white">
+              <p className="text-mc-section font-semibold text-slate-900 dark:text-white">
                 {textes.termine(rapport.importees ?? rapport.acceptees)}
               </p>
               {rapport.rejetees > 0 && (
-                <p className="text-sm text-slate-700 dark:text-slate-300">
+                <p className="text-mc-normal text-slate-700 dark:text-slate-300">
                   {textes.termineRejetees(rapport.rejetees)}
                 </p>
               )}
@@ -577,7 +578,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
               <button
                 type="button"
                 onClick={fermer}
-                className="px-6 py-3 bg-primary-600 text-white rounded-2xl font-bold text-sm hover:bg-primary-700 transition-colors"
+                className={ui.bouton.primaire}
               >
                 Fermer
               </button>
@@ -645,15 +646,15 @@ export function configImportStock(
       const { receptionId, inventaireId } = rapport as RapportImportStock;
       return (
         <>
-          {message && <p className="text-sm text-slate-700 dark:text-slate-300">{message}</p>}
+          {message && <p className="text-mc-normal text-slate-700 dark:text-slate-300">{message}</p>}
           {receptionId && (
-            <Link href={`/dashboard/receptions/${receptionId}`} className="text-sm font-bold text-primary-600 dark:text-primary-400 hover:underline">
+            <Link href={`/dashboard/receptions/${receptionId}`} className="text-mc-normal font-semibold text-primary-600 dark:text-primary-400 hover:underline">
               Voir la réception
             </Link>
           )}
           {inventaireId && (
             <>
-              <p className="text-sm text-slate-700 dark:text-slate-300">Les écarts au-delà de la tolérance sont signalés au titulaire.</p>
+              <p className="text-mc-normal text-slate-700 dark:text-slate-300">Les écarts au-delà de la tolérance sont signalés au titulaire.</p>
               <EcartsInventaire lignes={rapport.lignes} />
             </>
           )}
@@ -675,9 +676,9 @@ function EcartsInventaire({ lignes }: { lignes: LigneImportStock[] }) {
   if (acceptees.length === 0) return null;
   return (
     <div className="w-full overflow-x-auto text-left">
-      <table className="w-full text-sm">
+      <table className="w-full text-mc-normal">
         <thead>
-          <tr className="text-left text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+          <tr className="text-left text-mc-legende font-semibold uppercase tracking-widest text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
             <th className="py-2 pr-3">Médicament</th>
             <th className="py-2 pr-3">Lot</th>
             <th className="py-2 pr-3">Attendu (en unités)</th>
@@ -691,18 +692,18 @@ function EcartsInventaire({ lignes }: { lignes: LigneImportStock[] }) {
               <td className="py-2 pr-3 text-slate-900 dark:text-white">{l.medicamentNom ?? l.nom}</td>
               <td className="py-2 pr-3 text-slate-700 dark:text-slate-300">
                 {libelleLot(l)}
-                {l.nouveauLot && <span className="block text-xs">nouveau lot</span>}
+                {l.nouveauLot && <span className="block text-mc-legende">nouveau lot</span>}
               </td>
               <td className="py-2 pr-3 text-slate-900 dark:text-white">
                 {Math.max(l.quantiteTheorique ?? 0, 0)}
                 {(l.quantiteARegulariser ?? 0) > 0 && (
-                  <span className="block text-xs text-amber-700 dark:text-amber-300">{l.quantiteARegulariser} à régulariser</span>
+                  <span className="block text-mc-legende text-amber-700 dark:text-amber-300">{l.quantiteARegulariser} à régulariser</span>
                 )}
               </td>
               <td className="py-2 pr-3 text-slate-900 dark:text-white">{l.quantiteComptee ?? l.quantite}</td>
               <td className="py-2 text-slate-900 dark:text-white">
                 {typeof l.ecart === "number" ? entierSigne(l.ecart) : "-"}
-                {l.sousTolerance && <span className="block text-xs text-slate-700 dark:text-slate-300">dans la tolérance</span>}
+                {l.sousTolerance && <span className="block text-mc-legende text-slate-700 dark:text-slate-300">dans la tolérance</span>}
               </td>
             </tr>
           ))}
@@ -817,9 +818,9 @@ export function ImportCatalogueModal({ isOpen, onClose, onSuccess }: ImportCatal
 /** Colonnes comprises par le serveur : une colonne ignorée n'est pas importée, il faut le voir avant de valider. */
 function ColonnesComprises({ colonnes }: { colonnes: ColonnesLuesImport }) {
   return (
-    <div className="space-y-2 text-sm text-slate-700 dark:text-slate-300">
+    <div className="space-y-2 text-mc-normal text-slate-700 dark:text-slate-300">
       <p>
-        <span className="font-bold text-slate-900 dark:text-white">Colonnes lues : </span>
+        <span className="font-semibold text-slate-900 dark:text-white">Colonnes lues : </span>
         {colonnes.reconnues.map((c, i) => (
           <span key={`${c.titre}-${i}`}>
             {i > 0 && ", "}
@@ -835,7 +836,7 @@ function ColonnesComprises({ colonnes }: { colonnes: ColonnesLuesImport }) {
         {colonnes.ligneTitres > 1 && ` (titres trouvés en ligne ${colonnes.ligneTitres})`}.
       </p>
       {colonnes.ignorees.length > 0 && (
-        <p className="px-3 py-2 rounded-xl border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200">
+        <p className="px-3 py-2 rounded-mc-moyen border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200">
           {colonnes.ignorees.length === 1 ? "Colonne non importée : " : "Colonnes non importées : "}
           {colonnes.ignorees.map((t) => `« ${t} »`).join(", ")}. Si l&apos;une d&apos;elles doit l&apos;être, donnez-lui le titre utilisé dans le modèle, puis choisissez le fichier à nouveau.
         </p>

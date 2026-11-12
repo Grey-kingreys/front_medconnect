@@ -3,6 +3,7 @@
 import { useState, ReactNode } from "react";
 import { Trash2, Loader2, AlertTriangle, type LucideIcon } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
+import { ui } from "@/theme/ui";
 
 interface DeleteConfirmModalProps {
   isOpen: boolean;
@@ -50,23 +51,23 @@ export function DeleteConfirmModal({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
-      <div {...dialogProps} className="relative w-full max-w-sm bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl p-8 animate-slide-up">
+      <div className={`${ui.dialogue.fond} backdrop-blur-sm`} onClick={onClose} aria-hidden="true" />
+      <div {...dialogProps} className={ui.dialogue.panneauEtroit}>
         <div className="flex flex-col items-center text-center gap-5">
 
-          <div className="w-16 h-16 rounded-2xl bg-rose-500/10 flex items-center justify-center">
-            <Icone className="w-8 h-8 text-rose-500" />
+          <div className={ui.dialogue.iconeDanger}>
+            <Icone className="w-7 h-7" />
           </div>
 
           <div className="space-y-2">
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">{title}</h3>
-            <div className="text-sm text-slate-500 dark:text-slate-400">
+            <h3 id={titleId} className={ui.texte.section}>{title}</h3>
+            <div className={ui.texte.petit}>
               {description}
             </div>
           </div>
 
           {error && (
-            <div className="w-full flex items-center gap-2 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl text-rose-500 text-sm">
+            <div className={`${ui.alerte.erreur} w-full`}>
               <AlertTriangle className="w-4 h-4 shrink-0" />
               <p>{error}</p>
             </div>
@@ -76,14 +77,14 @@ export function DeleteConfirmModal({
             <button
               onClick={onClose}
               disabled={deleting}
-              className="flex-1 px-4 py-3 rounded-xl text-sm font-medium text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all disabled:opacity-50"
+              className={`${ui.bouton.secondaire} flex-1`}
             >
               {libelleAnnuler}
             </button>
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-bold text-white bg-rose-600 hover:bg-rose-500 transition-all shadow-lg shadow-rose-500/20 disabled:opacity-60"
+              className={`${ui.bouton.danger} flex-[2]`}
             >
               {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Icone className="w-4 h-4" />}
               {deleting ? libelleEnCours : confirmLabel}

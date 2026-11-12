@@ -1,5 +1,6 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, Ban, Loader2, Printer, ShoppingCart, X } from "lucide-react";
@@ -31,12 +32,11 @@ import {
 
 const POLICE_TITRE = { fontFamily: "var(--font-outfit, var(--font-inter))" } as const;
 
-const CARTE = "bg-white dark:bg-[#0f172a]/80 border border-slate-200 dark:border-slate-800/50 rounded-3xl p-6";
-const CHAMP =
-  "w-full px-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm text-slate-900 dark:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 transition-all";
+const CARTE = ui.carte;
+const CHAMP = ui.champ;
 const FOCUS = "focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500";
-const BOUTON_PRIMAIRE = `inline-flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-sm font-bold transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${FOCUS}`;
-const BOUTON_PAGE = `px-4 py-2 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`;
+const BOUTON_PRIMAIRE = ui.bouton.primaire;
+const BOUTON_PAGE = ui.bouton.discret;
 
 const FORMAT_JOUR = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -241,7 +241,7 @@ export default function VentesDuJourPage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -250,10 +250,10 @@ export default function VentesDuJourPage() {
 
   const enTete = (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+      <h1 className={ui.titrePage} style={POLICE_TITRE}>
         Ventes du jour
       </h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+      <p className="text-mc-normal text-slate-600 dark:text-slate-400 mt-1">
         Retrouvez les ventes d&apos;une journée, réimprimez un reçu ou annulez une vente.
       </p>
     </div>
@@ -261,10 +261,10 @@ export default function VentesDuJourPage() {
 
   if (!structureId) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+      <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Votre compte n&apos;est rattaché à aucune pharmacie. Adressez-vous à l&apos;administrateur de votre pharmacie.
           </p>
           <Link href="/dashboard" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -285,7 +285,7 @@ export default function VentesDuJourPage() {
   let corps;
   if (etat.statut === "chargement") {
     corps = (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement des ventes...
       </div>
@@ -295,7 +295,7 @@ export default function VentesDuJourPage() {
       <div className={CARTE}>
         <div
           role="alert"
-          className="flex items-center gap-3 p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-sm"
+          className="flex items-center gap-3 p-4 rounded-mc-moyen bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-mc-normal"
         >
           <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
           <span>{etat.message}</span>
@@ -312,23 +312,23 @@ export default function VentesDuJourPage() {
         <section className={`${CARTE} space-y-1`} aria-labelledby="titre-resume">
           <h2
             id="titre-resume"
-            className="text-lg font-semibold text-slate-900 dark:text-white first-letter:uppercase"
+            className="text-mc-section font-semibold text-slate-900 dark:text-white first-letter:uppercase"
             style={POLICE_TITRE}
           >
             {formaterJour(date)}
           </h2>
           <p aria-live="polite" className="text-slate-900 dark:text-white">
-            Total du jour (annulations déduites) : <span className="font-bold">{formaterGNF(journee.totalJour)}</span>
+            Total du jour (annulations déduites) : <span className="font-semibold">{formaterGNF(journee.totalJour)}</span>
           </p>
-          <p className="text-sm text-slate-700 dark:text-slate-300">{libelleNombre(journee.nombre)}</p>
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">{libelleNombre(journee.nombre)}</p>
           {horsLigne && (
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-mc-normal text-slate-600 dark:text-slate-400">
               {peutAnnuler ? `${MESSAGE_ANNULATION_HORS_LIGNE} ` : ""}
               {date < aujourdhui ? MESSAGE_VENTES_DU_POSTE : ""}
             </p>
           )}
           {date < aujourdhui && (
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-mc-normal text-slate-600 dark:text-slate-400">
               Une annulation faite aujourd&apos;hui apparaît dans la journée d&apos;aujourd&apos;hui, pas dans celle-ci.
             </p>
           )}
@@ -336,7 +336,7 @@ export default function VentesDuJourPage() {
 
         {journee.ventes.length === 0 ? (
           <div className={CARTE}>
-            <p className="text-sm text-slate-700 dark:text-slate-300">Aucune vente le {formaterJour(date)}.</p>
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">Aucune vente le {formaterJour(date)}.</p>
             {aujourdhui === date && peutVendre && <div className="mt-4">{lienNouvelleVente}</div>}
           </div>
         ) : (
@@ -348,22 +348,22 @@ export default function VentesDuJourPage() {
                 return (
                 <li key={v.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-bold text-slate-900 dark:text-white">{v.numero}</p>
-                    {mention && <p className="text-sm text-slate-700 dark:text-slate-300">{mention}</p>}
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                    <p className="font-semibold text-slate-900 dark:text-white">{v.numero}</p>
+                    {mention && <p className="text-mc-normal text-slate-700 dark:text-slate-300">{mention}</p>}
+                    <p className="text-mc-normal text-slate-600 dark:text-slate-400">
                       {`${formaterHeure(v.createdAt)} · ${libelleArticles(v.nombreArticles)} · ${v.vendeur.nom}`}
                       {v.clientNom ? ` · Client : ${v.clientNom}` : ""}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">
-                    <span className="font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                    <span className="font-semibold tabular-nums text-slate-900 dark:text-white whitespace-nowrap">
                       {formaterGNF(v.total)}
                     </span>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${etiquette.classes}`}>
+                    <span className={`px-3 py-1 rounded-full text-mc-legende font-semibold ${etiquette.classes}`}>
                       {etiquette.libelle}
                     </span>
                     {v.enCoursEnvoi === true && (
-                      <span className={`px-3 py-1 rounded-full text-xs font-semibold ${CLASSES_PIECE.REGULARISATION}`}>
+                      <span className={`px-3 py-1 rounded-full text-mc-legende font-semibold ${CLASSES_PIECE.REGULARISATION}`}>
                         En cours d&apos;envoi
                       </span>
                     )}
@@ -371,7 +371,7 @@ export default function VentesDuJourPage() {
                       <Link
                         href={`/dashboard/ventes/${encodeURIComponent(v.id)}/recu`}
                         aria-label={`Réimprimer le reçu ${v.numero}`}
-                        className={`inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 ${FOCUS}`}
+                        className={`inline-flex items-center gap-1.5 h-mc-controle-petit px-2 rounded-mc-moyen text-mc-normal font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 ${FOCUS}`}
                       >
                         <Printer className="w-4 h-4" aria-hidden="true" />
                         Réimprimer
@@ -382,7 +382,7 @@ export default function VentesDuJourPage() {
                         onClick={() => void reimprimer(v)}
                         disabled={reimpression !== null}
                         aria-label={`Réimprimer le reçu ${v.numero}`}
-                        className={`inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 disabled:opacity-60 disabled:cursor-not-allowed ${FOCUS}`}
+                        className={`inline-flex items-center gap-1.5 h-mc-controle-petit px-2 rounded-mc-moyen text-mc-normal font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 disabled:opacity-60 disabled:cursor-not-allowed ${FOCUS}`}
                       >
                         <Printer className="w-4 h-4" aria-hidden="true" />
                         Réimprimer
@@ -394,7 +394,7 @@ export default function VentesDuJourPage() {
                         onClick={() => ouvrirAnnulation(v)}
                         disabled={horsLigne || v.enCoursEnvoi === true}
                         aria-label={`Annuler la vente ${v.numero}`}
-                        className={`inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/15 disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}
+                        className={`inline-flex items-center gap-1.5 h-mc-controle-petit px-2 rounded-mc-moyen text-mc-normal font-medium text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/15 disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}
                       >
                         <Ban className="w-4 h-4" aria-hidden="true" />
                         Annuler
@@ -413,7 +413,7 @@ export default function VentesDuJourPage() {
             <button type="button" onClick={() => changerPage(page - 1)} disabled={page <= 1} className={BOUTON_PAGE}>
               Page précédente
             </button>
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
               Page {page} sur {journee.totalPages}
             </p>
             <button
@@ -431,12 +431,12 @@ export default function VentesDuJourPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+    <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in">
       {enTete}
 
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <label htmlFor="date-ventes" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+          <label htmlFor="date-ventes" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
             Date
           </label>
           <input
@@ -454,7 +454,7 @@ export default function VentesDuJourPage() {
       {bandeau && (
         <div
           role={bandeau.ton === "erreur" ? "alert" : "status"}
-          className={`flex items-start gap-3 p-4 rounded-2xl text-sm ${
+          className={`flex items-start gap-3 p-4 rounded-mc-moyen text-mc-normal ${
             bandeau.ton === "erreur"
               ? "bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300"
               : "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300"
@@ -466,7 +466,7 @@ export default function VentesDuJourPage() {
             type="button"
             onClick={() => setBandeau(null)}
             aria-label="Fermer le message"
-            className={`p-1 rounded-lg ${
+            className={`p-1 rounded-mc-moyen ${
               bandeau.ton === "erreur" ? "hover:bg-rose-100 dark:hover:bg-rose-500/20" : "hover:bg-emerald-100 dark:hover:bg-emerald-500/20"
             } ${FOCUS}`}
           >

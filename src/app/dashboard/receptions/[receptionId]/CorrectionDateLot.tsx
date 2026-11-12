@@ -6,9 +6,9 @@ import {
   ALERTE_ERREUR,
   BOUTON_PRIMAIRE,
   BOUTON_SECONDAIRE,
-  CHAMP,
   FOCUS,
 } from "@/components/pharmacie/classes";
+import { ui } from "@/theme/ui";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
 import { corrigerDateLot, type LotRecu } from "@/lib/api_pharmacie";
@@ -92,28 +92,28 @@ function ContenuCorrection({ lot, structureId, onClose, onSucces }: ContenuProps
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoiEnCours ? undefined : fermer} aria-hidden="true" />
+      <div className={`${ui.dialogue.fond} backdrop-blur-sm`} onClick={envoiEnCours ? undefined : fermer} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
-              <CalendarClock className="w-6 h-6 text-primary-700 dark:text-primary-300" aria-hidden="true" />
+            <div className={ui.carteChiffre.icone}>
+              <CalendarClock className="w-5 h-5" aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Corriger la date de péremption
             </h3>
           </div>
 
-          <p className="text-sm font-bold text-slate-900 dark:text-white">
+          <p className="text-mc-normal font-semibold text-slate-900 dark:text-slate-100">
             {lot.nom}, lot {numero}, date actuelle : {dateActuelle}
           </p>
 
           <fieldset disabled={issueInconnue || envoiEnCours} className="flex flex-col gap-5 min-w-0">
             <div>
-              <label htmlFor="date-correction" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="date-correction" className={ui.label}>
                 Nouvelle date de péremption
               </label>
               <input
@@ -131,20 +131,20 @@ function ContenuCorrection({ lot, structureId, onClose, onSucces }: ContenuProps
                 onBlur={() => setDateVue(true)}
                 aria-invalid={messageDate ? true : undefined}
                 aria-describedby={messageDate || dateLue ? "info-date-correction" : undefined}
-                className={`${CHAMP} disabled:opacity-60`}
+                className={`${ui.champ} disabled:opacity-60`}
               />
               {messageDate ? (
-                <p id="info-date-correction" className="mt-1 text-sm text-rose-700 dark:text-rose-300">
+                <p id="info-date-correction" className="mt-1 text-mc-normal text-rose-700 dark:text-rose-300">
                   {messageDate}
                 </p>
               ) : (
                 dateLue && (
-                  <p id="info-date-correction" className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                  <p id="info-date-correction" className="mt-1 text-mc-normal text-slate-700 dark:text-slate-300">
                     {dateLue}
                   </p>
                 )
               )}
-              <label className="mt-3 flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+              <label className="mt-3 flex items-center gap-3 text-mc-normal text-slate-800 dark:text-slate-200">
                 <input
                   type="checkbox"
                   checked={sansDate}
@@ -152,14 +152,14 @@ function ContenuCorrection({ lot, structureId, onClose, onSucces }: ContenuProps
                     setSansDate(e.target.checked);
                     setRefusLocal(false);
                   }}
-                  className={`w-5 h-5 rounded accent-primary-600 ${FOCUS}`}
+                  className={`w-5 h-5 rounded-mc-petit accent-primary-600 ${FOCUS}`}
                 />
                 Sans date de péremption
               </label>
             </div>
 
             <div>
-              <label htmlFor="motif-date" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="motif-date" className={ui.label}>
                 Motif
               </label>
               <textarea
@@ -172,16 +172,16 @@ function ContenuCorrection({ lot, structureId, onClose, onSucces }: ContenuProps
                   setRefusLocal(false);
                 }}
                 aria-describedby="aide-motif-date"
-                className={CHAMP}
+                className={ui.zoneTexte}
               />
-              <p id="aide-motif-date" className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+              <p id="aide-motif-date" className="mt-1 text-mc-legende text-slate-600 dark:text-slate-400">
                 Par exemple : erreur de saisie, date relue sur la boîte
               </p>
             </div>
           </fieldset>
 
           {refusLocal && (
-            <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+            <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300">
               {MESSAGE_REFUS_LOCAL}
             </p>
           )}

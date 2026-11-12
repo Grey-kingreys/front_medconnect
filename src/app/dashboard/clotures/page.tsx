@@ -1,5 +1,6 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { AlertCircle, CalendarCheck, CircleCheck, Download, Loader2, Lock } from "lucide-react";
@@ -78,17 +79,17 @@ function Dialogue({
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-mc-moyen bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
               <Lock className="w-6 h-6 text-primary-700 dark:text-primary-300" aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               {titre}
             </h3>
           </div>
@@ -152,18 +153,18 @@ function ContenuForcage({
 
   return (
     <>
-      <ul className="space-y-1 text-sm font-medium text-slate-900 dark:text-white">
+      <ul className="space-y-1 text-mc-normal font-medium text-slate-900 dark:text-white">
         {postes.map((p) => (
           <li key={p.posteId}>
             {p.libelle} ({p.posteCode})
           </li>
         ))}
       </ul>
-      <p className="text-sm text-slate-700 dark:text-slate-200">
+      <p className="text-mc-normal text-slate-700 dark:text-slate-200">
         Les ventes de ce poste remontées plus tard seront comptées le jour de leur arrivée et signalées.
       </p>
       <div>
-        <label htmlFor="motif-forcage" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+        <label htmlFor="motif-forcage" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
           Motif
         </label>
         <textarea
@@ -178,17 +179,17 @@ function ContenuForcage({
           aria-describedby="aide-motif-forcage"
           className={CHAMP}
         />
-        <p id="aide-motif-forcage" className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+        <p id="aide-motif-forcage" className="text-mc-legende text-slate-600 dark:text-slate-400 mt-1">
           Par exemple : poste en panne, coupure de courant. Entre 3 et 500 caractères.
         </p>
         {motifRefuse && (
-          <p role="alert" className="text-sm text-rose-700 dark:text-rose-300 mt-1">
+          <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300 mt-1">
             Indiquez un motif de 3 à 500 caractères.
           </p>
         )}
       </div>
       {erreur && (
-        <div role="alert" className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-sm">
+        <div role="alert" className="p-4 rounded-mc-moyen bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-mc-normal">
           {erreur}
         </div>
       )}
@@ -206,51 +207,51 @@ function ContenuForcage({
 function TableauTotaux({ totaux }: { totaux: TotalCloture[] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm text-left">
+      <table className={ui.tableau}>
         <caption className="sr-only">Totaux par mode de paiement</caption>
-        <thead>
-          <tr className="text-slate-600 dark:text-slate-400">
-            <th scope="col" className="py-2 pr-4 font-medium">
+        <thead className={ui.enteteTableau}>
+          <tr>
+            <th scope="col" className={ui.celluleEntete}>
               Mode
             </th>
-            <th scope="col" className="py-2 pr-4 font-medium text-right">
+            <th scope="col" className={`${ui.celluleEntete} text-right`}>
               Attendu
             </th>
-            <th scope="col" className="py-2 pr-4 font-medium text-right">
+            <th scope="col" className={`${ui.celluleEntete} text-right`}>
               Compté
             </th>
-            <th scope="col" className="py-2 font-medium text-right">
+            <th scope="col" className={`${ui.celluleEntete} text-right`}>
               Écart
             </th>
           </tr>
         </thead>
-        <tbody className="text-slate-900 dark:text-white">
+        <tbody>
           {totaux.map((t) => (
-            <tr key={t.mode} className="border-t border-slate-200 dark:border-slate-800">
-              <th scope="row" className="py-3 pr-4 font-medium text-left">
+            <tr key={t.mode} className={ui.ligneTableau}>
+              <th scope="row" className={`${ui.cellule} font-medium text-left`}>
                 {t.libelle}
               </th>
-              <td className="py-3 pr-4 text-right whitespace-nowrap">{formaterGNF(t.theorique)}</td>
+              <td className={`${ui.cellule} text-right tabular-nums whitespace-nowrap`}>{formaterGNF(t.theorique)}</td>
               {t.compte === null ? (
-                <td className="py-3 pr-4 text-right">
+                <td className={`${ui.cellule} text-right`}>
                   <span>non rapproché</span>
                   {t.sessionsNonRapprochees === undefined ? (
-                    <span className="block text-xs text-slate-600 dark:text-slate-400">
+                    <span className="block text-mc-legende text-slate-600 dark:text-slate-400">
                       Aucun relevé n&apos;a été saisi pour ce mode à la fermeture d&apos;au moins une caisse.
                     </span>
                   ) : (
                     t.sessionsNonRapprochees > 0 && (
-                      <span className="block text-xs text-slate-600 dark:text-slate-400">
+                      <span className="block text-mc-legende text-slate-600 dark:text-slate-400">
                         {t.sessionsNonRapprochees} caisse(s) sans relevé
                       </span>
                     )
                   )}
                 </td>
               ) : (
-                <td className="py-3 pr-4 text-right whitespace-nowrap">{formaterGNF(t.compte)}</td>
+                <td className={`${ui.cellule} text-right tabular-nums whitespace-nowrap`}>{formaterGNF(t.compte)}</td>
               )}
               <td
-                className={`py-3 text-right whitespace-nowrap ${t.ecart !== null && t.ecart < 0 ? "text-rose-700 dark:text-rose-300" : ""}`}
+                className={`${ui.cellule} text-right tabular-nums whitespace-nowrap ${t.ecart !== null && t.ecart < 0 ? "text-rose-700 dark:text-rose-300" : ""}`}
               >
                 {t.compte === null || t.ecart === null ? "" : libelleEcart(t.ecart)}
               </td>
@@ -445,10 +446,10 @@ export default function CloturesPage() {
 
   const enTete = (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+      <h1 className={ui.titrePage} style={POLICE_TITRE}>
         Clôture de caisse
       </h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+      <p className="text-mc-normal text-slate-600 dark:text-slate-400 mt-1">
         Vérifiez les caisses de la journée, puis clôturez-la. Une journée clôturée ne change plus.
       </p>
     </div>
@@ -456,7 +457,7 @@ export default function CloturesPage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -465,10 +466,10 @@ export default function CloturesPage() {
 
   if (!structureId) {
     return (
-      <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+      <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Votre compte n&apos;est rattaché à aucune pharmacie. Adressez-vous à l&apos;administrateur de votre pharmacie.
           </p>
           <Link href="/dashboard" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -487,7 +488,7 @@ export default function CloturesPage() {
     <div className={CARTE}>
       <div className="flex flex-wrap items-end gap-4">
         <div>
-          <label htmlFor="jour-cloture" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+          <label htmlFor="jour-cloture" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
             Journée à vérifier
           </label>
           <input
@@ -500,12 +501,12 @@ export default function CloturesPage() {
           />
         </div>
         {jour !== aujourdhui && (
-          <button type="button" onClick={() => choisirJour(aujourdhui)} className={`${LIEN} text-sm pb-3`}>
+          <button type="button" onClick={() => choisirJour(aujourdhui)} className={`${LIEN} text-mc-normal pb-3`}>
             Aujourd&apos;hui
           </button>
         )}
       </div>
-      <h2 className="text-lg font-bold text-slate-900 dark:text-white mt-4 capitalize" style={POLICE_TITRE}>
+      <h2 className={`${ui.texte.section} mt-4 capitalize`} style={POLICE_TITRE}>
         {formaterJour(jour)}
       </h2>
     </div>
@@ -529,7 +530,7 @@ export default function CloturesPage() {
         <div role="alert" className={ALERTE_ERREUR}>
           <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
           <div className="space-y-2">
-            <p className="font-bold">{erreurCloture.titre}</p>
+            <p className="font-semibold">{erreurCloture.titre}</p>
             {erreurCloture.liste.length > 0 && (
               <ul className="list-disc pl-5 space-y-1">
                 {erreurCloture.liste.map((m, i) => (
@@ -556,11 +557,11 @@ export default function CloturesPage() {
 
   const blocRemontees = peutVoirAnomalies && (erreurRemontees || (remontees !== null && remontees.length > 0)) && (
     <section className={CARTE} aria-labelledby="titre-remontees">
-      <h2 id="titre-remontees" className="text-lg font-bold text-slate-900 dark:text-white mb-4" style={POLICE_TITRE}>
+      <h2 id="titre-remontees" className={`${ui.texte.section} mb-4`} style={POLICE_TITRE}>
         Sommes arrivées après une clôture (toutes journées)
       </h2>
       {erreurRemontees ? (
-        <p className="text-sm text-slate-700 dark:text-slate-300">
+        <p className="text-mc-normal text-slate-700 dark:text-slate-300">
           Les sommes arrivées après une clôture n&apos;ont pas pu être vérifiées.
         </p>
       ) : (
@@ -573,11 +574,11 @@ export default function CloturesPage() {
             ))}
           </ul>
           {totalRemontees > (remontees ?? []).length && (
-            <p className="text-sm font-medium text-slate-900 dark:text-white">
+            <p className="text-mc-normal font-medium text-slate-900 dark:text-white">
               et {totalRemontees - (remontees ?? []).length} autres, à voir dans les anomalies
             </p>
           )}
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Ces sommes ne figurent dans le total d&apos;aucune clôture. Traitez-les dans les{" "}
             <Link href="/dashboard/anomalies?type=REMONTEE_APRES_CLOTURE" className={LIEN}>
               anomalies
@@ -592,27 +593,27 @@ export default function CloturesPage() {
   const clotures = moisCharge !== null && moisCharge.mois === mois ? moisCharge.clotures : null;
   const blocMois = (
     <section className={CARTE} aria-labelledby="titre-mois">
-      <h2 id="titre-mois" className="text-lg font-bold text-slate-900 dark:text-white mb-4" style={POLICE_TITRE}>
+      <h2 id="titre-mois" className={`${ui.texte.section} mb-4`} style={POLICE_TITRE}>
         Journées clôturées ce mois-ci
       </h2>
       {clotures === null ? (
         erreurMois === mois ? (
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Les journées clôturées de ce mois n&apos;ont pas pu être chargées.
           </p>
         ) : (
-          <p role="status" className="text-sm text-slate-600 dark:text-slate-400">
+          <p role="status" className="text-mc-normal text-slate-600 dark:text-slate-400">
             Chargement...
           </p>
         )
       ) : clotures.length === 0 ? (
-        <p className="text-sm text-slate-700 dark:text-slate-300">Aucune journée clôturée ce mois-ci.</p>
+        <p className="text-mc-normal text-slate-700 dark:text-slate-300">Aucune journée clôturée ce mois-ci.</p>
       ) : (
         <ul className="divide-y divide-slate-200 dark:divide-slate-800">
           {clotures.map((c) => {
             const especes = c.totaux.find((t) => t.mode === "ESPECES");
             return (
-              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-sm text-slate-900 dark:text-white">
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-3 text-mc-normal text-slate-900 dark:text-white">
                 <span className="capitalize">
                   {formaterJour(c.jour)}
                   {c.forcee && <span className="normal-case text-amber-700 dark:text-amber-300">, forcée</span>}
@@ -645,7 +646,7 @@ export default function CloturesPage() {
     );
   } else if (prepActuelle === null) {
     corps = (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement de la journée...
       </div>
@@ -663,7 +664,7 @@ export default function CloturesPage() {
           <div role="status" className={ALERTE_ATTENTION}>
             <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
             <div className="space-y-2">
-              <p className="font-bold">Clôture forcée. Motif : {cloture.motifForcage}</p>
+              <p className="font-semibold">Clôture forcée. Motif : {cloture.motifForcage}</p>
               {cloture.postesManquants.length > 0 && (
                 <ul className="list-disc pl-5 space-y-1">
                   {cloture.postesManquants.map((p) => (
@@ -677,11 +678,11 @@ export default function CloturesPage() {
           </div>
         )}
         <section className={CARTE} aria-labelledby="titre-totaux">
-          <h2 id="titre-totaux" className="text-lg font-bold text-slate-900 dark:text-white mb-4" style={POLICE_TITRE}>
+          <h2 id="titre-totaux" className={`${ui.texte.section} mb-4`} style={POLICE_TITRE}>
             Totaux par mode
           </h2>
           {cloture.totaux.length === 0 ? (
-            <p className="text-sm text-slate-700 dark:text-slate-300">Aucun paiement ce jour-là.</p>
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">Aucun paiement ce jour-là.</p>
           ) : (
             <TableauTotaux totaux={cloture.totaux} />
           )}
@@ -708,17 +709,17 @@ export default function CloturesPage() {
     corps = (
       <>
         <section className={CARTE} aria-labelledby="titre-caisses">
-          <h2 id="titre-caisses" className="text-lg font-bold text-slate-900 dark:text-white mb-4" style={POLICE_TITRE}>
+          <h2 id="titre-caisses" className={`${ui.texte.section} mb-4`} style={POLICE_TITRE}>
             Caisses de la journée
           </h2>
           {prepActuelle.sessions.length === 0 ? (
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
               Aucune caisse ce jour-là. La journée peut être clôturée à vide.
             </p>
           ) : (
             <ul className="divide-y divide-slate-200 dark:divide-slate-800">
               {prepActuelle.sessions.map((s) => (
-                <li key={s.id} className="flex flex-wrap items-start justify-between gap-2 py-3 text-sm text-slate-900 dark:text-white">
+                <li key={s.id} className="flex flex-wrap items-start justify-between gap-2 py-3 text-mc-normal text-slate-900 dark:text-white">
                   <span>
                     {s.posteLibelle} ({s.posteCode}), {s.utilisateurNom}
                   </span>
@@ -733,14 +734,14 @@ export default function CloturesPage() {
 
         {prepActuelle.postesAttendus.length > 0 && (
           <section className={CARTE} aria-labelledby="titre-a-regler">
-            <h2 id="titre-a-regler" className="text-lg font-bold text-slate-900 dark:text-white mb-4" style={POLICE_TITRE}>
+            <h2 id="titre-a-regler" className={`${ui.texte.section} mb-4`} style={POLICE_TITRE}>
               À régler avant de clôturer
             </h2>
             <ul className="space-y-3">
               {prepActuelle.postesAttendus.map((p) => (
                 <li key={p.posteId} className={ALERTE_ATTENTION}>
                   <div className="space-y-1">
-                    <p className="font-bold">
+                    <p className="font-semibold">
                       {p.libelle} ({p.posteCode}){p.utilisateurNom ? `, ${p.utilisateurNom}` : ""}
                     </p>
                     <p>{p.message}</p>
@@ -755,11 +756,11 @@ export default function CloturesPage() {
         )}
 
         <section className={CARTE} aria-labelledby="titre-totaux">
-          <h2 id="titre-totaux" className="text-lg font-bold text-slate-900 dark:text-white mb-4" style={POLICE_TITRE}>
+          <h2 id="titre-totaux" className={`${ui.texte.section} mb-4`} style={POLICE_TITRE}>
             Totaux par mode
           </h2>
           {prepActuelle.totaux.length === 0 ? (
-            <p className="text-sm text-slate-700 dark:text-slate-300">Aucun paiement enregistré ce jour-là.</p>
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">Aucun paiement enregistré ce jour-là.</p>
           ) : (
             <TableauTotaux totaux={prepActuelle.totaux} />
           )}
@@ -803,7 +804,7 @@ export default function CloturesPage() {
           envoiEnCours={envoi}
           titre={`Clôturer la journée du ${formaterJour(jour)} ?`}
         >
-          <p className="text-sm text-slate-700 dark:text-slate-200">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-200">
             Après la clôture, plus aucune vente ni correction ne peut être ajoutée à cette journée : une correction se fera par une annulation, comptée le jour où elle est faite.
           </p>
           <BoutonsDialogue
@@ -834,7 +835,7 @@ export default function CloturesPage() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+    <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in">
       {enTete}
       {selecteurJour}
       {blocRetour}

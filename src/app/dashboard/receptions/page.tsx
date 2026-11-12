@@ -5,11 +5,12 @@ import Link from "next/link";
 import { Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { listerReceptions, type PageReceptions } from "@/lib/api_pharmacie";
-import { ALERTE_INFO, BOUTON_PRIMAIRE, CARTE, FOCUS, POLICE_TITRE } from "@/components/pharmacie/classes";
+import { ALERTE_INFO, BOUTON_PRIMAIRE, CARTE, FOCUS } from "@/components/pharmacie/classes";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { formaterDateHeure } from "../ventes/affichage";
+import { ui } from "@/theme/ui";
 
-const BOUTON_PAGE = `px-4 py-2 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`;
+const BOUTON_PAGE = ui.bouton.discret;
 const MSG_ERREUR = "Les réceptions n'ont pas pu être chargées. Vérifiez votre connexion puis réessayez.";
 const NON_RENSEIGNE = "Non renseigné";
 
@@ -52,7 +53,7 @@ export default function ReceptionsPage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -69,10 +70,10 @@ export default function ReceptionsPage() {
   const enTete = (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+        <h1 className={ui.titrePage}>
           Réceptions
         </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+        <p className={`${ui.texte.petit} mt-1`}>
           Enregistrez les livraisons de vos fournisseurs à partir de la facture.
         </p>
       </div>
@@ -85,7 +86,7 @@ export default function ReceptionsPage() {
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Votre compte n&apos;est rattaché à aucune pharmacie. Adressez-vous à l&apos;administrateur de votre pharmacie.
           </p>
           <Link href="/dashboard" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -99,7 +100,7 @@ export default function ReceptionsPage() {
   let corps;
   if (etat.statut === "chargement") {
     corps = (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement des réceptions...
       </div>
@@ -117,24 +118,24 @@ export default function ReceptionsPage() {
       ) : (
         <>
           <div className={`${CARTE} overflow-x-auto`}>
-            <table className="w-full text-sm text-left">
+            <table className={ui.tableau}>
               <caption className="sr-only">Livraisons reçues, de la plus récente à la plus ancienne</caption>
               <thead>
-                <tr className="text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-                  <th scope="col" className="py-2 pr-4 font-semibold">Reçue le</th>
-                  <th scope="col" className="py-2 pr-4 font-semibold">Fournisseur</th>
-                  <th scope="col" className="py-2 pr-4 font-semibold">Bon de livraison</th>
-                  <th scope="col" className="py-2 font-semibold text-right">Lots</th>
+                <tr className={ui.enteteTableau}>
+                  <th scope="col" className={ui.celluleEntete}>Reçue le</th>
+                  <th scope="col" className={ui.celluleEntete}>Fournisseur</th>
+                  <th scope="col" className={ui.celluleEntete}>Bon de livraison</th>
+                  <th scope="col" className={`${ui.celluleEntete} text-right`}>Lots</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
                 {receptions.map((r) => {
                   const lien = `/dashboard/receptions/${encodeURIComponent(r.id)}`;
-                  const classeLien = `block py-3 pr-4 text-slate-900 dark:text-white hover:underline ${FOCUS}`;
+                  const classeLien = `block px-3 py-3 text-mc-normal text-slate-900 dark:text-white hover:underline ${FOCUS}`;
                   return (
-                    <tr key={r.id}>
+                    <tr key={r.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
                       <td>
-                        <Link href={lien} className={`${classeLien} font-bold`}>
+                        <Link href={lien} className={`${classeLien} font-semibold`}>
                           {formaterDateHeure(r.recueLe)}
                         </Link>
                       </td>
@@ -149,7 +150,7 @@ export default function ReceptionsPage() {
                         </Link>
                       </td>
                       <td className="text-right">
-                        <Link href={lien} className={`${classeLien} text-right pr-0`} tabIndex={-1}>
+                        <Link href={lien} className={`${classeLien} text-right tabular-nums`} tabIndex={-1}>
                           {r.nombreLots}
                         </Link>
                       </td>
@@ -165,7 +166,7 @@ export default function ReceptionsPage() {
               <button type="button" onClick={() => changerPage(page - 1)} disabled={page <= 1} className={BOUTON_PAGE}>
                 Précédente
               </button>
-              <p className="text-sm text-slate-700 dark:text-slate-300">
+              <p className={ui.texte.petit}>
                 Page {page} sur {totalPages}
               </p>
               <button

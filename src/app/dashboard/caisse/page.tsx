@@ -1,5 +1,6 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertCircle, CircleCheck, Loader2 } from "lucide-react";
@@ -213,10 +214,10 @@ export default function MaCaissePage() {
 
   const enTete = (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+      <h1 className={ui.titrePage} style={POLICE_TITRE}>
         Ma caisse
       </h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+      <p className="text-mc-normal text-slate-600 dark:text-slate-400 mt-1">
         Ouvrez votre caisse, comptez le fond, puis fermez-la en fin de service.
       </p>
     </div>
@@ -224,7 +225,7 @@ export default function MaCaissePage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -236,7 +237,7 @@ export default function MaCaissePage() {
       <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Votre compte n&apos;est rattaché à aucune pharmacie. Adressez-vous à l&apos;administrateur de votre pharmacie.
           </p>
           <Link href="/dashboard" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -261,7 +262,7 @@ export default function MaCaissePage() {
 
   if (!charge || referentiels === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement de votre caisse...
       </div>
@@ -330,7 +331,7 @@ export default function MaCaissePage() {
 
       {session === null && (
         <div className={`${CARTE} space-y-5`}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Votre caisse est fermée. Elle s&apos;ouvre aussi toute seule à votre première vente, sans fond compté.
           </p>
           <ComptageCoupures
@@ -364,7 +365,7 @@ export default function MaCaissePage() {
                   Ouvrir sans compter
                 </button>
               </div>
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="text-mc-legende text-slate-600 dark:text-slate-400">
                 Le fond sera compté à 0 et signalé au titulaire à la fermeture.
               </p>
             </div>
@@ -374,7 +375,7 @@ export default function MaCaissePage() {
 
       {session !== null && autreVendeur && (
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Ce poste est occupé par la caisse de {session.utilisateurNom}, ouverte {momentOuverture}.
           </p>
         </div>
@@ -382,16 +383,16 @@ export default function MaCaissePage() {
 
       {session !== null && !autreVendeur && (
         <div className={`${CARTE} space-y-5`}>
-          <h2 className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+          <h2 className={ui.texte.section} style={POLICE_TITRE}>
             Caisse ouverte
           </h2>
-          <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+          <div className="text-mc-normal text-slate-700 dark:text-slate-300 space-y-1">
             <p>Ouverte {momentOuverture}</p>
             <p>
               Poste : {session.poste.libelle} ({session.poste.code})
             </p>
             {session.jourMetier !== aujourdhui && <p>Ventes comptées pour le {formaterJour(session.jourMetier)}</p>}
-            <p className="font-bold text-slate-900 dark:text-white">
+            <p className="font-semibold text-slate-900 dark:text-white">
               {session.fondCompte
                 ? `Fond de caisse : ${formaterGNF(session.fondCaisse)}`
                 : "Fond de caisse : pas encore compté"}
@@ -479,7 +480,7 @@ export default function MaCaissePage() {
       )}
 
       {session !== null && !autreVendeur && bilan === null && !erreurBilan && (
-        <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+        <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
           Chargement du bilan...
         </div>
@@ -488,13 +489,13 @@ export default function MaCaissePage() {
       {session !== null && !autreVendeur && bilan !== null && (
         <>
           <div className={`${CARTE} space-y-2`}>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+            <h2 className={ui.texte.section} style={POLICE_TITRE}>
               Votre activité
             </h2>
-            <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+            <div className="text-mc-normal text-slate-700 dark:text-slate-300 space-y-1">
               <p>Ventes : {bilan.activite.nombreVentes}</p>
               <p>Annulations : {bilan.activite.nombreAnnulations}</p>
-              <p className="font-bold text-slate-900 dark:text-white">Encaissé : {formaterGNF(bilan.activite.montantEncaisse)}</p>
+              <p className="font-semibold text-slate-900 dark:text-white">Encaissé : {formaterGNF(bilan.activite.montantEncaisse)}</p>
               {bilan.activite.parMode.map((m) => (
                 <p key={m.mode}>
                   {m.libelle} : {formaterGNF(m.montant)} ({m.nombrePaiements} {m.nombrePaiements > 1 ? "paiements" : "paiement"})
@@ -504,13 +505,13 @@ export default function MaCaissePage() {
           </div>
 
           <div className={`${CARTE} space-y-2`}>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+            <h2 className={ui.texte.section} style={POLICE_TITRE}>
               Mouvements de caisse
             </h2>
             {bilan.mouvements.length === 0 ? (
-              <p className="text-sm text-slate-700 dark:text-slate-300">Aucun mouvement de caisse.</p>
+              <p className="text-mc-normal text-slate-700 dark:text-slate-300">Aucun mouvement de caisse.</p>
             ) : (
-              <ul className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+              <ul className="text-mc-normal text-slate-700 dark:text-slate-300 space-y-1">
                 {bilan.mouvements.map((m) => (
                   <li key={m.id}>
                     {LIBELLES_MOUVEMENT[m.type]} de {formaterGNF(m.montant)}, {m.motif}, {momentMouvement(m.horodatageServeur)}
@@ -521,10 +522,10 @@ export default function MaCaissePage() {
           </div>
 
           <div className={`${CARTE} space-y-2`}>
-            <h2 className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+            <h2 className={ui.texte.section} style={POLICE_TITRE}>
               Attendu dans la caisse
             </h2>
-            <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+            <div className="text-mc-normal text-slate-700 dark:text-slate-300 space-y-1">
               {bilan.theorique.map((t) => (
                 <p key={t.mode}>
                   {t.libelle} : {formaterGNF(t.montant)}

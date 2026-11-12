@@ -1,5 +1,6 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useEffect, useState } from "react";
 import { notFound } from "next/navigation";
 import { AlertCircle, CircleCheck, Loader2, Printer } from "lucide-react";
@@ -57,7 +58,7 @@ export default function PostePage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -110,10 +111,10 @@ export default function PostePage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+        <h1 className={ui.titrePage} style={POLICE_TITRE}>
           Réglages de ce poste
         </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+        <p className="text-mc-normal text-slate-600 dark:text-slate-400 mt-1">
           Choisissez l&apos;imprimante de ce comptoir : le ticket sort sans fenêtre de confirmation.
         </p>
       </div>
@@ -137,7 +138,7 @@ export default function PostePage() {
       )}
 
       {reglages === null && erreur === null && (
-        <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+        <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
           Chargement des réglages...
         </div>
@@ -145,12 +146,12 @@ export default function PostePage() {
 
       {reglages !== null && (
         <section className={`${CARTE} space-y-6`} aria-labelledby="titre-impression">
-          <h2 id="titre-impression" className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+          <h2 id="titre-impression" className={ui.texte.section} style={POLICE_TITRE}>
             Impression
           </h2>
 
           <div className="space-y-2">
-            <label htmlFor="imprimante" className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+            <label htmlFor="imprimante" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200">
               Imprimante
             </label>
             <select
@@ -170,19 +171,19 @@ export default function PostePage() {
               ))}
             </select>
             {imprimantes.length === 0 && (
-              <p className="text-sm text-slate-600 dark:text-slate-400">
+              <p className="text-mc-normal text-slate-600 dark:text-slate-400">
                 Aucune imprimante n&apos;est installée sur cet ordinateur. Installez-la, puis revenez sur cette page.
               </p>
             )}
           </div>
 
           <fieldset>
-            <legend className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Format du ticket</legend>
+            <legend className="text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">Format du ticket</legend>
             <div className="flex flex-wrap gap-3">
               {FORMATS_RECU.map((f) => (
                 <label
                   key={f.valeur}
-                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-2xl border text-sm font-medium cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-500 ${
+                  className={`inline-flex h-mc-controle items-center gap-2 px-4 rounded-mc-moyen border text-mc-normal font-medium cursor-pointer has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary-500 ${
                     reglages.formatRecu === f.valeur
                       ? "border-primary-600 text-primary-700 dark:text-primary-300"
                       : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300"
@@ -202,7 +203,7 @@ export default function PostePage() {
             </div>
           </fieldset>
 
-          <label className="flex items-center gap-3 text-sm font-medium text-slate-800 dark:text-slate-200 cursor-pointer">
+          <label className="flex items-center gap-3 text-mc-normal font-medium text-slate-800 dark:text-slate-200 cursor-pointer">
             <input
               type="checkbox"
               checked={reglages.impressionAutomatique}
@@ -223,20 +224,20 @@ export default function PostePage() {
               Imprimer un ticket d&apos;essai
             </button>
             {infos !== null && infos.derniereVenteId === null && (
-              <p className="text-sm text-slate-600 dark:text-slate-400">Faites d&apos;abord une vente.</p>
+              <p className="text-mc-normal text-slate-600 dark:text-slate-400">Faites d&apos;abord une vente.</p>
             )}
             {reglages.imprimante === null && infos?.derniereVenteId != null && (
-              <p className="text-sm text-slate-600 dark:text-slate-400">Choisissez d&apos;abord une imprimante.</p>
+              <p className="text-mc-normal text-slate-600 dark:text-slate-400">Choisissez d&apos;abord une imprimante.</p>
             )}
           </div>
         </section>
       )}
 
       <section className={`${CARTE} space-y-3`} aria-labelledby="titre-poste">
-        <h2 id="titre-poste" className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+        <h2 id="titre-poste" className={ui.texte.section} style={POLICE_TITRE}>
           Ce poste
         </h2>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-mc-normal">
           <div>
             <dt className="text-slate-600 dark:text-slate-400">Code du poste</dt>
             <dd className="font-medium text-slate-900 dark:text-white">{infos?.posteCode ?? "Pas encore enregistré"}</dd>
@@ -266,20 +267,20 @@ export default function PostePage() {
         <div className="space-y-2 pt-2">
           {etat?.majPrete ? (
             <>
-              <p className="text-sm text-slate-800 dark:text-slate-200">{`Mise à jour ${etat.majPrete} prête : elle s'installera à la fermeture.`}</p>
+              <p className="text-mc-normal text-slate-800 dark:text-slate-200">{`Mise à jour ${etat.majPrete} prête : elle s'installera à la fermeture.`}</p>
               <button type="button" onClick={() => void installerMaintenant()} disabled={!etat.majInstallable} className={BOUTON_PRIMAIRE}>
                 Installer maintenant
               </button>
               {!etat.majInstallable && (
-                <p className="text-sm text-slate-600 dark:text-slate-400">Fermez d&apos;abord la caisse et attendez l&apos;envoi des ventes.</p>
+                <p className="text-mc-normal text-slate-600 dark:text-slate-400">Fermez d&apos;abord la caisse et attendez l&apos;envoi des ventes.</p>
               )}
             </>
           ) : infos?.majAutomatique === false ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-mc-normal text-slate-600 dark:text-slate-400">
               Les mises à jour se font à la main : MedConnecte vous donnera le nouveau programme à installer.
             </p>
           ) : infos?.majAutomatique ? (
-            <p className="text-sm text-slate-600 dark:text-slate-400">L&apos;application est à jour. Les mises à jour arrivent toutes seules.</p>
+            <p className="text-mc-normal text-slate-600 dark:text-slate-400">L&apos;application est à jour. Les mises à jour arrivent toutes seules.</p>
           ) : null}
         </div>
       </section>

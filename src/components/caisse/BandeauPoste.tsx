@@ -66,7 +66,7 @@ export function BandeauPoste() {
   return (
     <div className="mb-4 space-y-2 print:hidden">
       {ligne === null ? (
-        <p role="status" className="text-xs font-medium text-slate-600 dark:text-slate-400">
+        <p role="status" className="text-mc-legende font-medium text-slate-600 dark:text-slate-400">
           En ligne
         </p>
       ) : (

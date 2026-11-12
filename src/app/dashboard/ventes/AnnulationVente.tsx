@@ -1,9 +1,10 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useRef, useState } from "react";
 import { Ban, Loader2 } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
-import { CHAMP, FOCUS } from "@/components/pharmacie/classes";
+import { CHAMP } from "@/components/pharmacie/classes";
 import { formaterGNF } from "@/lib/format_gnf";
 import { LONGUEUR_MAX_MOTIF, motifValide } from "./affichage";
 
@@ -53,30 +54,30 @@ function ContenuAnnulation({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-rose-50 dark:bg-rose-500/15 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-mc-moyen bg-rose-50 dark:bg-rose-500/15 flex items-center justify-center shrink-0">
               <Ban className="w-6 h-6 text-rose-700 dark:text-rose-300" aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Annuler la vente {numero} ?
             </h3>
           </div>
 
-          <div className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
-            <p className="font-bold text-slate-900 dark:text-white">Montant : {formaterGNF(total)}</p>
+          <div className="space-y-2 text-mc-normal text-slate-700 dark:text-slate-200">
+            <p className="font-semibold text-slate-900 dark:text-white">Montant : {formaterGNF(total)}</p>
             <p>
               Les quantités seront remises dans votre stock et le remboursement sera enregistré dans votre caisse. Une pièce d&apos;annulation est créée ; la vente reste visible, marquée « Annulée ».
             </p>
           </div>
 
           <div>
-            <label htmlFor="motif-annulation" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+            <label htmlFor="motif-annulation" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
               Motif de l&apos;annulation
             </label>
             <textarea
@@ -92,21 +93,21 @@ function ContenuAnnulation({
               aria-describedby="aide-motif"
               className={CHAMP}
             />
-            <div className="flex items-center justify-between gap-3 mt-1 text-xs text-slate-600 dark:text-slate-400">
+            <div className="flex items-center justify-between gap-3 mt-1 text-mc-legende text-slate-600 dark:text-slate-400">
               <p id="aide-motif">Entre 3 et 300 caractères.</p>
               <p>
                 {motif.length} / {LONGUEUR_MAX_MOTIF}
               </p>
             </div>
             {motifRefuse && (
-              <p role="alert" className="text-sm text-rose-700 dark:text-rose-300 mt-1">
+              <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300 mt-1">
                 Indiquez un motif de 3 à 300 caractères.
               </p>
             )}
           </div>
 
           {erreur && (
-            <div role="alert" className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-sm">
+            <div role="alert" className="p-4 rounded-mc-moyen bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-mc-normal">
               {erreur}
             </div>
           )}
@@ -116,7 +117,7 @@ function ContenuAnnulation({
               type="button"
               onClick={onClose}
               disabled={envoiEnCours}
-              className={`flex-1 px-4 py-3 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-50 ${FOCUS}`}
+              className={`${ui.bouton.discret} flex-1`}
             >
               {confirmationBloquee ? "Fermer" : "Garder la vente"}
             </button>
@@ -124,7 +125,7 @@ function ContenuAnnulation({
               type="button"
               onClick={confirmer}
               disabled={envoiEnCours || confirmationBloquee}
-              className={`flex-[2] flex items-center justify-center gap-2 px-4 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-sm font-bold transition-colors disabled:opacity-60 ${FOCUS}`}
+              className={`${ui.bouton.danger} flex-[2]`}
             >
               {envoiEnCours && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
               {envoiEnCours ? "Annulation..." : "Annuler la vente"}

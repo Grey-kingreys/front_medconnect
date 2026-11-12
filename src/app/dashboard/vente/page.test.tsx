@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
 import type { Referentiels, SessionCaisse } from "@/lib/api_caisse";
@@ -855,11 +855,19 @@ describe("Nouvelle vente", () => {
     expect(screen.getByLabelText("Nom du client")).toHaveValue("Barry");
   });
 
-  it("affiche le bandeau en ligne seulement", async () => {
+  it("affiche le bandeau « besoin d'internet » seulement hors connexion", async () => {
+    const texte = "Cette page a besoin d'internet : sans connexion, aucune vente n'est enregistrée.";
+    const enLigne = vi.spyOn(navigator, "onLine", "get").mockReturnValue(true);
     render(<NouvelleVentePage />);
-    expect(
-      await screen.findByText("Cette page a besoin d'internet : sans connexion, aucune vente n'est enregistrée."),
-    ).toBeInTheDocument();
+    await screen.findByText("Paracétamol");
+    expect(screen.queryByText(texte)).not.toBeInTheDocument();
+
+    enLigne.mockReturnValue(false);
+    act(() => {
+      window.dispatchEvent(new Event("offline"));
+    });
+    expect(await screen.findByText(texte)).toBeInTheDocument();
+    enLigne.mockRestore();
   });
 
   it("propose de réessayer quand le stock ne se charge pas", async () => {

@@ -1,5 +1,6 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useState } from "react";
 import { AlertCircle, ArrowLeftRight, Loader2 } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
@@ -123,28 +124,28 @@ function ContenuMouvement({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoi ? undefined : onClose} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={envoi ? undefined : onClose} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-mc-moyen bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
               <ArrowLeftRight className="w-6 h-6 text-primary-700 dark:text-primary-300" aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Mouvement de caisse
             </h3>
           </div>
 
           <fieldset disabled={verrouille} className="space-y-5 min-w-0">
             <div role="radiogroup" aria-labelledby="legende-type-mouvement" className="space-y-2">
-              <p id="legende-type-mouvement" className="text-sm font-medium text-slate-800 dark:text-slate-200">
+              <p id="legende-type-mouvement" className="text-mc-normal font-medium text-slate-800 dark:text-slate-200">
                 Type de mouvement
               </p>
               {TYPES.map((t) => (
-                <label key={t.valeur} className="flex items-center gap-3 text-sm text-slate-700 dark:text-slate-200">
+                <label key={t.valeur} className="flex items-center gap-3 text-mc-normal text-slate-700 dark:text-slate-200">
                   <input
                     type="radio"
                     name="type-mouvement"
@@ -162,7 +163,7 @@ function ContenuMouvement({
             </div>
 
             <div>
-              <label htmlFor="montant-mouvement" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="montant-mouvement" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Montant (GNF)
               </label>
               <input
@@ -181,14 +182,14 @@ function ContenuMouvement({
                 className={CHAMP}
               />
               {erreurMontant !== null && (
-                <p id="erreur-montant-mouvement" role="alert" className="text-sm text-rose-700 dark:text-rose-300 mt-1">
+                <p id="erreur-montant-mouvement" role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300 mt-1">
                   {erreurMontant}
                 </p>
               )}
             </div>
 
             <div>
-              <label htmlFor="mode-mouvement" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="mode-mouvement" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Mode
               </label>
               <select id="mode-mouvement" value={mode} onChange={(e) => setMode(e.target.value)} className={CHAMP}>
@@ -201,7 +202,7 @@ function ContenuMouvement({
             </div>
 
             <div>
-              <label htmlFor="motif-mouvement" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="motif-mouvement" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
                 Motif
               </label>
               <input
@@ -216,7 +217,7 @@ function ContenuMouvement({
                 aria-describedby="aide-motif-mouvement"
                 className={CHAMP}
               />
-              <p id="aide-motif-mouvement" className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+              <p id="aide-motif-mouvement" className="text-mc-legende text-slate-600 dark:text-slate-400 mt-1">
                 Par exemple : dépôt au coffre, monnaie apportée
               </p>
             </div>
