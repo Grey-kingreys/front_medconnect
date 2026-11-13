@@ -16,6 +16,7 @@ import {
   Clock,
   FileSpreadsheet,
   FileText,
+  HandCoins,
   Headset,
   LayoutDashboard,
   MapPin,
@@ -394,6 +395,17 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
       degrade: "from-primary-500 to-cyan-500",
       rolesRepli: [],
     },
+  },
+  {
+    id: "credits",
+    section: "activite",
+    href: "/dashboard/credits",
+    icone: HandCoins,
+    libelle: { defaut: "Crédits" },
+    acces: perm(["credit:read"], { typesStructure: P }),
+    rolesRepli: [],
+    // Fiche d'un client (`/<id>`) et nouveau crédit (`/nouveau`) sous la même permission.
+    couvreSousPages: true,
   },
   {
     id: "caisse",

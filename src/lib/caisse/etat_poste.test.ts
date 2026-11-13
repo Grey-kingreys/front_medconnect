@@ -46,7 +46,7 @@ describe("pages permises hors ligne", () => {
     for (const chemin of ["/dashboard/vente", "/dashboard/caisse", "/dashboard/ventes/abc/recu", "/dashboard/poste", "/dashboard/profil"]) {
       expect(routeHorsLigneAutorisee(chemin)).toBe(true);
     }
-    for (const chemin of ["/dashboard", "/dashboard/stock", "/dashboard/receptions", "/dashboard/ventesx"]) {
+    for (const chemin of ["/dashboard", "/dashboard/stock", "/dashboard/receptions", "/dashboard/ventesx", "/dashboard/credits", "/dashboard/credits/c1"]) {
       expect(routeHorsLigneAutorisee(chemin)).toBe(false);
     }
   });

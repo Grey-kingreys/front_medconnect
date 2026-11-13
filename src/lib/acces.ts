@@ -48,7 +48,9 @@ export type CodePermission =
   | "inventaire:write"
   | "reception:write"
   | "marge:read"
-  | "anomalie:gerer";
+  | "anomalie:gerer"
+  | "credit:read"
+  | "credit:write";
 
 export interface ContexteAcces {
   mode: "permissions" | "repli";

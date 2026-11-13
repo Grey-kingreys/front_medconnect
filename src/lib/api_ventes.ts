@@ -31,6 +31,11 @@ export const CODES_ERREUR_VENTE = [
   "ANNULATION_AUTRE_POSTE",
   "ANNULATION_AUTRE_CAISSE",
   "ANNULATION_CAISSE_FERMEE",
+  // Vente à crédit.
+  "CREDIT_CLIENT_REQUIS",
+  "CREDIT_PAIEMENTS_INCOHERENTS",
+  "DATE_LIMITE_PASSEE",
+  "CLIENT_CREDIT_INTROUVABLE",
 ] as const;
 export type CodeErreurVente = (typeof CODES_ERREUR_VENTE)[number];
 
@@ -54,6 +59,12 @@ export interface CorpsCreationVente {
   ordonnanceVerifiee?: boolean;
   /** Téléphone du prescripteur (ordonnance papier), facultatif. */
   telephonePrescripteur?: string;
+  /** Vente à crédit : client existant (exclusif avec `nouveauClientCredit`). Sans `paiements`, la vente est réglée à crédit. */
+  clientCreditId?: string;
+  /** Vente à crédit : client créé dans la même opération. */
+  nouveauClientCredit?: { nomComplet: string; telephone?: string };
+  /** Vente à crédit : date limite de remboursement (AAAA-MM-JJ, aujourd'hui ou plus tard). */
+  dateLimiteCredit?: string;
 }
 export interface AllocationVente {
   lotId: string | null;
@@ -146,6 +157,9 @@ export interface Vente {
   motif: string | null;
   /** Vrai quand la même clé a déjà servi : vente renvoyée sans second retrait du stock. */
   rejeu?: boolean;
+  /** Vente à crédit : client et date limite (absents ou null pour une vente ordinaire). */
+  clientCreditId?: string | null;
+  credit?: { clientCreditId: string; nomComplet: string; dateLimite: string | null } | null;
 }
 export interface VenteResume {
   id: string;
