@@ -50,6 +50,13 @@ import type { FicheSynchro } from "./types_synchro";
 /** Plus grand montant enregistrable (colonne Int du serveur). */
 const PRIX_MAX = 2147483647;
 
+/** Facultatif, comme au serveur : chiffres, espaces, tirets, + en tête, 6 à 20 chiffres. */
+function telephonePrescripteurLocalValide(t: string): boolean {
+  if (t.length > 30 || !/^\+?[\d\s-]+$/.test(t)) return false;
+  const chiffres = t.replace(/\D/g, "").length;
+  return chiffres >= 6 && chiffres <= 20;
+}
+
 const entier = (v: unknown, min: number, max: number): v is number =>
   typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
 
@@ -239,6 +246,10 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
     const clientTelephone = (corps.clientTelephone ?? "").trim();
     if (clientNom.length > 100) throw refusValidation("Le nom du client ne doit pas dépasser 100 caractères.");
     if (clientTelephone.length > 30) throw refusValidation("Le téléphone du client ne doit pas dépasser 30 caractères.");
+    const telephonePrescripteur = (corps.telephonePrescripteur ?? "").trim();
+    if (telephonePrescripteur !== "" && !telephonePrescripteurLocalValide(telephonePrescripteur)) {
+      throw refusValidation("Le téléphone du prescripteur n'est pas valide (chiffres, espaces, + et tirets ; 6 à 20 chiffres).");
+    }
     const total = lignes.reduce((somme, x) => somme + x.calcul.montantLigne, 0);
     if (total > PRIX_MAX) throw refusValidation(MESSAGE_TOTAL_TROP_ELEVE);
 
@@ -433,6 +444,7 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       ...(clientNom !== "" ? { clientNom } : {}),
       ...(clientTelephone !== "" ? { clientTelephone } : {}),
       ordonnanceVerifiee: corps.ordonnanceVerifiee === true,
+      ...(telephonePrescripteur !== "" ? { telephonePrescripteur } : {}),
     };
 
     const vente: Vente = {
@@ -444,6 +456,7 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       ordonnanceVerifiee: corps.ordonnanceVerifiee === true,
       clientNom: clientNom !== "" ? clientNom : null,
       clientTelephone: clientTelephone !== "" ? clientTelephone : null,
+      telephonePrescripteur: telephonePrescripteur !== "" ? telephonePrescripteur : null,
       vendeur: { id: u.id, nom: u.nom },
       annuleeLe: null,
       annuleeParId: null,
@@ -515,6 +528,7 @@ export function listerVentes(c: Contexte, jour: string): VentesDuJour {
     nombreArticles: v.lignes.reduce((s, l) => s + l.quantite, 0),
     vendeur: v.vendeur,
     clientNom: v.clientNom,
+    telephonePrescripteur: v.telephonePrescripteur ?? null,
     typePiece: v.typePiece,
     numeroTicket: v.numeroTicket,
     jourMetier: v.jourMetier,

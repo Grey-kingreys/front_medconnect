@@ -52,6 +52,8 @@ export interface CorpsCreationVente {
   clientNom?: string;
   clientTelephone?: string;
   ordonnanceVerifiee?: boolean;
+  /** Téléphone du prescripteur (ordonnance papier), facultatif. */
+  telephonePrescripteur?: string;
 }
 export interface AllocationVente {
   lotId: string | null;
@@ -121,6 +123,8 @@ export interface Vente {
   ordonnanceVerifiee: boolean;
   clientNom: string | null;
   clientTelephone: string | null;
+  /** Absent sur une vente faite par un ancien poste. */
+  telephonePrescripteur?: string | null;
   vendeur: VendeurVente;
   annuleeLe: string | null;
   annuleeParId: string | null;
@@ -154,6 +158,8 @@ export interface VenteResume {
   nombreArticles: number;
   vendeur: VendeurVente;
   clientNom: string | null;
+  /** Absent sur une vente faite par un ancien poste. */
+  telephonePrescripteur?: string | null;
   typePiece: TypePiece;
   /** Numéro de ticket du poste (entier, null pour une pièce d'annulation) ; le numéro lisible est `numero`. */
   numeroTicket: number | null;

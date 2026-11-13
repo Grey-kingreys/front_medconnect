@@ -496,6 +496,7 @@ describe("stockage du panier", () => {
       clientNom: "Barry",
       clientTelephone: "620",
       ordonnanceVue: true,
+      telephonePrescripteur: "",
     });
   });
 
@@ -559,5 +560,16 @@ describe("stockage du panier", () => {
   it("garde le client même sans ligne", () => {
     enregistrerPanier(cleP, panier({ clientNom: "Barry" }));
     expect(localStorage.getItem(cleP)).not.toBeNull();
+  });
+});
+
+describe("téléphone du prescripteur", () => {
+  it("filtre les lettres et valide le format facultatif", async () => {
+    const { filtrerTelephonePrescripteur, telephonePrescripteurValide } = await import("./panier");
+    expect(filtrerTelephonePrescripteur("+224 6ab-22.1")).toBe("+224 6-221");
+    expect(telephonePrescripteurValide("")).toBe(true);
+    expect(telephonePrescripteurValide("+224 622 11 22 33")).toBe(true);
+    expect(telephonePrescripteurValide("12345")).toBe(false);
+    expect(telephonePrescripteurValide("62+211223")).toBe(false);
   });
 });

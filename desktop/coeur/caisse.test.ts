@@ -308,6 +308,23 @@ describe("ordonnance et paiements (CA16)", () => {
     expect(corps).not.toHaveProperty("clientTelephone");
   });
 
+  it("téléphone du prescripteur : stocké dans la vente, envoyé à la synchro, absent s'il est vide", () => {
+    const { c, s } = coeurPret([fiche(1)]);
+    const v = c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }], telephonePrescripteur: "  +224 622 11 22 33 " }, cle(1), VENDEUR);
+    expect(v.telephonePrescripteur).toBe("+224 622 11 22 33");
+    expect(evenements(s)[1].corps.telephonePrescripteur).toBe("+224 622 11 22 33");
+    expect(c.lireVente(v.id)?.telephonePrescripteur).toBe("+224 622 11 22 33");
+
+    const sans = c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }], telephonePrescripteur: "  " }, cle(2), VENDEUR);
+    expect(sans.telephonePrescripteur).toBeNull();
+    expect(evenements(s)[2].corps).not.toHaveProperty("telephonePrescripteur");
+  });
+
+  it("téléphone du prescripteur invalide refusé", () => {
+    const { c } = coeurPret([fiche(1)]);
+    expect(() => c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }], telephonePrescripteur: "abc" }, cle(1), VENDEUR)).toThrow();
+  });
+
   it("paiements incohérents ou mode inconnu refusés, avec les messages du serveur", () => {
     const { c } = coeurPret([fiche(1)]);
     expect(

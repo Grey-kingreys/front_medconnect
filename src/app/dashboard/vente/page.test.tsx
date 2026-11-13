@@ -227,6 +227,62 @@ describe("Nouvelle vente", () => {
     expect(screen.getByText("Ordonnance vue")).toBeInTheDocument();
   });
 
+  it("le téléphone du prescripteur n'apparaît que pour une vente sur ordonnance", async () => {
+    render(<NouvelleVentePage />);
+    await screen.findByText("Paracétamol");
+    ajouter("Paracétamol");
+    expect(screen.queryByLabelText("Téléphone du prescripteur (facultatif)")).toBeNull();
+    ajouter("Amoxicilline");
+    expect(screen.getByLabelText("Téléphone du prescripteur (facultatif)")).toHaveAttribute("inputmode", "tel");
+  });
+
+  it("bloque les lettres, envoie le téléphone du prescripteur et le vide avec le panier", async () => {
+    creerVente.mockResolvedValue(succesVente());
+    render(<NouvelleVentePage />);
+    await screen.findByText("Amoxicilline");
+    ajouter("Amoxicilline");
+    const champ = screen.getByLabelText("Téléphone du prescripteur (facultatif)");
+    fireEvent.change(champ, { target: { value: "+224 6ab22-11" } });
+    expect(champ).toHaveValue("+224 622-11");
+
+    fireEvent.click(screen.getByRole("button", { name: "Vider le panier" }));
+    ajouter("Amoxicilline");
+    expect(screen.getByLabelText("Téléphone du prescripteur (facultatif)")).toHaveValue("");
+
+    fireEvent.change(screen.getByLabelText("Téléphone du prescripteur (facultatif)"), { target: { value: " 622 11 22 33 " } });
+    fireEvent.click(screen.getByLabelText("J'ai vu l'ordonnance"));
+    await confirmerLaVente();
+    await screen.findByRole("heading", { name: "Vente enregistrée" });
+    expect(creerVente).toHaveBeenCalledWith(
+      "p1",
+      expect.objectContaining({ ordonnanceVerifiee: true, telephonePrescripteur: "622 11 22 33" }),
+      expect.any(String),
+    );
+  });
+
+  it("n'envoie pas de téléphone du prescripteur quand le champ est vide", async () => {
+    creerVente.mockResolvedValue(succesVente());
+    render(<NouvelleVentePage />);
+    await screen.findByText("Amoxicilline");
+    ajouter("Amoxicilline");
+    fireEvent.click(screen.getByLabelText("J'ai vu l'ordonnance"));
+    await confirmerLaVente();
+    await screen.findByRole("heading", { name: "Vente enregistrée" });
+    const corps = creerVente.mock.calls[0][1] as Record<string, unknown>;
+    expect(corps).not.toHaveProperty("telephonePrescripteur");
+  });
+
+  it("refuse un téléphone du prescripteur trop court sans ouvrir la confirmation", async () => {
+    render(<NouvelleVentePage />);
+    await screen.findByText("Amoxicilline");
+    ajouter("Amoxicilline");
+    fireEvent.click(screen.getByLabelText("J'ai vu l'ordonnance"));
+    fireEvent.change(screen.getByLabelText("Téléphone du prescripteur (facultatif)"), { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: "Valider la vente" }));
+    expect(screen.getByText("Ce numéro de téléphone n'est pas valide.")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
   it("refuse un téléphone invalide sans ouvrir la confirmation", async () => {
     render(<NouvelleVentePage />);
     await screen.findByText("Paracétamol");

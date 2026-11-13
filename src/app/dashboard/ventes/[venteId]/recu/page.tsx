@@ -390,6 +390,7 @@ export default function RecuVentePage() {
           <p>Vendeur : {vente.vendeur.nom}</p>
           {vente.clientNom && <p>Client : {vente.clientNom}</p>}
           {vente.clientTelephone && <p>Téléphone du client : {vente.clientTelephone}</p>}
+          {vente.telephonePrescripteur && <p>Prescripteur : {vente.telephonePrescripteur}</p>}
         </div>
 
         <div className={SEPARATEUR} />

@@ -353,6 +353,7 @@ export default function VentesDuJourPage() {
                     <p className="text-mc-normal text-slate-600 dark:text-slate-400">
                       {`${formaterHeure(v.createdAt)} · ${libelleArticles(v.nombreArticles)} · ${v.vendeur.nom}`}
                       {v.clientNom ? ` · Client : ${v.clientNom}` : ""}
+                      {v.telephonePrescripteur ? ` · Prescripteur : ${v.telephonePrescripteur}` : ""}
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-3">

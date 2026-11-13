@@ -138,6 +138,7 @@ describe("corps des événements acceptés tels quels par le serveur", () => {
         clientNom: "Aminata Diallo",
         clientTelephone: "+224 620 00 00 00",
         ordonnanceVerifiee: true,
+        telephonePrescripteur: "+224 622 11 22 33",
       },
       uuid(11),
       VENDEUR,

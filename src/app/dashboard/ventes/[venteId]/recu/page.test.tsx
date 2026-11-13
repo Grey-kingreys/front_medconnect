@@ -127,6 +127,21 @@ afterEach(() => {
   cleanup();
 });
 
+describe("Reçu de vente : prescripteur", () => {
+  it("affiche la ligne Prescripteur seulement si le numéro est rempli", async () => {
+    getVente.mockResolvedValue(reponse({ ...VENTE, telephonePrescripteur: "+224 622 33 44 55" }));
+    const { unmount } = render(<RecuVentePage />);
+    const recu = await screen.findByRole("article", { name: "Reçu V-2026-0001" });
+    expect(within(recu).getByText("Prescripteur : +224 622 33 44 55")).toBeInTheDocument();
+    unmount();
+
+    getVente.mockResolvedValue(reponse({ ...VENTE, telephonePrescripteur: null }));
+    render(<RecuVentePage />);
+    const recuSans = await screen.findByRole("article", { name: "Reçu V-2026-0001" });
+    expect(within(recuSans).queryByText(/Prescripteur/)).toBeNull();
+  });
+});
+
 describe("Reçu de vente", () => {
   it("affiche le contenu du reçu", async () => {
     render(<RecuVentePage />);

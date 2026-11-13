@@ -81,7 +81,8 @@
       "total": { "type": "int", "min": 0, "max": 2147483647, "obligatoire": true },
       "clientNom": { "type": "string", "longueurMax": 100 },
       "clientTelephone": { "type": "string", "longueurMax": 30 },
-      "ordonnanceVerifiee": { "type": "boolean", "obligatoire": true }
+      "ordonnanceVerifiee": { "type": "boolean", "obligatoire": true },
+      "telephonePrescripteur": { "type": "string", "longueurMax": 30, "motif": "^\\+?[\\d\\s-]+$" }
     }
   },
   "exclusifs": {

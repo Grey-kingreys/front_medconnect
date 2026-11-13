@@ -63,6 +63,7 @@ const corpsVente = z
     clientNom: z.string().max(100).optional(),
     clientTelephone: z.string().max(30).optional(),
     ordonnanceVerifiee: z.boolean().optional(),
+    telephonePrescripteur: z.string().max(30).optional(),
   })
   .strict();
 
