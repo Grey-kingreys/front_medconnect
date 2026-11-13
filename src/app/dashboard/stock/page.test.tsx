@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
-import { getMyStock, listerLotsFiche, updateStockQuantite, type StockMedicament } from "@/lib/api_pharmacie";
+import { exporterStock, getMyStock, listerLotsFiche, updateStockQuantite, type StockMedicament } from "@/lib/api_pharmacie";
 import StockPage from "./page";
 
 // Droits du profil simulé : modifiés d'un test à l'autre
@@ -18,6 +18,7 @@ vi.mock("@/hooks/useAuth", () => {
 vi.mock("@/lib/api_pharmacie", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/lib/api_pharmacie")>()),
   getMyStock: vi.fn(),
+  exporterStock: vi.fn(),
   removeStockItem: vi.fn(),
   updateStockQuantite: vi.fn(),
   listerLotsFiche: vi.fn(),
@@ -334,5 +335,81 @@ describe("Page du stock", () => {
 
     expect(await screen.findByText("Doliprane")).toBeTruthy();
     expect(getMyStock).toHaveBeenCalledTimes(2);
+  });
+
+  describe("Export du stock", () => {
+    beforeEach(() => {
+      vi.mocked(exporterStock).mockResolvedValue({ blob: new Blob(["x"]), filename: "stock-demo-2027-01-01.xlsx" });
+      URL.createObjectURL = vi.fn(() => "blob:test");
+      URL.revokeObjectURL = vi.fn();
+    });
+
+    it("sans filtre, exporte tout le stock directement et déclenche le téléchargement", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40)]));
+      const clic = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      render(<StockPage />);
+      fireEvent.click(await screen.findByText("Exporter le stock"));
+      await waitFor(() => expect(exporterStock).toHaveBeenCalledWith("s1", {}));
+      await waitFor(() => expect(clic).toHaveBeenCalled());
+      clic.mockRestore();
+    });
+
+    it("avec un filtre actif, propose tout le stock ou l'affichage actuel et transmet le filtre et la recherche", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40)]));
+      const clic = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      render(<StockPage />);
+      fireEvent.click(await screen.findByRole("button", { name: "Rupture" }));
+      fireEvent.change(screen.getByPlaceholderText("Rechercher un médicament..."), { target: { value: "doli" } });
+      fireEvent.click(screen.getByText("Exporter le stock"));
+      expect(exporterStock).not.toHaveBeenCalled();
+      expect(screen.getByText("Tout le stock")).toBeTruthy();
+      fireEvent.click(screen.getByText("Seulement l'affichage actuel"));
+      await waitFor(() => expect(exporterStock).toHaveBeenCalledWith("s1", { filtre: "rupture", q: "doli" }));
+      clic.mockRestore();
+    });
+
+    it("ignore les espaces autour de la recherche : l'affichage et l'export correspondent", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40)]));
+      const clic = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(() => {});
+      render(<StockPage />);
+      fireEvent.change(await screen.findByPlaceholderText("Rechercher un médicament..."), { target: { value: "  doli  " } });
+      expect(screen.getByText("Doliprane")).toBeTruthy();
+      fireEvent.click(screen.getByText("Exporter le stock"));
+      fireEvent.click(screen.getByText("Seulement l'affichage actuel"));
+      await waitFor(() => expect(exporterStock).toHaveBeenCalledWith("s1", { filtre: "tous", q: "doli" }));
+      clic.mockRestore();
+    });
+
+    it("ferme le menu sur Échap en rendant le focus au bouton, et sur un clic extérieur", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40)]));
+      render(<StockPage />);
+      fireEvent.click(await screen.findByRole("button", { name: "Rupture" }));
+      const bouton = screen.getByText("Exporter le stock").closest("button") as HTMLButtonElement;
+      fireEvent.click(bouton);
+      expect(screen.getByRole("menu")).toBeTruthy();
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(screen.queryByRole("menu")).toBeNull();
+      expect(document.activeElement).toBe(bouton);
+      fireEvent.click(bouton);
+      expect(screen.getByRole("menu")).toBeTruthy();
+      fireEvent.mouseDown(document.body);
+      expect(screen.queryByRole("menu")).toBeNull();
+    });
+
+    it("affiche un message humain en cas d'échec, sans alert()", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40)]));
+      vi.mocked(exporterStock).mockRejectedValue(new ApiError("Erreur interne", 500));
+      render(<StockPage />);
+      fireEvent.click(await screen.findByText("Exporter le stock"));
+      expect((await screen.findByRole("alert")).textContent).toContain("Erreur interne");
+    });
+
+    it("hors ligne, affiche « Cette action demande une connexion. »", async () => {
+      vi.mocked(getMyStock).mockResolvedValue(reponse([doliprane(40)]));
+      vi.mocked(exporterStock).mockRejectedValue(new ApiError("Vous semblez hors connexion.", 0));
+      render(<StockPage />);
+      fireEvent.click(await screen.findByText("Exporter le stock"));
+      expect((await screen.findByRole("alert")).textContent).toBe("Cette action demande une connexion.");
+    });
   });
 });

@@ -276,6 +276,20 @@ const corpsImport = (fichier: File, mode?: ModeImportStock) => {
   return formulaire;
 };
 
+export type FiltreExportStock = "tous" | "alertes" | "rupture" | "qualifier";
+
+/** Exporte le stock en Excel, au format du modèle d'import ; renvoie le contenu et le nom du fichier. */
+export async function exporterStock(structureId: string, options: { filtre?: FiltreExportStock; q?: string } = {}) {
+  const params = new URLSearchParams();
+  if (options.filtre && options.filtre !== "tous") params.set("filtre", options.filtre);
+  if (options.q?.trim()) params.set("q", options.q.trim());
+  const requete = params.toString();
+  const { blob, filename } = await authDownload(
+    `/pharmacie/stock/${encodeURIComponent(structureId)}/export${requete ? `?${requete}` : ""}`,
+  );
+  return { blob, filename: filename ?? "stock.xlsx" };
+}
+
 /** Télécharge le modèle Excel à remplir ; renvoie le contenu et le nom du fichier. */
 export async function telechargerModeleImportStock(structureId: string, mode: ModeImportStock) {
   const { blob, filename } = await authDownload(`/pharmacie/stock/${structureId}/import/modele?mode=${mode}`);
