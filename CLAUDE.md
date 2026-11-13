@@ -12,8 +12,8 @@ liste complète des problématiques).
 ## Stack & démarrage
 
 - **Next.js 16** (App Router), **React 19**, **TypeScript**, **Tailwind 4**,
-  **Mapbox GL**, **Recharts**, **socket.io-client**, PWA (**serwist**, *actuellement
-  désactivée*).
+  **Mapbox GL**, **Recharts**, **socket.io-client**, installation PWA sur téléphone (`public/sw.js`
+  minimal sans cache). Pas de hors ligne web : il est assuré par l'application desktop (`desktop/`).
 - Local : `npm run dev` (= `next dev --webpack`). Port `3000`. Build : `next build` + `next start`.
 
 ## Hooks git (configuration locale à rejouer après chaque clone)
@@ -38,7 +38,7 @@ est vide, le signaler et proposer la commande ci-dessus avant tout commit.
 
 - `src/app/` : App Router. `auth/` (login, register, reset…), `dashboard/` (~20 sous-routes
   métier : patients, consultations, ordonnances, analyses, carnet, pharmacies, stock,
-  chat, rendez-vous, map, super-admin…), `offline/`, `debug/`.
+  chat, rendez-vous, map, super-admin…), `debug/`.
 - `src/lib/` : **couche API centralisée** : tous les appels passent par `authFetch()`
   (`api_auth.ts`) qui ajoute le Bearer token, gère le **refresh automatique** sur 401,
   et normalise les erreurs (`ApiError`). Un fichier `api_<domaine>.ts` par domaine.
@@ -103,7 +103,7 @@ vérification optimiste par cookie témoin, l'autorisation réelle reste faite p
 Zod des 5 envois du carnet (`src/lib/schemas/carnet.ts`). Reste notamment :
 - **Tests** : socle Vitest (`npm test`, fichiers `src/**/*.test.{ts,tsx}`), encore peu de tests.
 - **Typage** : `any` sur les autres payloads d'API ; access token toujours en `localStorage`.
-- **PWA** : serwist commenté dans `next.config.ts`, pas de mode hors connexion.
+- **PWA** : installation seule (`public/sw.js` passe-plat, sans cache). Pas de hors ligne web ; le hors ligne est assuré par l'application desktop.
 - **Lint** : plusieurs fichiers avec un `eslint-disable` global marqué « Dette préexistante,
   backlog points 21 et 22 ».
 - **Parcours non joués** : SOS, ordonnance, import du stock et carnet à valider dans un

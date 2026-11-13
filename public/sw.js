@@ -5,9 +5,8 @@
  * l'écran d'accueil) que si la page contrôle un service worker déclarant un
  * gestionnaire `fetch`. Ce fichier ne sert qu'à cela.
  *
- * ⚠️ NE RIEN METTRE EN CACHE ICI. La PWA hors-ligne (serwist) reste désactivée
- * (cf. next.config.ts) : sa version précédente provoquait une boucle de
- * rechargement en développement, et une application mobile native est prévue.
+ * ⚠️ NE RIEN METTRE EN CACHE ICI. Aucun hors ligne sur le web : il est assuré par
+ * l'application desktop.
  * Ce fichier remplace ce build serwist obsolète, qui restait servi depuis
  * /public et que le layout devait désinscrire à chaque chargement de page.
  */
