@@ -12,6 +12,7 @@ import {
   getMyStock,
   listerFournisseurs,
   type CorpsReception,
+  type EnteteFactureDemandee,
   type Fournisseur,
   type LigneReceptionDemandee,
   type Reception,
@@ -19,28 +20,51 @@ import {
 } from "@/lib/api_pharmacie";
 import { ApiError } from "@/lib/api_auth";
 import { LIBELLES_UNITE_MINIMALE, deOuD } from "@/lib/caisse/regles/quantites";
+import { controlerLigne, controlerSomme, lireMontant, lireTauxTva } from "@/lib/facture_fournisseur";
+import { formaterGNF } from "@/lib/format_gnf";
 import { afficherDatePeremption, lireDatePeremption } from "@/lib/date_peremption";
 import { champsErreur, codeErreur, detailsErreur, estErreurReseau } from "@/lib/erreurs_api";
 import {
   ALERTE_ATTENTION,
   ALERTE_ERREUR,
-  BOUTON_ICONE,
   BOUTON_PRIMAIRE,
   BOUTON_SECONDAIRE,
   CARTE,
   CHAMP,
   FOCUS,
-  POLICE_TITRE,
 } from "@/components/pharmacie/classes";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
+import { ui } from "@/theme/ui";
 import { jourConakry } from "../../ventes/affichage";
 import { rechercherDansStock } from "../../vente/panier";
 
-const CHAMP_INVALIDE = CHAMP.replace("border-slate-200 dark:border-slate-800", "border-rose-500 dark:border-rose-500");
+const CHAMP_INVALIDE = CHAMP.replace("border-slate-300", "border-rose-500").replace("dark:border-slate-700", "dark:border-rose-500");
 // Quantité : largeur fixe qui ne se réduit jamais (6 chiffres tiennent), chiffres alignés à droite.
-const CHAMP_QUANTITE = CHAMP.replace("w-full px-4", "w-20 shrink-0 px-3 text-right");
-const CHAMP_QUANTITE_INVALIDE = CHAMP_INVALIDE.replace("w-full px-4", "w-20 shrink-0 px-3 text-right");
-const SELECT_UNITE = `px-3 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm text-slate-900 dark:text-white disabled:opacity-60 ${FOCUS}`;
+// Champs compacts du tableau (une ligne de facture : hauteur réduite, texte petit).
+const compact = (classes: string) =>
+  classes.replace("h-mc-controle ", "h-mc-controle-petit ").replace("text-mc-normal", "text-mc-petit").replace("px-3", "px-2");
+const CHAMP_PETIT = compact(CHAMP);
+const CHAMP_PETIT_INVALIDE = compact(CHAMP_INVALIDE);
+const CHAMP_QUANTITE = CHAMP_PETIT.replace("w-full ", "w-20 shrink-0 text-right tabular-nums ");
+const CHAMP_QUANTITE_INVALIDE = CHAMP_PETIT_INVALIDE.replace("w-full ", "w-20 shrink-0 text-right tabular-nums ");
+// Montants : alignés à droite, chiffres de largeur fixe.
+const CHAMP_NOMBRE = CHAMP_PETIT.replace("w-full ", "w-full text-right tabular-nums ");
+const CHAMP_NOMBRE_INVALIDE = CHAMP_PETIT_INVALIDE.replace("w-full ", "w-full text-right tabular-nums ");
+const SELECT_UNITE = `h-mc-controle-petit px-2 rounded-mc-moyen border border-slate-300 bg-white text-mc-petit text-slate-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 disabled:opacity-60 ${FOCUS}`;
+// En-têtes serrés comme sur la facture papier
+const ENTETE = ui.celluleEnteteSerree;
+const CELLULE = "px-2 py-1.5";
+
+// Filtres de saisie : les lettres ne peuvent pas entrer dans les champs chiffrés.
+// Montant : chiffres et séparateurs de milliers (espace, point, virgule), comme sur la facture.
+const filtrerMontant = (v: string) => v.replace(/[^\d\s.,  ]/g, "");
+// Quantité : chiffres seulement.
+const filtrerEntier = (v: string) => v.replace(/\D/g, "");
+// Péremption : chiffres et séparateurs de date.
+const filtrerDate = (v: string) => v.replace(/[^\d/.\-\s]/g, "");
+const CHAMPS_ENTIERS: readonly string[] = ["qteCommandee", "colisage"];
+// Nombre de colonnes du tableau des lignes (pour les rangées qui occupent toute la largeur).
+const COLONNES = 13;
 const ICONE = "w-4 h-4 text-slate-600 dark:text-slate-400";
 
 const LIGNES_MAX = 200;
@@ -59,8 +83,29 @@ const MSG_CONFIRMER_MODIFICATION =
   "Avant de modifier, vérifiez dans la liste des réceptions que cette livraison n'a pas déjà été enregistrée. Continuer ?";
 const MSG_PEREMPTION_REFUSEE = "Vérifiez cette date de péremption.";
 
-type Champ = "medicament" | "quantite" | "peremption" | "lot" | "cout";
-const ORDRE_CHAMPS: readonly Champ[] = ["medicament", "quantite", "peremption", "lot", "cout"];
+type Champ =
+  | "medicament"
+  | "quantite"
+  | "peremption"
+  | "lot"
+  | "cout"
+  | "qteCommandee"
+  | "prixPublic"
+  | "tauxTva"
+  | "montantLigne"
+  | "colisage";
+const ORDRE_CHAMPS: readonly Champ[] = [
+  "medicament",
+  "quantite",
+  "peremption",
+  "lot",
+  "cout",
+  "qteCommandee",
+  "prixPublic",
+  "tauxTva",
+  "montantLigne",
+  "colisage",
+];
 type ErreursLigne = Partial<Record<Champ, string>>;
 
 interface LigneSaisie {
@@ -75,7 +120,70 @@ interface LigneSaisie {
   sansDate: boolean;
   lot: string;
   cout: string;
+  /** Facture fournisseur : tous facultatifs, saisis en texte. */
+  codeFournisseur: string;
+  codeBarres: string;
+  qteCommandee: string;
+  prixPublic: string;
+  codeTva: string;
+  tauxTva: string;
+  montantLigne: string;
+  colisage: string;
+  tableau: string;
+  bonPreparation: string;
 }
+
+const CHAMPS_TEXTE_DETAILS = [
+  "codeFournisseur",
+  "codeBarres",
+  "qteCommandee",
+  "prixPublic",
+  "codeTva",
+  "tauxTva",
+  "montantLigne",
+  "colisage",
+  "tableau",
+  "bonPreparation",
+] as const;
+
+interface EnteteSaisie {
+  numeroFacture: string;
+  referenceCommande: string;
+  dateFacture: string;
+  montantHT: string;
+  totalTva: string;
+  montantTTC: string;
+  netAPayer: string;
+}
+
+const enteteVide: EnteteSaisie = {
+  numeroFacture: "",
+  referenceCommande: "",
+  dateFacture: "",
+  montantHT: "",
+  totalTva: "",
+  montantTTC: "",
+  netAPayer: "",
+};
+
+const MONTANTS_ENTETE = ["montantHT", "totalTva", "montantTTC", "netAPayer"] as const;
+const LIBELLES_ENTETE: Record<keyof EnteteSaisie, string> = {
+  numeroFacture: "N° de facture",
+  referenceCommande: "Référence de commande",
+  dateFacture: "Date de facture",
+  montantHT: "Montant HT",
+  totalTva: "Total TVA",
+  montantTTC: "Montant TTC",
+  netAPayer: "Net à payer",
+};
+// Libellés du pied de facture, comme sur la facture papier.
+const LIBELLES_PIED: Record<(typeof MONTANTS_ENTETE)[number], string> = {
+  montantHT: "Montant H.T cumulé",
+  totalTva: "Total TVA",
+  montantTTC: "TTC",
+  netAPayer: "Net à payer",
+};
+const MSG_MONTANT = "Indiquez un montant entier en GNF, par exemple 95 630.";
 
 const ligneVide = (cle: number): LigneSaisie => ({
   cle,
@@ -88,6 +196,16 @@ const ligneVide = (cle: number): LigneSaisie => ({
   sansDate: false,
   lot: "",
   cout: "",
+  codeFournisseur: "",
+  codeBarres: "",
+  qteCommandee: "",
+  prixPublic: "",
+  codeTva: "",
+  tauxTva: "",
+  montantLigne: "",
+  colisage: "",
+  tableau: "",
+  bonPreparation: "",
 });
 
 const estVide = (l: LigneSaisie) =>
@@ -97,7 +215,8 @@ const estVide = (l: LigneSaisie) =>
   l.peremption.trim() === "" &&
   !l.sansDate &&
   l.lot.trim() === "" &&
-  l.cout.trim() === "";
+  l.cout.trim() === "" &&
+  CHAMPS_TEXTE_DETAILS.every((c) => l[c].trim() === "");
 
 const entier = (texte: string): number | null => {
   const net = texte.replace(/\s/g, "");
@@ -114,7 +233,23 @@ const CHAMP_SERVEUR: Record<string, Champ> = {
   sansPeremption: "peremption",
   numeroLot: "lot",
   coutAchatBoite: "cout",
+  quantiteCommandee: "qteCommandee",
+  prixPublicBoite: "prixPublic",
+  tauxTvaPourMille: "tauxTva",
+  montantHTLigne: "montantLigne",
+  colisage: "colisage",
 };
+
+// Champs d'en-tête que le serveur peut refuser, vers leur clé de saisie.
+const ENTETE_SERVEUR: readonly (keyof EnteteSaisie)[] = [
+  "numeroFacture",
+  "referenceCommande",
+  "dateFacture",
+  "montantHT",
+  "totalTva",
+  "montantTTC",
+  "netAPayer",
+];
 
 const MESSAGE_CHAMP_SERVEUR: Record<Champ, string> = {
   medicament: "Vérifiez ce médicament.",
@@ -122,7 +257,51 @@ const MESSAGE_CHAMP_SERVEUR: Record<Champ, string> = {
   peremption: MSG_PEREMPTION_REFUSEE,
   lot: "Vérifiez ce numéro de lot.",
   cout: "Vérifiez ce coût.",
+  qteCommandee: "Vérifiez cette quantité commandée.",
+  prixPublic: "Vérifiez ce prix public.",
+  tauxTva: "Vérifiez ce taux de TVA.",
+  montantLigne: "Vérifiez ce montant.",
+  colisage: "Vérifiez ce colisage.",
 };
+
+interface DetailLigne {
+  cle: (typeof CHAMPS_TEXTE_DETAILS)[number];
+  libelle: string;
+  champ?: Champ;
+  numerique?: boolean;
+  max?: number;
+}
+
+const DETAILS_LIGNE: readonly DetailLigne[] = [
+  { cle: "codeFournisseur", libelle: "Code fournisseur", max: 64 },
+  { cle: "qteCommandee", libelle: "Qté commandée", champ: "qteCommandee", numerique: true },
+  { cle: "prixPublic", libelle: "Prix public", champ: "prixPublic", numerique: true },
+  { cle: "tauxTva", libelle: "Taux TVA (%)", champ: "tauxTva", numerique: true },
+  { cle: "montantLigne", libelle: "Montant HT", champ: "montantLigne", numerique: true },
+  { cle: "colisage", libelle: "Colisage", champ: "colisage", numerique: true },
+  { cle: "tableau", libelle: "Tableau (TB)", max: 20 },
+];
+
+/** Écarts non bloquants d'une ligne : montant, quantité livrée et quantité commandée (comptées en boîtes). */
+function avertissementsDeLigne(l: LigneSaisie, enBoites: boolean): string[] {
+  const livree = enBoites && l.quantite.trim() !== "" ? entier(l.quantite) : null;
+  const res = controlerLigne({
+    quantiteLivree: livree,
+    quantiteCommandee: l.qteCommandee.trim() === "" ? null : lireMontant(l.qteCommandee),
+    prixUnitaire: l.cout.trim() === "" ? null : lireMontant(l.cout),
+    montantHTLigne: l.montantLigne.trim() === "" ? null : lireMontant(l.montantLigne),
+  });
+  const messages: string[] = [];
+  if (res.montant)
+    messages.push(
+      `Le montant HT saisi (${formaterGNF(res.montant.saisi)}) est différent de la quantité livrée multipliée par le prix unitaire (${formaterGNF(res.montant.attendu)}). Vérifiez votre saisie : l'enregistrement reste possible.`,
+    );
+  if (res.quantite)
+    messages.push(
+      `La quantité livrée (${res.quantite.livree}) est différente de la quantité commandée (${res.quantite.commandee}). C'est possible si le fournisseur a livré moins ou plus.`,
+    );
+  return messages;
+}
 
 const libelleBoites = (n: number) => `${n} ${n > 1 ? "boîtes" : "boîte"}`;
 
@@ -142,8 +321,9 @@ export default function NouvelleReceptionPage() {
 
   const [cleReception, setCleReception] = useState(() => nouvelleCleIdempotence());
   const [fournisseurId, setFournisseurId] = useState("");
-  const [reference, setReference] = useState("");
   const [jour, setJour] = useState(() => jourConakry(new Date()));
+  const [entete, setEntete] = useState<EnteteSaisie>(enteteVide);
+  const [erreursEntete, setErreursEntete] = useState<Partial<Record<keyof EnteteSaisie, string>>>({});
   const [lignes, setLignes] = useState<LigneSaisie[]>([ligneVide(1)]);
   const [erreurs, setErreurs] = useState<Record<number, ErreursLigne>>({});
 
@@ -174,7 +354,8 @@ export default function NouvelleReceptionPage() {
   const titreSucces = useRef<HTMLHeadingElement>(null);
 
   // Donne le focus au champ `<cle de ligne>:<champ>` du tableau (jamais appelé pendant le rendu).
-  const focaliser = (cle: string) => zoneLignes.current?.querySelector<HTMLElement>(`[data-champ="${cle}"]`)?.focus();
+  const focaliser = (cle: string) =>
+    document.querySelector<HTMLElement>(`[data-champ="${cle}"]`)?.focus();
 
   // Saisie verrouillée pendant un envoi et tant que son résultat est inconnu (D688).
   const verrouille = envoi || reessayable;
@@ -284,12 +465,12 @@ export default function NouvelleReceptionPage() {
     }
   };
 
-  // Entrée dans Quantité, Péremption ou Lot : champ suivant de la ligne (saisie de facture au clavier, aucun envoi).
-  const surToucheChamp = (e: KeyboardEvent<HTMLInputElement>, l: LigneSaisie, champ: "quantite" | "peremption" | "lot") => {
+  // Entrée dans Quantité ou Péremption : champ suivant de la ligne (saisie de facture au clavier, aucun envoi).
+  const surToucheChamp = (e: KeyboardEvent<HTMLInputElement>, l: LigneSaisie, champ: "quantite" | "peremption") => {
     if (e.key !== "Enter") return;
     e.preventDefault();
     if (verrouille) return;
-    const suivant: Champ = champ === "quantite" ? (l.sansDate ? "lot" : "peremption") : champ === "peremption" ? "lot" : "cout";
+    const suivant: Champ = champ === "quantite" ? (l.sansDate ? "cout" : "peremption") : "cout";
     focaliser(`${l.cle}:${suivant}`);
   };
 
@@ -360,6 +541,11 @@ export default function NouvelleReceptionPage() {
 
     if (code === "VALIDATION") {
       for (const { champ } of champsErreur(err)) {
+        const entetePossible = ENTETE_SERVEUR.find((c) => c === champ);
+        if (entetePossible) {
+          setErreursEntete((prev) => ({ ...prev, [entetePossible]: `Vérifiez ce champ : ${LIBELLES_ENTETE[entetePossible]}.` }));
+          continue;
+        }
         const m = /^lignes\.(\d+)\.(\w+)$/.exec(champ);
         if (!m) continue;
         const cible = CHAMP_SERVEUR[m[2]];
@@ -444,9 +630,41 @@ export default function NouvelleReceptionPage() {
       }
       if (l.lot.trim() !== "") ligne.numeroLot = l.lot.trim();
       if (l.cout.trim() !== "") {
-        const cout = entier(l.cout);
+        const cout = lireMontant(l.cout);
         if (cout === null) e.cout = "Le coût doit être un nombre entier de GNF.";
         else ligne.coutAchatBoite = cout;
+      }
+      // Facture fournisseur : champs facultatifs, jamais requis.
+      const texte = (v: string) => v.trim();
+      if (texte(l.codeFournisseur) !== "") ligne.codeArticleFournisseur = texte(l.codeFournisseur);
+      if (texte(l.codeBarres) !== "") ligne.codeBarres = texte(l.codeBarres);
+      if (texte(l.codeTva) !== "") ligne.codeTva = texte(l.codeTva);
+      if (texte(l.tableau) !== "") ligne.tableau = texte(l.tableau);
+      if (texte(l.bonPreparation) !== "") ligne.bonPreparation = texte(l.bonPreparation);
+      if (texte(l.qteCommandee) !== "") {
+        const v = lireMontant(l.qteCommandee);
+        if (v === null || v > BOITES_MAX) e.qteCommandee = "Indiquez un nombre entier de boîtes.";
+        else ligne.quantiteCommandee = v;
+      }
+      if (texte(l.colisage) !== "") {
+        const v = lireMontant(l.colisage);
+        if (v === null || v > BOITES_MAX) e.colisage = "Indiquez un nombre entier de boîtes par colis.";
+        else ligne.colisage = v;
+      }
+      if (texte(l.prixPublic) !== "") {
+        const v = lireMontant(l.prixPublic);
+        if (v === null) e.prixPublic = MSG_MONTANT;
+        else ligne.prixPublicBoite = v;
+      }
+      if (texte(l.montantLigne) !== "") {
+        const v = lireMontant(l.montantLigne);
+        if (v === null) e.montantLigne = MSG_MONTANT;
+        else ligne.montantHTLigne = v;
+      }
+      if (texte(l.tauxTva) !== "") {
+        const v = lireTauxTva(l.tauxTva);
+        if (v === null) e.tauxTva = "Indiquez un taux entre 0 et 100, par exemple 18.";
+        else ligne.tauxTvaPourMille = v;
       }
       if (Object.keys(e).length > 0) {
         nouvellesErreurs[l.cle] = e;
@@ -459,12 +677,33 @@ export default function NouvelleReceptionPage() {
       cles.push(l.cle);
     }
 
+    // En-tête de la facture : montants facultatifs.
+    const factureDemandee: EnteteFactureDemandee = {};
+    const erreursFact: Partial<Record<keyof EnteteSaisie, string>> = {};
+    if (entete.numeroFacture.trim() !== "") factureDemandee.numeroFacture = entete.numeroFacture.trim();
+    if (entete.referenceCommande.trim() !== "") factureDemandee.referenceCommande = entete.referenceCommande.trim();
+    if (entete.dateFacture !== "") factureDemandee.dateFacture = entete.dateFacture;
+    for (const c of MONTANTS_ENTETE) {
+      if (entete[c].trim() === "") continue;
+      const v = lireMontant(entete[c]);
+      if (v === null) erreursFact[c] = MSG_MONTANT;
+      else factureDemandee[c] = v;
+    }
+    setErreursEntete(erreursFact);
+    const premiereErreurEntete = ENTETE_SERVEUR.find((c) => erreursFact[c] !== undefined);
+
     setErreurs(nouvellesErreurs);
-    setLignes((prev) => prev.map((l) => ({ ...l, peremptionVue: l.peremptionVue || !estVide(l) })));
-    if (premier !== null) {
+    setLignes((prev) =>
+      prev.map((l) => ({ ...l, peremptionVue: l.peremptionVue || !estVide(l) })),
+    );
+    if (premier !== null || premiereErreurEntete) {
       setBandeau(MSG_COMPLETER);
       setBandeauLignes(true);
-      focaliser(premier);
+      if (premiereErreurEntete && premier === null) {
+        focusAFaire.current = `entete:${premiereErreurEntete}`;
+      } else if (premier !== null) {
+        focusAFaire.current = premier;
+      }
       return;
     }
 
@@ -472,7 +711,7 @@ export default function NouvelleReceptionPage() {
     const corps: CorpsReception = {
       id: cleReception,
       ...(fournisseurId !== "" ? { fournisseurId } : {}),
-      ...(reference.trim() !== "" ? { reference: reference.trim() } : {}),
+      ...factureDemandee,
       recueLe: effectif === aujourdhui ? new Date().toISOString() : `${effectif}T12:00:00.000Z`,
       lignes: demandees,
     };
@@ -492,22 +731,90 @@ export default function NouvelleReceptionPage() {
     setSucces(null);
     setCleReception(nouvelleCleIdempotence());
     setFournisseurId("");
-    setReference("");
     setJour(jourConakry(new Date()));
     setLignes([ligneVide(prochaineCle.current++)]);
     setErreurs({});
+    setEntete(enteteVide);
+    setErreursEntete({});
     setBandeau(null);
     setReessayable(false);
     setConfirmationModif(false);
     setEssai((n) => n + 1);
   };
 
+  // Champ de l'en-tête de la facture (numéro, date, référence).
+  const champEntete = (c: "numeroFacture" | "dateFacture" | "referenceCommande") => {
+    const estDate = c === "dateFacture";
+    const estTexte = c === "numeroFacture" || c === "referenceCommande";
+    const erreur = erreursEntete[c];
+    return (
+      <div key={c}>
+        <label htmlFor={`facture-${c}`} className={ui.label}>
+          {LIBELLES_ENTETE[c]}
+        </label>
+        <input
+          id={`facture-${c}`}
+          data-champ={`entete:${c}`}
+          type={estDate ? "date" : "text"}
+          inputMode={estDate || estTexte ? undefined : "numeric"}
+          maxLength={estTexte ? 64 : undefined}
+          value={entete[c]}
+          readOnly={verrouille}
+          aria-invalid={erreur ? true : undefined}
+          aria-describedby={erreur ? `erreur-facture-${c}` : undefined}
+          onChange={(ev) => {
+            setEntete((prev) => ({ ...prev, [c]: ev.target.value }));
+            if (erreur) setErreursEntete((prev) => ({ ...prev, [c]: undefined }));
+          }}
+          className={erreur ? CHAMP_INVALIDE : ui.champ}
+        />
+        {erreur && (
+          <p id={`erreur-facture-${c}`} className="mt-1 text-mc-normal text-rose-700 dark:text-rose-300">
+            {erreur}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  // Cellule de tableau pour un champ de la facture d'une ligne ; `nombre` aligne la saisie à droite.
+  const detail = (l: LigneSaisie, n: number, e: ErreursLigne, cle: (typeof CHAMPS_TEXTE_DETAILS)[number], nombre = false) => {
+    const d = DETAILS_LIGNE.find((x) => x.cle === cle)!;
+    const erreur = d.champ ? e[d.champ] : undefined;
+    return (
+      <>
+        <input
+          data-champ={d.champ ? `${l.cle}:${d.champ}` : undefined}
+          type="text"
+          inputMode={d.numerique ? "numeric" : undefined}
+          maxLength={d.numerique ? undefined : d.max}
+          aria-label={`${d.libelle}, ligne ${n}`}
+          aria-invalid={erreur ? true : undefined}
+          aria-describedby={erreur ? `erreur-${l.cle}-${d.cle}` : undefined}
+          value={l[d.cle]}
+          readOnly={verrouille}
+          onChange={(ev) => {
+            const brut = ev.target.value;
+            const valeur = !d.numerique ? brut : CHAMPS_ENTIERS.includes(d.cle) ? filtrerEntier(brut) : filtrerMontant(brut);
+            modifierLigne(l.cle, { [d.cle]: valeur } as Partial<LigneSaisie>, d.champ);
+          }}
+          className={nombre ? (erreur ? CHAMP_NOMBRE_INVALIDE : CHAMP_NOMBRE) : erreur ? CHAMP_PETIT_INVALIDE : CHAMP_PETIT}
+        />
+        {erreur && (
+          <p id={`erreur-${l.cle}-${d.cle}`} className="mt-1 text-mc-legende text-rose-700 dark:text-rose-300">
+            {erreur}
+          </p>
+        )}
+      </>
+    );
+  };
+
   const enTete = (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+      <h1 className={ui.titrePage}>
         Nouvelle réception
       </h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+      <p className={`${ui.texte.petit} mt-1`}>
         Recopiez la facture de votre fournisseur, une ligne par médicament.
       </p>
     </div>
@@ -515,7 +822,7 @@ export default function NouvelleReceptionPage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -527,7 +834,7 @@ export default function NouvelleReceptionPage() {
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Votre compte n&apos;est rattaché à aucune pharmacie. Adressez-vous à l&apos;administrateur de votre pharmacie.
           </p>
           <Link href="/dashboard" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -548,13 +855,12 @@ export default function NouvelleReceptionPage() {
           <h2
             ref={titreSucces}
             tabIndex={-1}
-            className="text-xl font-bold text-slate-900 dark:text-white focus:outline-none"
-            style={POLICE_TITRE}
+            className={`${ui.texte.section} focus:outline-none`}
           >
             {message}
           </h2>
           {reception.cree === false && (
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
               Cette réception était déjà enregistrée : rien n&apos;a été ajouté deux fois.
             </p>
           )}
@@ -587,7 +893,7 @@ export default function NouvelleReceptionPage() {
       <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
         {enTete}
         {erreurChargement === null ? (
-          <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+          <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
             <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
             Chargement du stock...
           </div>
@@ -598,6 +904,11 @@ export default function NouvelleReceptionPage() {
     );
   }
 
+  const lignesRemplies = lignes.filter((l) => !estVide(l));
+  const avertissementSomme = controlerSomme(
+    lignesRemplies.map((l) => (l.montantLigne.trim() === "" ? null : lireMontant(l.montantLigne))),
+    entete.montantHT.trim() === "" ? null : lireMontant(entete.montantHT),
+  );
   const lignesChoisies = lignes.filter((l) => l.stockId !== null);
   const totalBoites = lignes.reduce((somme, l) => {
     const n = entier(l.quantite);
@@ -608,13 +919,13 @@ export default function NouvelleReceptionPage() {
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       {enTete}
 
-      <section className={`${CARTE} space-y-4`} aria-labelledby="titre-livraison">
-        <h2 id="titre-livraison" className="text-lg font-semibold text-slate-900 dark:text-white" style={POLICE_TITRE}>
-          Livraison
+      <section className={`${ui.carte} space-y-4`} aria-labelledby="titre-livraison">
+        <h2 id="titre-livraison" className={ui.texte.section}>
+          Facture fournisseur
         </h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
           <div>
-            <label htmlFor="fournisseur" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+            <label htmlFor="fournisseur" className={ui.label}>
               Fournisseur
             </label>
             <select
@@ -622,7 +933,7 @@ export default function NouvelleReceptionPage() {
               value={fournisseurId}
               disabled={verrouille}
               onChange={(e) => setFournisseurId(e.target.value)}
-              className={`${CHAMP} disabled:opacity-60`}
+              className={`${ui.champ} disabled:opacity-60`}
             >
               <option value="">Non renseigné</option>
               {fournisseurs.map((f) => (
@@ -636,27 +947,16 @@ export default function NouvelleReceptionPage() {
               onClick={() => setNouveauOuvert((o) => !o)}
               disabled={verrouille}
               aria-expanded={nouveauOuvert}
-              className={`${BOUTON_SECONDAIRE} mt-2 disabled:opacity-60`}
+              className={`${ui.bouton.secondaire} mt-2 disabled:opacity-60`}
             >
               Nouveau fournisseur
             </button>
           </div>
+          {champEntete("numeroFacture")}
+          {champEntete("dateFacture")}
+          {champEntete("referenceCommande")}
           <div>
-            <label htmlFor="reference" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
-              Numéro du bon de livraison ou de la facture (facultatif)
-            </label>
-            <input
-              id="reference"
-              type="text"
-              maxLength={100}
-              value={reference}
-              readOnly={verrouille}
-              onChange={(e) => setReference(e.target.value)}
-              className={CHAMP}
-            />
-          </div>
-          <div>
-            <label htmlFor="date-reception" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+            <label htmlFor="date-reception" className={ui.label}>
               Date de réception
             </label>
             <input
@@ -666,7 +966,7 @@ export default function NouvelleReceptionPage() {
               value={jour}
               disabled={verrouille}
               onChange={(e) => setJour(e.target.value)}
-              className={CHAMP}
+              className={ui.champ}
             />
           </div>
         </div>
@@ -674,7 +974,7 @@ export default function NouvelleReceptionPage() {
         {nouveauOuvert && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
             <div>
-              <label htmlFor="nom-fournisseur" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="nom-fournisseur" className={ui.label}>
                 Nom du fournisseur
               </label>
               <input
@@ -690,11 +990,11 @@ export default function NouvelleReceptionPage() {
                     enregistrerFournisseur();
                   }
                 }}
-                className={CHAMP}
+                className={ui.champ}
               />
             </div>
             <div>
-              <label htmlFor="tel-fournisseur" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="tel-fournisseur" className={ui.label}>
                 Téléphone (facultatif)
               </label>
               <input
@@ -711,7 +1011,7 @@ export default function NouvelleReceptionPage() {
                     enregistrerFournisseur();
                   }
                 }}
-                className={CHAMP}
+                className={ui.champ}
               />
             </div>
             <div>
@@ -719,13 +1019,13 @@ export default function NouvelleReceptionPage() {
                 type="button"
                 onClick={enregistrerFournisseur}
                 disabled={fournisseurEnCours || verrouille}
-                className={BOUTON_PRIMAIRE}
+                className={ui.bouton.primaire}
               >
                 Enregistrer le fournisseur
               </button>
             </div>
             {erreurFournisseur && (
-              <p role="alert" className="md:col-span-3 text-sm text-rose-700 dark:text-rose-300">
+              <p role="alert" className="md:col-span-3 text-mc-normal text-rose-700 dark:text-rose-300">
                 {erreurFournisseur}
               </p>
             )}
@@ -733,32 +1033,39 @@ export default function NouvelleReceptionPage() {
         )}
       </section>
 
-      <section className={`${CARTE} space-y-4`} aria-labelledby="titre-lignes">
-        <h2 id="titre-lignes" className="text-lg font-semibold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+      <section className={`${ui.carte} space-y-4`} aria-labelledby="titre-lignes">
+        <h2 id="titre-lignes" className={ui.texte.section}>
           Médicaments reçus
         </h2>
         {bandeau && bandeauLignes && (
-          <div role="alert" className={`${ALERTE_ERREUR} items-start`}>
+          <div role="alert" className={`${ui.alerte.erreur} items-start`}>
             <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
             <p>{bandeau}</p>
           </div>
         )}
         {erreurChargement && (
-          <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+          <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300">
             Les fiches n&apos;ont pas pu être actualisées. Vérifiez votre connexion puis réessayez.
           </p>
         )}
         <div ref={zoneLignes} className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className={`${ui.tableau} table-fixed min-w-324`}>
             <caption className="sr-only">Une ligne par médicament de la facture</caption>
             <thead>
-              <tr className="text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-48">Médicament</th>
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-52">Quantité</th>
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-32">Péremption</th>
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-28">Lot (facultatif)</th>
-                <th scope="col" className="py-2 pr-3 font-semibold min-w-32">Coût d&apos;achat d&apos;une boîte (GNF, facultatif)</th>
-                <th scope="col" className="py-2 font-semibold"><span className="sr-only">Actions</span></th>
+              <tr className={`${ui.enteteTableau} align-bottom`}>
+                <th scope="col" className={`${ENTETE} w-10 text-right`}>Ligne</th>
+                <th scope="col" className={`${ENTETE} w-24`}>Code</th>
+                <th scope="col" className={`${ENTETE} sticky left-0 z-10 w-60 bg-slate-50 dark:bg-slate-800`}>Désignation des produits</th>
+                <th scope="col" className={`${ENTETE} w-28`}>Péremption<br />(MM/AA)</th>
+                <th scope="col" className={`${ENTETE} w-14`}>TB</th>
+                <th scope="col" className={`${ENTETE} w-28 text-right`}>Prix<br />public</th>
+                <th scope="col" className={`${ENTETE} w-16 text-right`}>TVA</th>
+                <th scope="col" className={`${ENTETE} w-24 text-right`}>Qté<br />commandée</th>
+                <th scope="col" className={`${ENTETE} w-28`}>Qté<br />livrée</th>
+                <th scope="col" className={`${ENTETE} w-28 text-right`}>Prix<br />unitaire</th>
+                <th scope="col" className={`${ENTETE} w-32 text-right`}>Montant<br />HT</th>
+                <th scope="col" className={`${ENTETE} w-22 text-right`}>Colisage</th>
+                <th scope="col" className={`${ENTETE} w-10`}><span className="sr-only">Actions</span></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -775,10 +1082,13 @@ export default function NouvelleReceptionPage() {
                 const messagePeremption = e.peremption ?? (lecture && !lecture.ok ? lecture.message : null);
                 const datePeremptionLue = lecture && lecture.ok ? afficherDatePeremption(lecture.jour) : null;
                 const idListe = `suggestions-${l.cle}`;
+                const avertissements = avertissementsDeLigne(l, !l.enUnites);
                 return (
                   <Fragment key={l.cle}>
                     <tr className="align-top">
-                      <td className="py-3 pr-3">
+                      <td className={`${CELLULE} text-right tabular-nums text-slate-600 dark:text-slate-400`}>{n}</td>
+                      <td className={CELLULE}>{detail(l, n, e, "codeFournisseur")}</td>
+                      <td className={`${CELLULE} sticky left-0 z-10 bg-white dark:bg-slate-900`}>
                         <input
                           data-champ={`${l.cle}:medicament`}
                           type="text"
@@ -802,14 +1112,14 @@ export default function NouvelleReceptionPage() {
                           onFocus={() => setLigneActive(l.cle)}
                           onBlur={() => setLigneActive((a) => (a === l.cle ? null : a))}
                           onKeyDown={(ev) => surToucheMedicament(ev, l)}
-                          className={e.medicament ? CHAMP_INVALIDE : CHAMP}
+                          className={e.medicament ? CHAMP_PETIT_INVALIDE : CHAMP_PETIT}
                         />
                         {liste.length > 0 && (
                           <ul
                             id={idListe}
                             role="listbox"
                             aria-label={`Médicaments trouvés, ligne ${n}`}
-                            className="mt-1 max-h-56 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800"
+                            className="mt-1 max-h-56 overflow-y-auto rounded-mc-moyen border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-mc divide-y divide-slate-200 dark:divide-slate-800"
                           >
                             {liste.map((s, i) => (
                               <li
@@ -821,15 +1131,15 @@ export default function NouvelleReceptionPage() {
                                   ev.preventDefault();
                                   choisir(l.cle, s);
                                 }}
-                                className={`px-4 py-2 cursor-pointer text-sm text-slate-900 dark:text-white ${
+                                className={`px-3 py-2 cursor-pointer text-mc-petit text-slate-900 dark:text-white ${
                                   i === Math.min(indexSuggestion, liste.length - 1)
                                     ? "bg-primary-50 dark:bg-primary-500/15"
                                     : "hover:bg-slate-100 dark:hover:bg-slate-800"
                                 }`}
                               >
-                                <span className="font-bold">{s.medicament.nom}</span>
+                                <span className="font-semibold">{s.medicament.nom}</span>
                                 {s.medicament.nomGenerique && (
-                                  <span className="block text-xs text-slate-600 dark:text-slate-400">
+                                  <span className="block text-mc-legende text-slate-600 dark:text-slate-400">
                                     {s.medicament.nomGenerique}
                                   </span>
                                 )}
@@ -838,18 +1148,63 @@ export default function NouvelleReceptionPage() {
                           </ul>
                         )}
                         {aucun && (
-                          <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+                          <p className="mt-1 text-mc-legende text-slate-700 dark:text-slate-300">
                             Aucun médicament ne correspond à « {l.texte.trim()} ».
                           </p>
                         )}
                         {e.medicament && (
-                          <p id={`erreur-${l.cle}-medicament`} className="mt-1 text-sm text-rose-700 dark:text-rose-300">
+                          <p id={`erreur-${l.cle}-medicament`} className="mt-1 text-mc-legende text-rose-700 dark:text-rose-300">
                             {e.medicament}
                           </p>
                         )}
                       </td>
-                      <td className="py-3 pr-3">
-                        <div className="flex items-start gap-2">
+                      <td className={CELLULE}>
+                        <div>
+                          <input
+                            data-champ={`${l.cle}:peremption`}
+                            type="text"
+                            aria-label={`Péremption, ligne ${n}`}
+                            aria-invalid={messagePeremption ? true : undefined}
+                            aria-describedby={messagePeremption || datePeremptionLue ? `info-${l.cle}-peremption` : undefined}
+                            placeholder="MM/AA"
+                            value={l.peremption}
+                            readOnly={verrouille}
+                            disabled={l.sansDate}
+                            onChange={(ev) => modifierLigne(l.cle, { peremption: filtrerDate(ev.target.value), peremptionVue: false }, "peremption")}
+                            onBlur={() => modifierLigne(l.cle, { peremptionVue: true })}
+                            onKeyDown={(ev) => surToucheChamp(ev, l, "peremption")}
+                            className={`${messagePeremption ? CHAMP_PETIT_INVALIDE : CHAMP_PETIT} disabled:opacity-60`}
+                          />
+                          {messagePeremption ? (
+                            <p id={`info-${l.cle}-peremption`} className="mt-1 text-mc-legende text-rose-700 dark:text-rose-300">
+                              {messagePeremption}
+                            </p>
+                          ) : (
+                            datePeremptionLue && (
+                              <p id={`info-${l.cle}-peremption`} className="mt-1 text-mc-legende text-slate-700 dark:text-slate-300">
+                                {datePeremptionLue}
+                              </p>
+                            )
+                          )}
+                          <label className="mt-1 flex items-center gap-2 whitespace-nowrap text-mc-legende text-slate-800 dark:text-slate-200">
+                            <input
+                              type="checkbox"
+                              aria-label={`Sans date, ligne ${n}`}
+                              checked={l.sansDate}
+                              disabled={verrouille}
+                              onChange={(ev) => modifierLigne(l.cle, { sansDate: ev.target.checked }, "peremption")}
+                              className={`w-4 h-4 rounded-mc-petit accent-primary-600 ${FOCUS}`}
+                            />
+                            Sans date
+                          </label>
+                        </div>
+                      </td>
+                      <td className={CELLULE}>{detail(l, n, e, "tableau")}</td>
+                      <td className={CELLULE}>{detail(l, n, e, "prixPublic", true)}</td>
+                      <td className={CELLULE}>{detail(l, n, e, "tauxTva", true)}</td>
+                      <td className={CELLULE}>{detail(l, n, e, "qteCommandee", true)}</td>
+                      <td className={CELLULE}>
+                        <div className="flex flex-col items-end gap-1">
                           <input
                             data-champ={`${l.cle}:quantite`}
                             type="text"
@@ -859,7 +1214,7 @@ export default function NouvelleReceptionPage() {
                             aria-describedby={e.quantite ? `erreur-${l.cle}-quantite` : undefined}
                             value={l.quantite}
                             readOnly={verrouille}
-                            onChange={(ev) => modifierLigne(l.cle, { quantite: ev.target.value }, "quantite")}
+                            onChange={(ev) => modifierLigne(l.cle, { quantite: filtrerEntier(ev.target.value) }, "quantite")}
                             onKeyDown={(ev) => surToucheChamp(ev, l, "quantite")}
                             className={e.quantite ? CHAMP_QUANTITE_INVALIDE : CHAMP_QUANTITE}
                           />
@@ -875,75 +1230,16 @@ export default function NouvelleReceptionPage() {
                               <option value="UNITE">{`en ${unite.pluriel}`}</option>
                             </select>
                           ) : (
-                            <span className="py-3 text-sm text-slate-700 dark:text-slate-300">boîtes</span>
+                            <span className="py-1.5 text-mc-petit text-slate-700 dark:text-slate-300">boîtes</span>
                           )}
                         </div>
                         {e.quantite && (
-                          <p id={`erreur-${l.cle}-quantite`} className="mt-1 text-sm text-rose-700 dark:text-rose-300">
+                          <p id={`erreur-${l.cle}-quantite`} className="mt-1 text-mc-legende text-rose-700 dark:text-rose-300">
                             {e.quantite}
                           </p>
                         )}
                       </td>
-                      <td className="py-3 pr-3">
-                        <input
-                          data-champ={`${l.cle}:peremption`}
-                          type="text"
-                          aria-label={`Péremption, ligne ${n}`}
-                          aria-invalid={messagePeremption ? true : undefined}
-                          aria-describedby={messagePeremption || datePeremptionLue ? `info-${l.cle}-peremption` : undefined}
-                          placeholder="06/28"
-                          value={l.peremption}
-                          readOnly={verrouille}
-                          disabled={l.sansDate}
-                          onChange={(ev) => modifierLigne(l.cle, { peremption: ev.target.value, peremptionVue: false }, "peremption")}
-                          onBlur={() => modifierLigne(l.cle, { peremptionVue: true })}
-                          onKeyDown={(ev) => surToucheChamp(ev, l, "peremption")}
-                          className={`${messagePeremption ? CHAMP_INVALIDE : CHAMP} disabled:opacity-60`}
-                        />
-                        {messagePeremption ? (
-                          <p id={`info-${l.cle}-peremption`} className="mt-1 text-sm text-rose-700 dark:text-rose-300">
-                            {messagePeremption}
-                          </p>
-                        ) : (
-                          datePeremptionLue && (
-                            <p id={`info-${l.cle}-peremption`} className="mt-1 text-sm text-slate-700 dark:text-slate-300">
-                              {datePeremptionLue}
-                            </p>
-                          )
-                        )}
-                        <label className="mt-2 flex items-center gap-2 text-sm text-slate-800 dark:text-slate-200">
-                          <input
-                            type="checkbox"
-                            aria-label={`Sans date, ligne ${n}`}
-                            checked={l.sansDate}
-                            disabled={verrouille}
-                            onChange={(ev) => modifierLigne(l.cle, { sansDate: ev.target.checked }, "peremption")}
-                            className={`w-5 h-5 rounded accent-primary-600 ${FOCUS}`}
-                          />
-                          Sans date
-                        </label>
-                      </td>
-                      <td className="py-3 pr-3">
-                        <input
-                          data-champ={`${l.cle}:lot`}
-                          type="text"
-                          maxLength={64}
-                          aria-label={`Lot (facultatif), ligne ${n}`}
-                          value={l.lot}
-                          readOnly={verrouille}
-                          onChange={(ev) => modifierLigne(l.cle, { lot: ev.target.value }, "lot")}
-                          onKeyDown={(ev) => surToucheChamp(ev, l, "lot")}
-                          className={e.lot ? CHAMP_INVALIDE : CHAMP}
-                          aria-invalid={e.lot ? true : undefined}
-                          aria-describedby={e.lot ? `erreur-${l.cle}-lot` : undefined}
-                        />
-                        {e.lot && (
-                          <p id={`erreur-${l.cle}-lot`} className="mt-1 text-sm text-rose-700 dark:text-rose-300">
-                            {e.lot}
-                          </p>
-                        )}
-                      </td>
-                      <td className="py-3 pr-3">
+                      <td className={CELLULE}>
                         <input
                           data-champ={`${l.cle}:cout`}
                           type="text"
@@ -953,31 +1249,45 @@ export default function NouvelleReceptionPage() {
                           aria-invalid={e.cout ? true : undefined}
                           value={l.cout}
                           readOnly={verrouille}
-                          onChange={(ev) => modifierLigne(l.cle, { cout: ev.target.value }, "cout")}
+                          onChange={(ev) => modifierLigne(l.cle, { cout: filtrerMontant(ev.target.value) }, "cout")}
                           onKeyDown={(ev) => surToucheDernierChamp(ev, index)}
-                          className={e.cout ? CHAMP_INVALIDE : CHAMP}
+                          className={e.cout ? CHAMP_NOMBRE_INVALIDE : CHAMP_NOMBRE}
                         />
                         {e.cout && (
-                          <p id={`erreur-${l.cle}-cout`} className="mt-1 text-sm text-rose-700 dark:text-rose-300">
+                          <p id={`erreur-${l.cle}-cout`} className="mt-1 text-mc-legende text-rose-700 dark:text-rose-300">
                             {e.cout}
                           </p>
                         )}
                       </td>
-                      <td className="py-3">
+                      <td className={CELLULE}>{detail(l, n, e, "montantLigne", true)}</td>
+                      <td className={CELLULE}>{detail(l, n, e, "colisage", true)}</td>
+                      <td className={CELLULE}>
                         <button
                           type="button"
                           onClick={() => retirerLigne(l.cle)}
                           disabled={verrouille}
                           aria-label={`Retirer la ligne ${n}`}
-                          className={BOUTON_ICONE}
+                          className={ui.bouton.iconePetit}
                         >
                           <Trash2 className={ICONE} aria-hidden="true" />
                         </button>
                       </td>
                     </tr>
+                    {avertissements.length > 0 && (
+                      <tr>
+                        <td colSpan={COLONNES} className="px-3 pb-3">
+                          {avertissements.map((m) => (
+                            <p key={m} role="status" className={`${ui.alerte.attention} mt-2 items-start`}>
+                              <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                              <span>{m}</span>
+                            </p>
+                          ))}
+                        </td>
+                      </tr>
+                    )}
                     {fiche && fiche.qualifie === false && !l.enUnites && (
                       <tr>
-                        <td colSpan={6} className="pb-3">
+                        <td colSpan={COLONNES} className="px-3 pb-3">
                           <div role="status" className={`${ALERTE_ATTENTION} items-start`}>
                             <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
                             <div className="flex-1 space-y-2">
@@ -999,7 +1309,7 @@ export default function NouvelleReceptionPage() {
                                   href="/dashboard/stock"
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className={`font-medium underline rounded ${FOCUS}`}
+                                  className={`font-medium underline rounded-mc-petit ${FOCUS}`}
                                 >
                                   Ouvrir le stock dans un nouvel onglet
                                 </Link>
@@ -1007,7 +1317,7 @@ export default function NouvelleReceptionPage() {
                                   type="button"
                                   onClick={reessayerChargement}
                                   disabled={verrouille}
-                                  className={`px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-amber-100 dark:hover:bg-amber-500/20 disabled:opacity-60 ${FOCUS}`}
+                                  className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-medium hover:bg-amber-100 dark:hover:bg-amber-500/20 disabled:opacity-60 ${FOCUS}`}
                                 >
                                   J&apos;ai confirmé la fiche : actualiser
                                 </button>
@@ -1024,10 +1334,10 @@ export default function NouvelleReceptionPage() {
           </table>
         </div>
 
-        <p id="aide-cout" className="text-sm text-slate-600 dark:text-slate-400">
+        <p id="aide-cout" className="text-mc-normal text-slate-600 dark:text-slate-400">
           Sans coût, la marge de ce lot restera inconnue.
         </p>
-        <p className="text-sm text-slate-600 dark:text-slate-400">
+        <p className="text-mc-normal text-slate-600 dark:text-slate-400">
           Un médicament absent de la liste s&apos;ajoute d&apos;abord depuis Stock Médicaments, bouton « Ajouter un médicament ».{" "}
           <Link href="/dashboard/stock" className="font-medium text-primary-700 dark:text-primary-300 underline">
             Aller au stock
@@ -1042,6 +1352,57 @@ export default function NouvelleReceptionPage() {
           <Plus className="w-4 h-4" aria-hidden="true" />
           Ajouter une ligne
         </button>
+
+        <div className="flex justify-end">
+          <div className="w-full max-w-sm space-y-2 rounded-mc-moyen border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+            {MONTANTS_ENTETE.map((c) => {
+              const erreur = erreursEntete[c];
+              const fort = c === "netAPayer";
+              return (
+                <div key={c}>
+                  <div className="flex items-center justify-between gap-3">
+                    <label
+                      htmlFor={`facture-${c}`}
+                      className={`text-mc-legende uppercase tracking-wide ${fort ? "font-semibold text-slate-900 dark:text-slate-100" : "font-medium text-slate-600 dark:text-slate-400"}`}
+                    >
+                      {LIBELLES_PIED[c]}
+                    </label>
+                    <input
+                      id={`facture-${c}`}
+                      data-champ={`entete:${c}`}
+                      type="text"
+                      inputMode="numeric"
+                      aria-label={`${LIBELLES_ENTETE[c]} (GNF)`}
+                      value={entete[c]}
+                      readOnly={verrouille}
+                      aria-invalid={erreur ? true : undefined}
+                      aria-describedby={erreur ? `erreur-facture-${c}` : undefined}
+                      onChange={(ev) => {
+                        setEntete((prev) => ({ ...prev, [c]: filtrerMontant(ev.target.value) }));
+                        if (erreur) setErreursEntete((prev) => ({ ...prev, [c]: undefined }));
+                      }}
+                      className={`${erreur ? CHAMP_NOMBRE_INVALIDE : CHAMP_NOMBRE} ${fort ? "font-semibold" : ""}`}
+                    />
+                  </div>
+                  {erreur && (
+                    <p id={`erreur-facture-${c}`} className="mt-1 text-right text-mc-legende text-rose-700 dark:text-rose-300">
+                      {erreur}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        {avertissementSomme && (
+          <p role="status" className={`${ui.alerte.attention} items-start`}>
+            <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+            <span>
+              La somme des montants des lignes ({formaterGNF(avertissementSomme.somme)}) est différente du montant HT de la facture (
+              {formaterGNF(avertissementSomme.montantHT)}). Vérifiez votre saisie : l&apos;enregistrement reste possible.
+            </span>
+          </p>
+        )}
       </section>
 
       {bandeau && !bandeauLignes && (
@@ -1055,7 +1416,7 @@ export default function NouvelleReceptionPage() {
                   type="button"
                   onClick={() => corpsEnvoye.current && envoyer(corpsEnvoye.current)}
                   disabled={envoi}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-bold bg-rose-700 text-white hover:bg-rose-800 disabled:opacity-60 ${FOCUS}`}
+                  className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-semibold bg-rose-700 text-white hover:bg-rose-800 disabled:opacity-60 ${FOCUS}`}
                 >
                   Réessayer l&apos;envoi
                 </button>
@@ -1063,7 +1424,7 @@ export default function NouvelleReceptionPage() {
                   type="button"
                   onClick={() => setConfirmationModif(true)}
                   disabled={envoi}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-60 ${FOCUS}`}
+                  className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-60 ${FOCUS}`}
                 >
                   Modifier la saisie
                 </button>
@@ -1076,14 +1437,14 @@ export default function NouvelleReceptionPage() {
                   <button
                     type="button"
                     onClick={modifierLaSaisie}
-                    className={`px-3 py-1.5 rounded-xl text-sm font-bold bg-rose-700 text-white hover:bg-rose-800 ${FOCUS}`}
+                    className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-semibold bg-rose-700 text-white hover:bg-rose-800 ${FOCUS}`}
                   >
                     Modifier
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmationModif(false)}
-                    className={`px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 ${FOCUS}`}
+                    className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 ${FOCUS}`}
                   >
                     Annuler
                   </button>
@@ -1095,7 +1456,7 @@ export default function NouvelleReceptionPage() {
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <p aria-live="polite" className="text-sm font-medium text-slate-900 dark:text-white">
+        <p aria-live="polite" className="text-mc-normal font-medium text-slate-900 dark:text-white">
           {`${lignesChoisies.length} ${lignesChoisies.length > 1 ? "lignes" : "ligne"}, ${libelleBoites(totalBoites)}`}
         </p>
         <button ref={boutonEnvoi} type="button" onClick={valider} disabled={verrouille} className={BOUTON_PRIMAIRE}>

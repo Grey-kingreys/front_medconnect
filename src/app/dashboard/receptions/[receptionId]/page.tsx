@@ -10,18 +10,18 @@ import { ApiError } from "@/lib/api_auth";
 import { getMyStock, getReception, type LotRecu, type Reception, type UniteMinimale } from "@/lib/api_pharmacie";
 import { formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { afficherDatePeremption } from "@/lib/date_peremption";
+import { formaterTauxTva } from "@/lib/facture_fournisseur";
 import { formaterGNF } from "@/lib/format_gnf";
 import {
   ALERTE_INFO,
   ALERTE_SUCCES,
   BOUTON_PRIMAIRE,
-  BOUTON_SECONDAIRE,
   CARTE,
   FOCUS,
-  POLICE_TITRE,
 } from "@/components/pharmacie/classes";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { formaterDateHeure } from "../../ventes/affichage";
+import { ui } from "@/theme/ui";
 import { CorrectionDateLot } from "./CorrectionDateLot";
 
 const NON_RENSEIGNE = "Non renseigné";
@@ -36,7 +36,7 @@ type Etat =
 const lienRetour = (
   <Link
     href="/dashboard/receptions"
-    className={`inline-flex items-center gap-2 rounded-xl text-sm font-medium text-primary-700 dark:text-primary-300 hover:underline ${FOCUS}`}
+    className={`inline-flex items-center gap-2 rounded-mc-grand text-mc-normal font-medium text-primary-700 dark:text-primary-300 hover:underline ${FOCUS}`}
   >
     <ArrowLeft className="w-4 h-4" aria-hidden="true" />
     Retour aux réceptions
@@ -113,7 +113,7 @@ export default function DetailReceptionPage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -124,7 +124,7 @@ export default function DetailReceptionPage() {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className={ui.texte.petit}>
             Votre compte n&apos;est rattaché à aucune pharmacie. Adressez-vous à l&apos;administrateur de votre pharmacie.
           </p>
           <Link href="/dashboard" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -137,7 +137,7 @@ export default function DetailReceptionPage() {
 
   if (etat.statut === "chargement") {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement de la réception...
       </div>
@@ -148,7 +148,7 @@ export default function DetailReceptionPage() {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">Cette réception est introuvable.</p>
+          <p className={ui.texte.petit}>Cette réception est introuvable.</p>
           <Link href="/dashboard/receptions" className={`${BOUTON_PRIMAIRE} mt-4`}>
             Retour aux réceptions
           </Link>
@@ -169,18 +169,44 @@ export default function DetailReceptionPage() {
   const { reception } = etat;
   // La colonne du coût n'existe que si le serveur a transmis la clé : sans `marge:read`, elle est absente (D698).
   const avecCout = reception.lots.some((l) => "coutAchatBoite" in l);
+  const entetesFacture: [string, string | null][] = [
+    ["N° de facture", reception.numeroFacture ?? null],
+    ["Référence de commande", reception.referenceCommande ?? null],
+    ["Date de facture", reception.dateFacture ? afficherDatePeremption(reception.dateFacture) : null],
+    ["Nombre de pages", typeof reception.nombrePages === "number" ? String(reception.nombrePages) : null],
+    // Les montants sont des coûts d'achat : leur clé est absente sans `marge:read`.
+    ["Montant HT", typeof reception.montantHT === "number" ? formaterGNF(reception.montantHT) : null],
+    ["Total TVA", typeof reception.totalTva === "number" ? formaterGNF(reception.totalTva) : null],
+    ["Montant TTC", typeof reception.montantTTC === "number" ? formaterGNF(reception.montantTTC) : null],
+    ["Net à payer", typeof reception.netAPayer === "number" ? formaterGNF(reception.netAPayer) : null],
+  ];
+  const entetesRemplis = entetesFacture.filter(([, v]) => v !== null);
+  const colonnesFacture: { titre: string; valeur: (l: LotRecu) => string | null }[] = [
+    { titre: "Code fournisseur", valeur: (l) => l.codeArticleFournisseur ?? null },
+    { titre: "Code-barres", valeur: (l) => l.codeBarres ?? null },
+    { titre: "Qté commandée", valeur: (l) => (typeof l.quantiteCommandee === "number" ? String(l.quantiteCommandee) : null) },
+    { titre: "Prix public", valeur: (l) => (typeof l.prixPublicBoite === "number" ? formaterGNF(l.prixPublicBoite) : null) },
+    { titre: "Code TVA", valeur: (l) => l.codeTva ?? null },
+    { titre: "Taux TVA", valeur: (l) => (typeof l.tauxTvaPourMille === "number" ? formaterTauxTva(l.tauxTvaPourMille) : null) },
+    { titre: "Montant HT", valeur: (l) => (typeof l.montantHTLigne === "number" ? formaterGNF(l.montantHTLigne) : null) },
+    { titre: "Colisage", valeur: (l) => (typeof l.colisage === "number" ? String(l.colisage) : null) },
+    { titre: "Tableau (TB)", valeur: (l) => l.tableau ?? null },
+    { titre: "Bon de préparation", valeur: (l) => l.bonPreparation ?? null },
+  ];
+  // Seules les colonnes saisies sur au moins une ligne s'affichent.
+  const colonnesUtiles = colonnesFacture.filter((c) => reception.lots.some((l) => c.valeur(l) !== null));
   const aDesResolutions = (reception.resolutions ?? []).length > 0;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
       <div className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+        <h1 className={ui.titrePage}>
           Réception du {formaterDateHeure(reception.recueLe)}
         </h1>
-        <p className="text-sm text-slate-700 dark:text-slate-300">
+        <p className={ui.texte.petit}>
           Fournisseur : {reception.fournisseur?.nom ?? NON_RENSEIGNE}
         </p>
-        <p className="text-sm text-slate-700 dark:text-slate-300">
+        <p className={ui.texte.petit}>
           Bon de livraison : {reception.reference ?? NON_RENSEIGNE}
         </p>
         {lienRetour}
@@ -199,17 +225,17 @@ export default function DetailReceptionPage() {
       )}
 
       <div className={`${CARTE} overflow-x-auto`}>
-        <table className="w-full text-sm text-left">
+        <table className={ui.tableau}>
           <caption className="sr-only">Lots reçus lors de cette livraison</caption>
           <thead>
-            <tr className="text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-              <th scope="col" className="py-2 pr-4 font-semibold">Médicament</th>
-              <th scope="col" className="py-2 pr-4 font-semibold">Lot</th>
-              <th scope="col" className="py-2 pr-4 font-semibold">Péremption</th>
-              <th scope="col" className="py-2 pr-4 font-semibold">Reçu</th>
-              <th scope="col" className="py-2 pr-4 font-semibold">Reste en stock</th>
-              {avecCout && <th scope="col" className="py-2 pr-4 font-semibold">Coût d&apos;achat d&apos;une boîte</th>}
-              <th scope="col" className="py-2 font-semibold"><span className="sr-only">Actions</span></th>
+            <tr className={ui.enteteTableau}>
+              <th scope="col" className={ui.celluleEntete}>Médicament</th>
+              <th scope="col" className={ui.celluleEntete}>Lot</th>
+              <th scope="col" className={ui.celluleEntete}>Péremption</th>
+              <th scope="col" className={ui.celluleEntete}>Reçu</th>
+              <th scope="col" className={ui.celluleEntete}>Reste en stock</th>
+              {avecCout && <th scope="col" className={ui.celluleEntete}>Coût d&apos;achat d&apos;une boîte</th>}
+              <th scope="col" className={ui.celluleEntete}><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -218,29 +244,29 @@ export default function DetailReceptionPage() {
               const coefficient = lot.coefficientReception;
               const cout = lot.coutAchatBoite;
               return (
-                <tr key={lot.id} className="align-top">
-                  <td className="py-3 pr-4 font-bold text-slate-900 dark:text-white">{lot.nom}</td>
-                  <td className="py-3 pr-4 text-slate-800 dark:text-slate-200">{lot.numeroLot ?? "Sans numéro"}</td>
-                  <td className="py-3 pr-4 text-slate-800 dark:text-slate-200">
+                <tr key={lot.id} className="align-top border-b border-slate-100 dark:border-slate-800">
+                  <td className={`${ui.cellule} py-3 font-semibold`}>{lot.nom}</td>
+                  <td className={`${ui.cellule} py-3`}>{lot.numeroLot ?? "Sans numéro"}</td>
+                  <td className={`${ui.cellule} py-3`}>
                     {lot.dateExpiration ? afficherDatePeremption(lot.dateExpiration) : "Sans date"}
                   </td>
-                  <td className="py-3 pr-4 text-slate-800 dark:text-slate-200">
+                  <td className={`${ui.cellule} py-3`}>
                     {formaterQuantite(lot.quantiteRecue, coefficient, unite)}
                   </td>
-                  <td className="py-3 pr-4 text-slate-800 dark:text-slate-200">
+                  <td className={`${ui.cellule} py-3`}>
                     {formaterQuantite(lot.solde, coefficient, unite)}
                   </td>
                   {avecCout && (
-                    <td className="py-3 pr-4 text-slate-800 dark:text-slate-200">
+                    <td className={`${ui.cellule} py-3`}>
                       {typeof cout === "number" && cout > 0 ? formaterGNF(cout) : "Inconnu"}
                     </td>
                   )}
-                  <td className="py-3 text-right">
+                  <td className={`${ui.cellule} py-3 text-right`}>
                     <button
                       type="button"
                       onClick={() => setLotACorriger(lot)}
                       aria-label={`Corriger la date du lot ${lot.numeroLot ?? lot.nom}`}
-                      className={`${BOUTON_SECONDAIRE} border border-slate-200 dark:border-slate-700 whitespace-nowrap`}
+                      className={`${ui.bouton.secondaire} h-mc-controle-petit`}
                     >
                       Corriger la date
                     </button>
@@ -251,6 +277,59 @@ export default function DetailReceptionPage() {
           </tbody>
         </table>
       </div>
+
+      {entetesRemplis.length > 0 && (
+        <section className={`${CARTE} space-y-3`} aria-labelledby="titre-facture">
+          <h2 id="titre-facture" className={ui.texte.section}>
+            Facture fournisseur
+          </h2>
+          <dl className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-3 text-mc-normal">
+            {entetesRemplis.map(([titre, valeur]) => (
+              <div key={titre}>
+                <dt className={ui.texte.petit}>{titre}</dt>
+                <dd className="text-mc-normal font-medium tabular-nums text-slate-900 dark:text-slate-100">{valeur}</dd>
+              </div>
+            ))}
+          </dl>
+        </section>
+      )}
+
+      {colonnesUtiles.length > 0 && (
+        <section className={`${CARTE} space-y-3`} aria-labelledby="titre-lignes-facture">
+          <h2 id="titre-lignes-facture" className={ui.texte.section}>
+            Lignes de la facture
+          </h2>
+          <div className="overflow-x-auto">
+            <table className={ui.tableau}>
+              <caption className="sr-only">Informations de facture de chaque lot reçu</caption>
+              <thead>
+                <tr className={ui.enteteTableau}>
+                  <th scope="col" className={ui.celluleEntete}>Médicament</th>
+                  {colonnesUtiles.map((c) => (
+                    <th key={c.titre} scope="col" className={ui.celluleEntete}>
+                      {c.titre}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                {reception.lots.map((lot) => (
+                  <tr key={lot.id} className="align-top border-b border-slate-100 dark:border-slate-800">
+                    <th scope="row" className={`${ui.cellule} py-3 font-semibold`}>
+                      {lot.nom}
+                    </th>
+                    {colonnesUtiles.map((c) => (
+                      <td key={c.titre} className={`${ui.cellule} py-3`}>
+                        {c.valeur(lot) ?? NON_RENSEIGNE}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
 
       <CorrectionDateLot
         lot={lotACorriger}

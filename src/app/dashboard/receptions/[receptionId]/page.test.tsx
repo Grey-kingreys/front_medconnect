@@ -135,3 +135,63 @@ describe("Réceptions, détail", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 });
+
+describe("Facture fournisseur", () => {
+  const complet = lot("l1", "Doliprane", {
+    codeArticleFournisseur: "UBI-00123",
+    codeBarres: "3400930000012",
+    quantiteCommandee: 12,
+    prixPublicBoite: 4500,
+    codeTva: "A",
+    tauxTvaPourMille: 180,
+    montantHTLigne: 36000,
+    colisage: 10,
+    tableau: "Liste I",
+    bonPreparation: "BP-55",
+  });
+
+  it("affiche l'en-tête et les lignes de la facture", async () => {
+    getReception.mockResolvedValue(
+      reception([complet], {
+        numeroFacture: "FA-2026-0412",
+        referenceCommande: "CMD-778",
+        dateFacture: "2026-10-20",
+        nombrePages: 3,
+        montantHT: 95630,
+        totalTva: 17213,
+        montantTTC: 112843,
+        netAPayer: 112843,
+      }),
+    );
+    render(<DetailReceptionPage />);
+    expect(await screen.findByRole("heading", { name: "Facture fournisseur" })).toBeInTheDocument();
+    expect(screen.getByText("FA-2026-0412")).toBeInTheDocument();
+    expect(screen.getByText("20/10/2026")).toBeInTheDocument();
+    expect(screen.getByText("95 630 GNF")).toBeInTheDocument();
+    expect(screen.getByText("17 213 GNF")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lignes de la facture" })).toBeInTheDocument();
+    expect(screen.getByText("UBI-00123")).toBeInTheDocument();
+    expect(screen.getByText("18 %")).toBeInTheDocument();
+    expect(screen.getByText("Liste I")).toBeInTheDocument();
+    expect(screen.getByText("36 000 GNF")).toBeInTheDocument();
+  });
+
+  it("sans droit de voir la marge, les montants (absents) ne s'affichent pas", async () => {
+    const sansMontant = { ...complet, montantHTLigne: undefined };
+    getReception.mockResolvedValue(
+      reception([sansMontant], { numeroFacture: "FA-2026-0412", nombrePages: 3 }),
+    );
+    render(<DetailReceptionPage />);
+    expect(await screen.findByText("FA-2026-0412")).toBeInTheDocument();
+    expect(screen.queryByText("Montant HT")).not.toBeInTheDocument();
+    expect(screen.queryByText("Net à payer")).not.toBeInTheDocument();
+    expect(screen.getByText("Code-barres")).toBeInTheDocument();
+  });
+
+  it("n'affiche aucune section de facture quand rien n'a été saisi", async () => {
+    getReception.mockResolvedValue(reception([lot("l1", "Doliprane")]));
+    render(<DetailReceptionPage />);
+    await screen.findByText(/Fournisseur : UbiPharm/);
+    expect(screen.queryByRole("heading", { name: "Facture fournisseur" })).not.toBeInTheDocument();
+  });
+});

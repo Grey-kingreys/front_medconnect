@@ -97,6 +97,9 @@ export const ui = {
   enteteTableau: "border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-800/50",
   celluleEntete:
     "px-3 py-2 text-mc-legende font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400",
+  // En-tête serré pour les tableaux de saisie denses (réception d'une facture papier)
+  celluleEnteteSerree:
+    "px-1 py-2 text-[11px] font-semibold uppercase leading-tight text-slate-500 dark:text-slate-400",
   ligneTableau:
     "h-mc-ligne border-b border-slate-100 hover:bg-slate-50 dark:border-slate-800 dark:hover:bg-slate-800/40",
   cellule: "px-3 text-mc-normal text-slate-900 dark:text-slate-100",
