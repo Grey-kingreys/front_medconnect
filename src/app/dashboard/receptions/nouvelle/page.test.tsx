@@ -241,7 +241,7 @@ describe("Nouvelle réception", () => {
     verifierTermes();
   });
 
-  it("passe au champ suivant avec Entrée dans Quantité, Péremption et Lot sans rien envoyer", async () => {
+  it("passe au champ suivant avec Entrée dans Quantité et Péremption sans rien envoyer", async () => {
     render(<NouvelleReceptionPage />);
     await attendrePage();
 
@@ -252,17 +252,13 @@ describe("Nouvelle réception", () => {
 
     saisir("Péremption, ligne 1", "6/28");
     fireEvent.keyDown(screen.getByLabelText("Péremption, ligne 1"), { key: "Enter" });
-    expect(screen.getByLabelText("Lot (facultatif), ligne 1")).toHaveFocus();
     expect(screen.getByText("30/06/2028")).toBeInTheDocument();
-
-    saisir("Lot (facultatif), ligne 1", "A123");
-    fireEvent.keyDown(screen.getByLabelText("Lot (facultatif), ligne 1"), { key: "Enter" });
     expect(screen.getByLabelText(/Coût d'achat d'une boîte \(GNF, facultatif\), ligne 1/)).toHaveFocus();
 
     // « Sans date » cochée : Entrée dans Quantité saute la péremption désactivée.
     fireEvent.click(screen.getByLabelText("Sans date, ligne 1"));
     fireEvent.keyDown(screen.getByLabelText("Quantité, ligne 1"), { key: "Enter" });
-    expect(screen.getByLabelText("Lot (facultatif), ligne 1")).toHaveFocus();
+    expect(screen.getByLabelText(/Coût d'achat d'une boîte \(GNF, facultatif\), ligne 1/)).toHaveFocus();
 
     expect(enregistrerReception).not.toHaveBeenCalled();
   });
@@ -433,5 +429,159 @@ describe("Nouvelle réception", () => {
     expect(screen.getByRole("link", { name: "Voir la réception" })).toHaveAttribute("href", "/dashboard/receptions/r1");
     expect(screen.getByRole("link", { name: "Retour aux réceptions" })).toHaveAttribute("href", "/dashboard/receptions");
     expect(screen.getByRole("button", { name: "Nouvelle réception" })).toBeInTheDocument();
+  });
+});
+
+describe("Facture fournisseur", () => {
+  it("présente un tableau de exactement 12 colonnes titrées, dans l'ordre", async () => {
+    render(<NouvelleReceptionPage />);
+    await attendrePage();
+
+    const entetes = screen.getAllByRole("columnheader").filter((th) => !/Actions/.test(th.textContent ?? ""));
+    const titres = entetes.map((th) => th.innerHTML.replace(/<br\s*\/?>/g, " ").replace(/<[^>]+>/g, "").replace(/\s+/g, " ").trim());
+    expect(titres).toEqual([
+      "Ligne",
+      "Code",
+      "Désignation des produits",
+      "Péremption (MM/AA)",
+      "TB",
+      "Prix public",
+      "TVA",
+      "Qté commandée",
+      "Qté livrée",
+      "Prix unitaire",
+      "Montant HT",
+      "Colisage",
+    ]);
+  });
+
+  it("n'affiche plus les champs retirés", async () => {
+    render(<NouvelleReceptionPage />);
+    await attendrePage();
+
+    for (const retire of [/Code-barres/i, /Code TVA/i, /Bon de préparation/i, /^Lot/i, /Nombre de pages/i, /bon de livraison/i]) {
+      expect(screen.queryByText(retire)).toBeNull();
+      expect(screen.queryByLabelText(retire)).toBeNull();
+    }
+  });
+
+  it("affiche l'en-tête de facture attendu, sans bloc à déplier", async () => {
+    render(<NouvelleReceptionPage />);
+    await attendrePage();
+
+    const carte = screen.getByRole("region", { name: "Facture fournisseur" });
+    for (const libelle of ["Fournisseur", "N° de facture", "Date de facture", "Référence de commande", "Date de réception"]) {
+      expect(screen.getByLabelText(libelle)).toBeInTheDocument();
+    }
+    expect(carte.querySelectorAll("details, [aria-expanded]")).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Nouveau fournisseur" })).toHaveAttribute("aria-expanded", "false");
+  });
+
+  it("envoie tous les champs de la facture, montants saisis avec le point des milliers", async () => {
+    render(<NouvelleReceptionPage />);
+    await attendrePage();
+
+    saisir("N° de facture", "FA-2026-0412");
+    saisir("Référence de commande", "CMD-778");
+    saisir("Date de facture", "2026-10-20");
+    saisir(/^Montant HT \(GNF\)$/, "95.630");
+    saisir(/^Total TVA \(GNF\)$/, "17 213");
+    saisir(/^Montant TTC \(GNF\)$/, "112,843");
+    saisir(/^Net à payer \(GNF\)$/, "112843");
+
+    choisirMedicament(1, "dolip");
+    saisir("Quantité, ligne 1", "10");
+    saisir("Péremption, ligne 1", "6/28");
+    saisir("Coût d'achat d'une boîte (GNF, facultatif), ligne 1", "9.563");
+    saisir("Code fournisseur, ligne 1", "UBI-00123");
+    saisir("Qté commandée, ligne 1", "12");
+    saisir("Prix public, ligne 1", "4.500");
+    saisir("Taux TVA (%), ligne 1", "18");
+    saisir("Montant HT, ligne 1", "95.630");
+    saisir("Colisage, ligne 1", "10");
+    saisir("Tableau (TB), ligne 1", "Liste I");
+
+    // Écarts signalés sans rien bloquer.
+    expect(screen.getByText(/La quantité livrée \(10\) est différente de la quantité commandée \(12\)/)).toBeInTheDocument();
+    expect(screen.queryByText(/Le montant HT saisi/)).not.toBeInTheDocument();
+
+    enregistrer();
+    await waitFor(() => expect(enregistrerReception).toHaveBeenCalledTimes(1));
+    const [, corps] = enregistrerReception.mock.calls[0];
+    expect(corps).toMatchObject({
+      numeroFacture: "FA-2026-0412",
+      referenceCommande: "CMD-778",
+      dateFacture: "2026-10-20",
+      montantHT: 95630,
+      totalTva: 17213,
+      montantTTC: 112843,
+      netAPayer: 112843,
+    });
+    expect(corps.lignes).toEqual([
+      {
+        stockId: "s1",
+        nombreBoites: 10,
+        dateExpiration: "2028-06-30",
+        coutAchatBoite: 9563,
+        codeArticleFournisseur: "UBI-00123",
+        quantiteCommandee: 12,
+        prixPublicBoite: 4500,
+        tauxTvaPourMille: 180,
+        montantHTLigne: 95630,
+        colisage: 10,
+        tableau: "Liste I",
+      },
+    ]);
+  });
+
+  it("signale les écarts de montant et de somme sans bloquer l'enregistrement", async () => {
+    render(<NouvelleReceptionPage />);
+    await attendrePage();
+
+    saisir(/^Montant HT \(GNF\)$/, "50000");
+    remplirLigne(1, "dolip", "10");
+    saisir("Coût d'achat d'une boîte (GNF, facultatif), ligne 1", "1000");
+    saisir("Montant HT, ligne 1", "9000");
+
+    expect(screen.getByText(/Le montant HT saisi \(9 000 GNF\) est différent/)).toBeInTheDocument();
+    expect(screen.getByText(/La somme des montants des lignes \(9 000 GNF\)/)).toBeInTheDocument();
+
+    enregistrer();
+    await waitFor(() => expect(enregistrerReception).toHaveBeenCalledTimes(1));
+  });
+
+  it("refuse localement un montant illisible et ouvre la zone concernée", async () => {
+    render(<NouvelleReceptionPage />);
+    await attendrePage();
+    remplirLigne(1, "dolip", "10");
+    saisir("Prix public, ligne 1", "1.2.3");
+    enregistrer();
+    expect(await screen.findByText("Indiquez un montant entier en GNF, par exemple 95 630.")).toBeInTheDocument();
+    expect(enregistrerReception).not.toHaveBeenCalled();
+  });
+
+  it("ignore les lettres dans les champs chiffrés", async () => {
+    render(<NouvelleReceptionPage />);
+    await attendrePage();
+    saisir("Quantité, ligne 1", "1a2");
+    saisir("Péremption, ligne 1", "6x/28");
+    saisir("Prix public, ligne 1", "12abc");
+    saisir("Taux TVA (%), ligne 1", "D18");
+    saisir("Qté commandée, ligne 1", "EZ3");
+    saisir("Montant HT, ligne 1", "9 000k");
+    saisir("Colisage, ligne 1", "SK10");
+    saisir("Coût d'achat d'une boîte (GNF, facultatif), ligne 1", "MS1300");
+    saisir("Code fournisseur, ligne 1", "GENC112");
+
+    expect(screen.getByLabelText("Quantité, ligne 1")).toHaveValue("12");
+    expect(screen.getByLabelText("Péremption, ligne 1")).toHaveValue("6/28");
+    expect(screen.getByLabelText("Prix public, ligne 1")).toHaveValue("12");
+    expect(screen.getByLabelText("Taux TVA (%), ligne 1")).toHaveValue("18");
+    expect(screen.getByLabelText("Qté commandée, ligne 1")).toHaveValue("3");
+    expect(screen.getByLabelText("Montant HT, ligne 1")).toHaveValue("9 000");
+    expect(screen.getByLabelText("Colisage, ligne 1")).toHaveValue("10");
+    expect(screen.getByLabelText("Coût d'achat d'une boîte (GNF, facultatif), ligne 1")).toHaveValue("1300");
+    // Le code article du fournisseur reste alphanumérique
+    expect(screen.getByLabelText("Code fournisseur, ligne 1")).toHaveValue("GENC112");
   });
 });

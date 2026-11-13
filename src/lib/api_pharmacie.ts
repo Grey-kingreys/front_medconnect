@@ -360,9 +360,34 @@ export interface LigneReceptionDemandee {
   quantiteUnites?: number;
   /** Coût d'une boîte en GNF (entier, 0 ou plus). */
   coutAchatBoite?: number;
+  /** Facture fournisseur, tous les champs facultatifs. Entiers : quantités en boîtes, montants en GNF. */
+  codeArticleFournisseur?: string;
+  codeBarres?: string;
+  quantiteCommandee?: number;
+  prixPublicBoite?: number;
+  codeTva?: string;
+  /** Taux en pour mille : 180 pour 18 %, 55 pour 5,5 %. */
+  tauxTvaPourMille?: number;
+  montantHTLigne?: number;
+  colisage?: number;
+  tableau?: string;
+  bonPreparation?: string;
 }
 
-export interface CorpsReception {
+/** En-tête de la facture fournisseur, tous les champs facultatifs. */
+export interface EnteteFactureDemandee {
+  numeroFacture?: string;
+  referenceCommande?: string;
+  /** Jour AAAA-MM-JJ. */
+  dateFacture?: string;
+  nombrePages?: number;
+  montantHT?: number;
+  totalTva?: number;
+  montantTTC?: number;
+  netAPayer?: number;
+}
+
+export interface CorpsReception extends EnteteFactureDemandee {
   /** Identifiant choisi par le client : un rejeu du même identifiant ne crée rien de plus (D688). */
   id?: string;
   fournisseurId?: string;
@@ -384,6 +409,17 @@ export interface LotRecu {
   /** Présents seulement avec `marge:read` : tester la présence de la clé, un coût nul ou absent est « inconnu » (D698). */
   coutAchatBoite?: number | null;
   coutUnitaire?: number | null;
+  /** Facture fournisseur : `null` si non saisi. `montantHTLigne` est un coût d'achat, absent sans `marge:read`. */
+  codeArticleFournisseur?: string | null;
+  codeBarres?: string | null;
+  quantiteCommandee?: number | null;
+  prixPublicBoite?: number | null;
+  codeTva?: string | null;
+  tauxTvaPourMille?: number | null;
+  montantHTLigne?: number | null;
+  colisage?: number | null;
+  tableau?: string | null;
+  bonPreparation?: string | null;
 }
 
 export interface AvertissementReception {
@@ -400,6 +436,11 @@ export interface ReceptionResume {
   createdAt: string;
   auteurId: string;
   fournisseur: { id: string; nom: string } | null;
+  numeroFacture?: string | null;
+  dateFacture?: string | null;
+  /** Montants de facture : absents sans `marge:read`. */
+  montantTTC?: number | null;
+  netAPayer?: number | null;
   nombreLots: number;
   quantiteTotale: number;
 }
@@ -410,6 +451,15 @@ export interface Reception {
   recueLe: string;
   createdAt: string;
   auteurId: string;
+  numeroFacture?: string | null;
+  referenceCommande?: string | null;
+  dateFacture?: string | null;
+  nombrePages?: number | null;
+  /** Montants de facture : absents sans `marge:read` (coûts d'achat). */
+  montantHT?: number | null;
+  totalTva?: number | null;
+  montantTTC?: number | null;
+  netAPayer?: number | null;
   fournisseur: { id: string; nom: string } | null;
   lots: LotRecu[];
   resolutions?: unknown[];
