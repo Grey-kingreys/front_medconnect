@@ -1,5 +1,5 @@
 import type { LotFiche, StockMedicament, UniteMinimale } from "@/lib/api_pharmacie";
-import { calculerStockLocal, type SortieLocale } from "@/lib/caisse/regles/stock_local";
+import { calculerStockLocal } from "@/lib/caisse/regles/stock_local";
 import type { BilanCaisse, ComptageCaisse, MouvementCaisse, SessionCaisse, SessionCaisseOuverte } from "@/lib/api_caisse";
 import type { CorpsCreationVente, Vente, VentesDuJour } from "@/lib/api_ventes";
 import {
@@ -15,6 +15,7 @@ import type { InfosPoste, ReglagesPoste } from "@/lib/caisse/contrat_desktop";
 import { Contexte, type Outils, type Referentiels } from "./contexte";
 import { plageRestante } from "./plages_locales";
 import { enregistrerReglages, lireReglages } from "./reglages";
+import { lireSurcouche } from "./stock_surcouche";
 import type { Stockage } from "./stockage";
 import type { ComptageEntree, EtatLocal, FermetureEntree, MouvementEntree, Utilisateur } from "./types_caisse";
 import type {
@@ -251,27 +252,19 @@ export class CoeurCaisse {
     return this.ctx.jour();
   }
 
-  /** Fiches avec leur stock local : photographie moins les sorties de séquence supérieure à `sequenceAppliquee`. */
+  /** Fiches avec leur stock local : photographie plus les mouvements et lots locaux de séquence supérieure à `sequenceAppliquee`. */
   lireStock(): FicheLocale[] {
     const etat = this.etat();
     const structureId = etat.structureId ?? "";
     const jour = this.jour();
 
-    const sortiesParFiche = new Map<string, SortieLocale[]>();
-    for (const s of this.stockage.lire<{ stockId: string; lotId: string | null; quantiteUm: number }>(
-      "SELECT stockId, lotId, quantiteUm FROM sorties_stock WHERE sequence > ?",
-      [etat.sequenceAppliquee],
-    )) {
-      const liste = sortiesParFiche.get(s.stockId) ?? [];
-      liste.push({ lotId: s.lotId, quantiteUm: s.quantiteUm });
-      sortiesParFiche.set(s.stockId, liste);
-    }
+    const surcouche = lireSurcouche(this.stockage, etat.sequenceAppliquee);
 
     return this.stockage
       .lire<{ document: string }>("SELECT document FROM fiches ORDER BY rowid")
       .map(({ document }) => {
         const f = JSON.parse(document) as FicheSynchro;
-        const stock = calculerStockLocal(f, sortiesParFiche.get(f.stockId) ?? [], jour);
+        const stock = calculerStockLocal(f, surcouche.mouvements.get(f.stockId) ?? [], jour, surcouche.lotsLocaux.get(f.stockId) ?? []);
         const lots: LotFiche[] = stock.lots.map((l) => ({
           id: l.id,
           numeroLot: l.numeroLot,

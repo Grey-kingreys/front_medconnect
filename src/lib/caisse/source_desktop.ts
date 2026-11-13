@@ -11,7 +11,7 @@ const MESSAGE_ANNULATION_FAITE = "L'annulation est faite, ne la refaites pas. ";
 const CODES_REFUS_APRES_ANNULATION = ["ANNULATION_AUTRE_POSTE", "ANNULATION_AUTRE_CAISSE", "ANNULATION_CAISSE_FERMEE"];
 
 /** Lève l'erreur d'une réponse refusée, au format que lisent `codeErreur`, `codeErreurVente` et `lignesErreurVente`. */
-function lire<T>(reponse: ReponsePont<T>): ApiResponse<T> {
+export function lire<T>(reponse: ReponsePont<T>): ApiResponse<T> {
   if (reponse.ok) return { data: reponse.data, message: reponse.message, success: true };
   throw new ApiError(reponse.message, reponse.status, {
     code: reponse.code,

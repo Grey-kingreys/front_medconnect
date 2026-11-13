@@ -2,12 +2,14 @@
  * Passerelle du pont (PD04a) : tout ce qu'un message du rendu déclenche, sans Electron.
  * `electron/ipc.ts` contrôle l'origine de l'expéditeur puis appelle ce module, qui :
  * valide les arguments (Zod), exige un utilisateur connecté, une pharmacie conforme à celle du poste
- * et le droit `caisse:utiliser`, puis appelle le cœur. Un refus du cœur devient une réponse enveloppée
+ * et le droit propre à la fonction (`permissions_pont.ts` : `caisse:utiliser` pour la caisse, une permission par
+ * fonction pour chaque domaine pharmacie à venir), puis appelle le cœur. Un refus du cœur devient une réponse enveloppée
  * (une `Error` perd ses propriétés en traversant `contextBridge`). Le jeton n'entre jamais ici.
  */
 import type { Referentiels } from "@/lib/api_caisse";
 import type { EtatPosteDesktop, ReponsePont, UtilisateurPoste } from "@/lib/caisse/contrat_desktop";
-import { schemaUtilisateur, schemasPont, type NomMethodeCaisse } from "@/lib/caisse/contrat_desktop_schemas";
+import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeCaisse } from "@/lib/caisse/contrat_desktop_schemas";
+import { permissionsRequises } from "@/lib/caisse/permissions_pont";
 import type { CoeurCaisse, ReponseAnnulation } from "./coeur";
 import { RefusCaisse } from "./refus";
 import type { EtatSynchro } from "./synchro";
@@ -19,6 +21,7 @@ export const MESSAGE_CATALOGUE_A_CHARGER = "Connectez ce poste à internet une p
 export const MESSAGE_NON_CONNECTE = "Vous n'êtes pas authentifié.";
 /** Même texte que le garde de permissions du back. */
 export const MESSAGE_PERMISSION_REFUSEE = "Vous n'avez pas la permission d'effectuer cette action.";
+export const MESSAGE_FONCTION_ABSENTE = "Cette fonction n'est pas encore disponible sur ce poste.";
 export const MESSAGE_ECHEC_ENREGISTREMENT =
   "L'enregistrement sur ce poste a échoué. Réessayez. Si cela persiste, redémarrez l'application.";
 
@@ -152,15 +155,20 @@ export class Passerelle {
     this.deps.etatChange();
   }
 
-  async appeler(nom: string, args: unknown[]): Promise<ReponsePont<unknown>> {
-    if (!Object.prototype.hasOwnProperty.call(schemasPont, nom)) return echec(400, "VALIDATION", MESSAGE_VALIDATION);
-    const methode = nom as NomMethodeCaisse;
-    const lu = (schemasPont[methode] as { safeParse(v: unknown): { success: boolean; data?: unknown } }).safeParse(args);
+  /** `domaine` : caisse (par défaut) ou un domaine pharmacie ; une fonction inconnue de son domaine est refusée sans détail. */
+  async appeler(nom: string, args: unknown[], domaine: string = "caisse"): Promise<ReponsePont<unknown>> {
+    if (!estDomainePont(domaine)) return echec(400, "VALIDATION", MESSAGE_VALIDATION);
+    const schemas = schemasParDomaine[domaine];
+    if (!Object.prototype.hasOwnProperty.call(schemas, nom)) return echec(400, "VALIDATION", MESSAGE_VALIDATION);
+    const lu = schemas[nom].safeParse(args);
     if (!lu.success) return echec(400, "VALIDATION", MESSAGE_VALIDATION);
     const valeurs = lu.data as unknown[];
 
-    const refus = this.controler(methode, valeurs);
+    const refus = this.controler(domaine, nom, valeurs);
     if (refus !== null) return refus;
+    // Seul le domaine caisse a des fonctions pour l'instant : les autres domaines brancheront leur cœur ici.
+    if (domaine !== "caisse") return echec(501, "NON_IMPLEMENTE", MESSAGE_FONCTION_ABSENTE);
+    const methode = nom as NomMethodeCaisse;
 
     try {
       const reponse = this.executer(methode, valeurs, this.utilisateur as UtilisateurPoste);
@@ -182,8 +190,8 @@ export class Passerelle {
     }
   }
 
-  /** Utilisateur connecté, pharmacie du poste, droit de caisse, catalogue : dans cet ordre. */
-  private controler(methode: NomMethodeCaisse, valeurs: unknown[]): ReponsePont<never> | null {
+  /** Utilisateur connecté, pharmacie du poste, droit de la fonction, catalogue : dans cet ordre. */
+  private controler(domaine: DomainePont, methode: string, valeurs: unknown[]): ReponsePont<never> | null {
     const u = this.utilisateur;
     if (u === null) return echec(401, "NON_AUTHENTIFIE", MESSAGE_NON_CONNECTE);
 
@@ -195,7 +203,9 @@ export class Passerelle {
     if (rattachee !== null && u.structureId !== rattachee) {
       return echec(403, "POSTE_AUTRE_PHARMACIE", MESSAGE_AUTRE_PHARMACIE);
     }
-    if (!u.permissions.includes("caisse:utiliser")) {
+    // Une fonction absente de la table des permissions est refusée (jamais ouverte par défaut).
+    const requises = permissionsRequises(domaine, methode);
+    if (requises === null || !requises.every((p) => u.permissions.includes(p))) {
       return echec(403, "PERMISSION_REFUSEE", MESSAGE_PERMISSION_REFUSEE);
     }
     if (rattachee === null) return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);

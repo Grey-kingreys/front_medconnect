@@ -23,8 +23,12 @@ export interface FichePhoto {
   lots: LotPhoto[];
 }
 
-/** `lotId` nul = part provisoire (sans lot). */
-export interface SortieLocale {
+/**
+ * Mouvement de stock fait sur le poste et pas encore appliqué par le serveur. `quantiteUm` est signée :
+ * négative pour une sortie (vente, sortie manuelle), positive pour une entrée (réception, inventaire).
+ * `lotId` nul = part provisoire (sans lot).
+ */
+export interface MouvementLocal {
   lotId: string | null;
   quantiteUm: number;
 }
@@ -44,24 +48,33 @@ function versCandidat(lot: LotPhoto): LotCandidat {
 }
 
 /** Calcule le stock d'une fiche pour le jour donné (AAAA-MM-JJ, UTC). */
-export function calculerStockLocal(fiche: FichePhoto, sorties: SortieLocale[], jour: string): StockLocal {
+export function calculerStockLocal(
+  fiche: FichePhoto,
+  mouvements: MouvementLocal[],
+  jour: string,
+  lotsLocaux: LotPhoto[] = [],
+): StockLocal {
   const sommeLots0 = fiche.lots.reduce((s, l) => s + l.solde, 0);
   const agregat0 = fiche.quantite > 0 ? fiche.quantite : sommeLots0 - fiche.quantiteARegulariser;
 
-  const sortiParLot = new Map<string, number>();
-  let sortiTotal = 0;
-  for (const s of sorties) {
-    sortiTotal += s.quantiteUm;
-    if (s.lotId !== null) sortiParLot.set(s.lotId, (sortiParLot.get(s.lotId) ?? 0) + s.quantiteUm);
+  const variationParLot = new Map<string, number>();
+  let variationTotale = 0;
+  for (const m of mouvements) {
+    variationTotale += m.quantiteUm;
+    if (m.lotId !== null) variationParLot.set(m.lotId, (variationParLot.get(m.lotId) ?? 0) + m.quantiteUm);
   }
 
+  // Un lot local déjà connu de la photographie (même identifiant) n'est pas compté deux fois.
+  const idsPhoto = new Set(fiche.lots.map((l) => l.id));
+  const lots = [...fiche.lots, ...lotsLocaux.filter((l) => !idsPhoto.has(l.id)).map((l) => ({ ...l, solde: 0 }))];
+
   const restants: LotPhoto[] = [];
-  for (const lot of fiche.lots) {
-    const solde = Math.max(0, lot.solde - (sortiParLot.get(lot.id) ?? 0));
+  for (const lot of lots) {
+    const solde = Math.max(0, lot.solde + (variationParLot.get(lot.id) ?? 0));
     if (solde > 0) restants.push({ ...lot, solde });
   }
 
-  const agregat = agregat0 - sortiTotal;
+  const agregat = agregat0 + variationTotale;
   const sommeLots = restants.reduce((s, l) => s + l.solde, 0);
 
   const candidats = restants.map(versCandidat);

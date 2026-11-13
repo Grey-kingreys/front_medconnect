@@ -98,6 +98,29 @@ export const schemasPont = {
 
 export type NomMethodeCaisse = keyof typeof schemasPont;
 
+/**
+ * Domaines du pont. Chaque domaine a sa liste de messages (nom, schéma des arguments) et ses permissions
+ * (`permissions_pont.ts`). Les domaines pharmacie à venir sont déclarés vides : ils sont prêts à recevoir leurs
+ * fonctions, une par une, sans changer ni `ipc.ts`, ni `preload.ts`, ni la passerelle.
+ */
+type SchemasDomaine = Record<string, { safeParse(v: unknown): { success: boolean; data?: unknown } }>;
+
+export const DOMAINES_PONT = ["caisse", "stock", "reception", "inventaire", "credit", "anomalie"] as const;
+export type DomainePont = (typeof DOMAINES_PONT)[number];
+
+export const schemasParDomaine: Record<DomainePont, SchemasDomaine> = {
+  caisse: schemasPont as unknown as SchemasDomaine,
+  stock: {},
+  reception: {},
+  inventaire: {},
+  credit: {},
+  anomalie: {},
+};
+
+export function estDomainePont(nom: string): nom is DomainePont {
+  return (DOMAINES_PONT as readonly string[]).includes(nom);
+}
+
 /** Messages d'impression : identifiant de vente en UUID, réglages partiels et stricts. */
 export const schemasImpression = {
   listerImprimantes: z.tuple([]),

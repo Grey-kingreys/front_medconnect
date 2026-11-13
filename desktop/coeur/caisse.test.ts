@@ -64,7 +64,7 @@ describe("vente et caisse ouverte automatiquement (CA19)", () => {
     expect(v.session.ouverteAutomatiquement).toBe(true);
     expect(v.rejeu).toBeUndefined();
     expect(s.lireUn<{ ouverteAutomatiquement: number }>("SELECT ouverteAutomatiquement FROM sessions")?.ouverteAutomatiquement).toBe(1);
-    expect(s.lire("SELECT sequence FROM sorties_stock")).toEqual([{ sequence: 2 }]);
+    expect(s.lire("SELECT sequence FROM mouvements_locaux")).toEqual([{ sequence: 2 }]);
     expect(evenements(s)[0].corps).toEqual({ sessionId: v.session.id });
     expect(s.lireUn<{ prochaineSequence: number }>("SELECT prochaineSequence FROM etat_poste")?.prochaineSequence).toBe(3);
     expect(c.sessionOuverte()?.id).toBe(v.session.id);
@@ -200,7 +200,7 @@ describe("deux prix (CA1, CA2)", () => {
     expect(refus(() => c.enregistrerVente({ lignes: [{ stockId: "inconnue", quantite: 1 }] }, cle(3), VENDEUR))).toMatchObject({ status: 404, code: "STOCK_INTROUVABLE" });
     expect(refus(() => c.enregistrerVente({ lignes: [] }, cle(4), VENDEUR)).code).toBe("VALIDATION");
     expect(refus(() => c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 10001 }] }, cle(5), VENDEUR)).code).toBe("VALIDATION");
-    for (const table of ["ventes", "sessions", "evenements", "sorties_stock", "paiements_locaux"]) expect(compte(s, table)).toBe(0);
+    for (const table of ["ventes", "sessions", "evenements", "mouvements_locaux", "paiements_locaux"]) expect(compte(s, table)).toBe(0);
   });
 });
 
@@ -495,7 +495,7 @@ describe("atomicité : une coupure à la dernière écriture n'écrit rien", () 
     arme = true;
     expect(() => c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 2 }] }, cle(1), VENDEUR)).toThrow("coupure de courant");
 
-    for (const table of ["ventes", "sessions", "evenements", "sorties_stock", "paiements_locaux"]) expect(compte(reel, table)).toBe(0);
+    for (const table of ["ventes", "sessions", "evenements", "mouvements_locaux", "paiements_locaux"]) expect(compte(reel, table)).toBe(0);
     expect(reel.lireUn("SELECT prochaineSequence, prochainSecours FROM etat_poste")).toEqual({ prochaineSequence: 1, prochainSecours: 1 });
     expect(reel.lireUn<{ dernierUtilise: number | null }>("SELECT dernierUtilise FROM plages")?.dernierUtilise).toBeNull();
     expect(c.lireStock()[0].quantite).toBe(40);

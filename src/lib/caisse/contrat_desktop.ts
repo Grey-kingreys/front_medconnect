@@ -113,6 +113,9 @@ export const CODE_IMPRESSION_ECHOUEE = "IMPRESSION_ECHOUEE";
 export const MESSAGE_IMPRESSION_ECHOUEE =
   "Le ticket n'a pas pu être imprimé. Vérifiez que l'imprimante est allumée et réessayez. La vente est bien enregistrée.";
 
+/** Fonctions d'un domaine pharmacie du pont (vide tant que le domaine n'a pas de fonction). Chaque fonction rend une `ReponsePont`. */
+export type PontDomaine = Record<string, (...args: never[]) => Promise<ReponsePont<unknown>>>;
+
 export interface PontDesktop {
   version: string;
   /** Le rendu ne pousse que le jeton : le processus principal en tire l'identité auprès du serveur (`/auth/me`). */
@@ -138,6 +141,12 @@ export interface PontDesktop {
     getVente(s: string, venteId: string): Promise<ReponsePont<Vente | null>>;
     enregistrerAnnulationServeur(reponse: Vente): Promise<ReponsePont<null>>;
   };
+  /** Domaines pharmacie à venir, prêts à recevoir leurs fonctions (absents des anciens préchargements). */
+  stock?: PontDomaine;
+  reception?: PontDomaine;
+  inventaire?: PontDomaine;
+  credit?: PontDomaine;
+  anomalie?: PontDomaine;
   maj: {
     /** Installe la mise à jour prête et relance l'application ; refusé si une caisse est ouverte ou si des ventes attendent. */
     installer(): Promise<ReponsePont<null>>;

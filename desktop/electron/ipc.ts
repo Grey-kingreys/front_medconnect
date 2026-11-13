@@ -3,7 +3,7 @@
 // 2. les arguments sont validés (Zod), l'utilisateur, la pharmacie et le droit contrôlés par la passerelle.
 // La fenêtre cachée d'impression (PD05) lit le reçu par le même pont, mais ne peut ni poser un jeton ni déconnecter.
 import { ipcMain, type IpcMainInvokeEvent, type WebContents } from "electron";
-import { schemaJeton, schemasImpression, schemasPont, type NomMethodeImpression } from "@/lib/caisse/contrat_desktop_schemas";
+import { DOMAINES_PONT, schemaJeton, schemasImpression, schemasParDomaine, type NomMethodeImpression } from "@/lib/caisse/contrat_desktop_schemas";
 import type { EtatPosteDesktop, InfosPoste, ReglagesPoste, ReponsePont } from "@/lib/caisse/contrat_desktop";
 import { lectureAutoriseeDepuisImpression } from "../coeur/impression_file";
 import { MESSAGE_MAJ_INTERDITE } from "../coeur/maj_regle";
@@ -54,11 +54,14 @@ export function enregistrerIpc(deps: DepsIpc): void {
     expediteurAutorise(evenement) ||
     (lectureAutoriseeDepuisImpression(canal) && deps.impression.contenusActifs().some((c) => cadreAutorise(evenement, c)));
 
-  for (const nom of Object.keys(schemasPont)) {
-    ipcMain.handle(`caisse:${nom}`, async (evenement, ...args: unknown[]) => {
-      if (!expediteurLecture(evenement, `caisse:${nom}`)) return REFUS;
-      return deps.passerelle.appeler(nom, args);
-    });
+  // Un canal par fonction de chaque domaine : `<domaine>:<fonction>`. Les domaines pharmacie à venir y entrent sans autre changement.
+  for (const domaine of DOMAINES_PONT) {
+    for (const nom of Object.keys(schemasParDomaine[domaine])) {
+      ipcMain.handle(`${domaine}:${nom}`, async (evenement, ...args: unknown[]) => {
+        if (!expediteurLecture(evenement, `${domaine}:${nom}`)) return REFUS;
+        return deps.passerelle.appeler(nom, args, domaine);
+      });
+    }
   }
 
   ipcMain.handle("etat", (evenement) => {

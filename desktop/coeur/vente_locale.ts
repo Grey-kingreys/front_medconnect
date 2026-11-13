@@ -21,7 +21,8 @@ import { preparerPaiements } from "@/lib/caisse/regles/paiements";
 import { calculerLigne, type LigneCalculee } from "@/lib/caisse/regles/prix";
 import { reliquatLot } from "@/lib/caisse/regles/quantites";
 import { selectionnerLots, type LotCandidat, type LotPerimeDisponible } from "@/lib/caisse/regles/selection_lots";
-import { calculerStockLocal, type SortieLocale } from "@/lib/caisse/regles/stock_local";
+import { calculerStockLocal } from "@/lib/caisse/regles/stock_local";
+import { ajouterMouvementLocal, lireSurcouche } from "./stock_surcouche";
 import { creerSession, lireSession, sessionOuverteLigne } from "./caisse_session";
 import type { Contexte } from "./contexte";
 import {
@@ -304,11 +305,8 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
     const lotsParFiche = new Map<string, LotCandidat[]>();
     const lotsDeLaPhoto = new Map<string, Set<string>>();
     for (const [id, fiche] of fiches) {
-      const sorties = c.stockage.lire<SortieLocale>(
-        "SELECT lotId, quantiteUm FROM sorties_stock WHERE stockId = ? AND sequence > ?",
-        [id, etat.sequenceAppliquee],
-      );
-      const stock = calculerStockLocal(fiche, sorties, jour);
+      const surcouche = lireSurcouche(c.stockage, etat.sequenceAppliquee, id);
+      const stock = calculerStockLocal(fiche, surcouche.mouvements.get(id) ?? [], jour, surcouche.lotsLocaux.get(id) ?? []);
       lotsParFiche.set(id, stock.lots.map((l) => ({ ...l, coutUnitaire: 0 })));
       lotsDeLaPhoto.set(id, new Set(fiche.lots.map((l) => l.id)));
     }
@@ -485,13 +483,14 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
     );
     lignesReponse.forEach((ligne) => {
       for (const al of ligne.allocations) {
-        c.stockage.executer("INSERT INTO sorties_stock (venteId, sequence, stockId, lotId, quantiteUm) VALUES (?, ?, ?, ?, ?)", [
-          cle,
+        ajouterMouvementLocal(c.stockage, {
           sequence,
-          ligne.stockId,
-          al.lotId,
-          al.quantite,
-        ]);
+          stockId: ligne.stockId,
+          lotId: al.lotId,
+          quantiteUm: -al.quantite,
+          type: "VENTE",
+          reference: cle,
+        });
       }
     });
     for (const p of prepares.paiements) {

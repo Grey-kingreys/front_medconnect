@@ -140,6 +140,36 @@ const ETAPES: string[] = [
     valeur TEXT NOT NULL
   );
   `,
+  // Version 5 (hors ligne général) : mouvements de stock locaux signés (remplacent sorties_stock) et lots créés
+  // sur le poste. Les anciennes sorties deviennent des mouvements négatifs de type VENTE, avec la même séquence.
+  `
+  CREATE TABLE mouvements_locaux (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence INTEGER NOT NULL,
+    stockId TEXT NOT NULL,
+    lotId TEXT,
+    quantiteUm INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    reference TEXT
+  );
+  CREATE INDEX mouvements_locaux_fiche ON mouvements_locaux (stockId, sequence);
+
+  CREATE TABLE lots_locaux (
+    lotId TEXT PRIMARY KEY,
+    stockId TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    numeroLot TEXT,
+    dateExpiration TEXT,
+    dateReception TEXT NOT NULL,
+    coefficientReception INTEGER NOT NULL,
+    lotTechnique INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX lots_locaux_fiche ON lots_locaux (stockId, sequence);
+
+  INSERT INTO mouvements_locaux (sequence, stockId, lotId, quantiteUm, type, reference)
+    SELECT sequence, stockId, lotId, -quantiteUm, 'VENTE', venteId FROM sorties_stock ORDER BY rowid;
+  DROP TABLE sorties_stock;
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;
