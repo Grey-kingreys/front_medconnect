@@ -1,21 +1,40 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useSyncExternalStore } from "react";
 import { Download, Check } from "lucide-react";
+import { ui } from "@/theme/ui";
+
+// Événement « beforeinstallprompt » (non typé par TypeScript)
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+};
+
+const REQUETE_AUTONOME = "(display-mode: standalone)";
+
+function abonnerAffichage(rappel: () => void) {
+  const requete = window.matchMedia(REQUETE_AUTONOME);
+  requete.addEventListener("change", rappel);
+  return () => requete.removeEventListener("change", rappel);
+}
 
 export function PWAInstallButton() {
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  // Application ouverte en mode installé (faux côté serveur)
+  const modeAutonome = useSyncExternalStore(
+    abonnerAffichage,
+    () => window.matchMedia(REQUETE_AUTONOME).matches,
+    () => false,
+  );
+  const [installee, setIsInstalled] = useState(false);
+  const isInstalled = modeAutonome || installee;
   const [showButton, setShowButton] = useState(false);
 
   useEffect(() => {
-    // Check if app is already installed
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setIsInstalled(true);
-      return;
-    }
+    if (window.matchMedia(REQUETE_AUTONOME).matches) return;
 
-    const handler = (e: any) => {
+    const handler = (evenement: Event) => {
+      const e = evenement as BeforeInstallPromptEvent;
       // Prevent the mini-infobar from appearing on mobile
       e.preventDefault();
       // Stash the event so it can be triggered later.
@@ -68,9 +87,9 @@ export function PWAInstallButton() {
   return (
     <button
       onClick={handleInstallClick}
-      className="flex items-center gap-2 w-full px-3 py-2.5 text-xs font-bold text-white bg-gradient-to-r from-primary-600 to-cyan-500 hover:from-primary-500 hover:to-cyan-400 rounded-xl shadow-lg shadow-primary-500/20 transition-all active:scale-95"
+      className={ui.menu.lien}
     >
-      <Download size={14} />
+      <Download size={16} aria-hidden="true" />
       Installer l&apos;application
     </button>
   );

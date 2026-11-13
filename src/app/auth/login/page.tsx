@@ -5,6 +5,7 @@ import Link from "next/link";
 import { Mail, Lock, Eye, EyeOff, LogIn, Loader2, AlertCircle } from "lucide-react";
 import { login, ApiError } from "@/lib/api_auth";
 import { useTerminerConnexion } from "@/hooks/useAuth";
+import { pontDesktop } from "@/lib/caisse/contrat_desktop";
 import ComptesDemo from "@/components/ComptesDemo";
 import { lireEtEffacerMotif, MESSAGES_DECONNEXION, type MotifDeconnexion } from "@/lib/deconnexion_forcee";
 
@@ -21,6 +22,20 @@ export default function LoginPage() {
     const motif = lireEtEffacerMotif();
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (motif) setMotifDeconnexion(motif);
+  }, []);
+
+  // Application desktop seulement : avertit quand il n'y a pas d'internet (le web n'a pas de pont)
+  const [horsLigneDesktop, setHorsLigneDesktop] = useState(false);
+  useEffect(() => {
+    const pont = pontDesktop();
+    if (!pont) return;
+    let actif = true;
+    pont.etat().then((e) => actif && setHorsLigneDesktop(!e.enLigne)).catch(() => {});
+    const retirer = pont.surEtat((e) => setHorsLigneDesktop(!e.enLigne));
+    return () => {
+      actif = false;
+      retirer();
+    };
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -67,6 +82,16 @@ export default function LoginPage() {
         <div role="status" className="mb-6 flex items-start gap-3 p-4 rounded-2xl bg-emergency-500/10 border border-emergency-500/20 text-emergency-500 text-sm">
           <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
           <span>{MESSAGES_DECONNEXION[motifDeconnexion]}</span>
+        </div>
+      )}
+
+      {horsLigneDesktop && (
+        <div role="status" className="mb-6 flex items-start gap-3 p-4 rounded-2xl bg-emergency-500/10 border border-emergency-500/20 text-emergency-500 text-sm">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" aria-hidden="true" />
+          <span>
+            Pas de connexion internet. Pour vendre sur ce poste, le dernier utilisateur connecté doit rester connecté ; changer
+            d&apos;utilisateur demande internet.
+          </span>
         </div>
       )}
 

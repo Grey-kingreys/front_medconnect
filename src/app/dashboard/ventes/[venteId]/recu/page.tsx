@@ -9,7 +9,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
 import { ApiError } from "@/lib/api_auth";
-import { getVente, type Vente } from "@/lib/api_ventes";
+import type { Vente } from "@/lib/api_ventes";
+import { CODE_IMPRIMANTE_NON_CHOISIE, MESSAGE_IMPRESSION_ECHOUEE, pontDesktop } from "@/lib/caisse/contrat_desktop";
+import { sourceCaisse } from "@/lib/caisse/source_active";
 import { formaterGNF } from "@/lib/format_gnf";
 import { estRouteAutorisee } from "@/lib/navigation_tableau_de_bord";
 import {
@@ -45,6 +47,18 @@ const STYLE_IMPRESSION: Record<FormatRecu, string> = {
 
 const SEPARATEUR = "border-t border-dashed border-black/40 my-2";
 
+/** Délai au bout duquel un logo qui n'arrive pas est abandonné pour l'impression (hors ligne, il ne viendra pas). */
+const DELAI_LOGO_IMPRESSION_MS = 3000;
+
+/** Fenêtre cachée d'impression du poste (desktop) : `?impression=1` et le format demandé par le processus principal. */
+function lireImpression(): { actif: boolean; format: FormatRecu | null } {
+  if (typeof window === "undefined" || pontDesktop() === null) return { actif: false, format: null };
+  const requete = new URLSearchParams(window.location.search);
+  if (requete.get("impression") !== "1") return { actif: false, format: null };
+  const format = requete.get("format");
+  return { actif: true, format: FORMATS_RECU.some((f) => f.valeur === format) ? (format as FormatRecu) : null };
+}
+
 type Etat =
   | { statut: "chargement" }
   | { statut: "pret"; vente: Vente }
@@ -60,14 +74,61 @@ export default function RecuVentePage() {
 
   const [etat, setEtat] = useState<Etat>({ statut: "chargement" });
   const [essai, setEssai] = useState(0);
-  const [format, setFormat] = useState<FormatRecu>(() => lireFormatRecu());
+  const [impression] = useState(lireImpression);
+  const [format, setFormat] = useState<FormatRecu>(() => impression.format ?? lireFormatRecu());
+  const [impressionEnCours, setImpressionEnCours] = useState(false);
+  const [echecImpression, setEchecImpression] = useState<string | null>(null);
+  const [imprimanteAChoisir, setImprimanteAChoisir] = useState(false);
+
+  // Poste desktop : le format du ticket est celui des réglages du poste (hors fenêtre d'impression, qui reçoit le sien).
+  useEffect(() => {
+    const pont = pontDesktop();
+    if (pont === null || impression.actif) return;
+    let actif = true;
+    void pont.impression.lireReglages().then((rep) => {
+      if (actif && rep.ok) setFormat(rep.data.formatRecu);
+    });
+    return () => {
+      actif = false;
+    };
+  }, [impression.actif]);
+
+  // Fenêtre d'impression : le reçu est prêt quand la vente est rendue et que le logo a fini (chargé, en échec ou 3 s écoulées).
+  const recuRendu = etat.statut === "pret";
+  useEffect(() => {
+    const pont = pontDesktop();
+    if (!impression.actif || pont === null || !recuRendu) return;
+    let signale = false;
+    const signaler = () => {
+      if (signale) return;
+      signale = true;
+      void pont.impression.signalerPret();
+    };
+    const delai = window.setTimeout(signaler, DELAI_LOGO_IMPRESSION_MS);
+    const logo = document.querySelector("article img");
+    const ecouteurs: (() => void)[] = [];
+    if (logo instanceof HTMLImageElement && !logo.complete) {
+      logo.addEventListener("load", signaler);
+      logo.addEventListener("error", signaler);
+      ecouteurs.push(() => logo.removeEventListener("load", signaler), () => logo.removeEventListener("error", signaler));
+    } else {
+      // Un cycle de rendu pour que la mise en page soit posée avant la mesure.
+      window.setTimeout(signaler, 50);
+    }
+    return () => {
+      window.clearTimeout(delai);
+      ecouteurs.forEach((retirer) => retirer());
+    };
+  }, [impression.actif, recuRendu]);
 
   useEffect(() => {
     if (!structureId) return;
     let actif = true;
-    getVente(structureId, venteId)
+    sourceCaisse()
+      .getVente(structureId, venteId)
       .then((res) => {
-        if (actif) setEtat({ statut: "pret", vente: res.data });
+        if (!actif) return;
+        setEtat(res.data === null ? { statut: "introuvable" } : { statut: "pret", vente: res.data });
       })
       .catch((err: unknown) => {
         if (!actif) return;
@@ -93,6 +154,33 @@ export default function RecuVentePage() {
   const choisirFormat = (nouveau: FormatRecu) => {
     setFormat(nouveau);
     enregistrerFormatRecu(nouveau);
+    // Poste desktop : le choix devient le réglage du poste, celui que l'impression directe utilise.
+    void pontDesktop()?.impression.enregistrerReglages({ formatRecu: nouveau });
+  };
+
+  const imprimer = async () => {
+    const pont = pontDesktop();
+    if (pont === null) {
+      window.print();
+      return;
+    }
+    setEchecImpression(null);
+    setImprimanteAChoisir(false);
+    setImpressionEnCours(true);
+    try {
+      const rep = await pont.impression.imprimerVente(venteId);
+      if (rep.ok) return;
+      if (rep.code === CODE_IMPRIMANTE_NON_CHOISIE) {
+        setImprimanteAChoisir(true);
+        window.print();
+        return;
+      }
+      setEchecImpression(rep.message);
+    } catch {
+      setEchecImpression(MESSAGE_IMPRESSION_ECHOUEE);
+    } finally {
+      setImpressionEnCours(false);
+    }
   };
 
   const lienRetour = peutVoirVentes
@@ -185,6 +273,7 @@ export default function RecuVentePage() {
     <div className="max-w-4xl mx-auto print:max-w-none print:m-0 animate-fade-in">
       <style>{STYLE_IMPRESSION[format]}</style>
 
+      {!impression.actif && (
       <div className="print:hidden space-y-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
@@ -226,11 +315,25 @@ export default function RecuVentePage() {
             ))}
           </div>
         </fieldset>
-        <button type="button" onClick={() => window.print()} className={BOUTON_PRIMAIRE}>
+        <button type="button" onClick={() => void imprimer()} disabled={impressionEnCours} className={BOUTON_PRIMAIRE}>
           <Printer className="w-4 h-4" aria-hidden="true" />
           Imprimer
         </button>
+        {echecImpression !== null && (
+          <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+            {echecImpression}
+          </p>
+        )}
+        {imprimanteAChoisir && (
+          <p role="status" className="text-sm text-slate-700 dark:text-slate-300">
+            Aucune imprimante n&apos;est choisie pour ce poste.{" "}
+            <Link href="/dashboard/poste" className={`rounded font-medium text-primary-700 dark:text-primary-300 hover:underline ${FOCUS}`}>
+              Choisir l&apos;imprimante
+            </Link>
+          </p>
+        )}
       </div>
+      )}
 
       <article
         aria-label={`Reçu ${vente.numero}`}
@@ -306,6 +409,7 @@ export default function RecuVentePage() {
           <span>Total</span>
           <span>{formaterGNF(vente.total)}</span>
         </p>
+        {vente.aRegulariserLocal === true && <p className="text-center">À régulariser : une partie de cette vente n&apos;était pas en stock.</p>}
 
         {vente.paiements.length > 0 && (
           <ul className="mt-1 space-y-0.5">

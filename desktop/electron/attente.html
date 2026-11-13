@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <title>MedConnecte Caisse</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src 'self'; style-src 'unsafe-inline'" />
+    <style>
+      html, body { height: 100%; margin: 0; }
+      body {
+        display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px;
+        background: #f8fafc; color: #0f172a; font-family: system-ui, "Segoe UI", sans-serif;
+      }
+      img { width: 96px; height: 96px; }
+      p { font-size: 16px; margin: 0; }
+      @media (prefers-color-scheme: dark) {
+        body { background: #0f172a; color: #f1f5f9; }
+      }
+    </style>
+  </head>
+  <body>
+    <img src="icon-192x192.png" alt="" />
+    <p role="status">Démarrage de MedConnecte Caisse...</p>
+  </body>
+</html>

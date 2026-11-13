@@ -31,14 +31,14 @@ import {
   CARTE,
   CHAMP,
   FOCUS,
-  POLICE_TITRE,
 } from "@/components/pharmacie/classes";
 import { coefficientDuLot } from "@/components/pharmacie/ChoixLot";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
+import { ui } from "@/theme/ui";
 import { formaterDateCourte, jourConakry } from "../ventes/affichage";
 import { rechercherDansStock } from "../vente/panier";
 
-const CHAMP_INVALIDE = CHAMP.replace("border-slate-200 dark:border-slate-800", "border-rose-500 dark:border-rose-500");
+const CHAMP_INVALIDE = CHAMP.replace("border-slate-300", "border-rose-500").replace("dark:border-slate-700", "dark:border-rose-500");
 const ICONE = "w-4 h-4 text-slate-600 dark:text-slate-400";
 
 const SUGGESTIONS_MAX = 8;
@@ -584,10 +584,10 @@ export default function InventairePage() {
 
   const enTete = (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+      <h1 className={ui.titrePage}>
         Inventaire
       </h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+      <p className={`${ui.texte.petit} mt-1`}>
         Comptez vos boîtes lot par lot. Les quantités saisies remplacent celles enregistrées.
       </p>
     </div>
@@ -595,7 +595,7 @@ export default function InventairePage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -607,7 +607,7 @@ export default function InventairePage() {
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Votre compte n&apos;est rattaché à aucune pharmacie. Adressez-vous à l&apos;administrateur de votre pharmacie.
           </p>
           <Link href="/dashboard" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -631,13 +631,12 @@ export default function InventairePage() {
           <h2
             ref={titreSucces}
             tabIndex={-1}
-            className="text-xl font-bold text-slate-900 dark:text-white focus:outline-none"
-            style={POLICE_TITRE}
+            className={`${ui.texte.section} focus:outline-none`}
           >
             {message}
           </h2>
           {inventaire.cree === false && (
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
               Cet inventaire était déjà enregistré : rien n&apos;a été compté deux fois.
             </p>
           )}
@@ -650,16 +649,16 @@ export default function InventairePage() {
             </p>
           ))}
           <div className="w-full overflow-x-auto">
-            <table className="w-full text-sm text-left">
+            <table className={ui.tableau}>
               <caption className="sr-only">Résultat du comptage, une ligne par lot</caption>
               <thead>
-                <tr className="text-slate-700 dark:text-slate-300 border-b border-slate-200 dark:border-slate-800">
-                  <th scope="col" className="py-2 pr-3 font-semibold">Médicament</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Lot</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Attendu</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Compté</th>
-                  <th scope="col" className="py-2 pr-3 font-semibold">Écart</th>
-                  <th scope="col" className="py-2 font-semibold">Signalé au titulaire</th>
+                <tr className={ui.enteteTableau}>
+                  <th scope="col" className={ui.celluleEntete}>Médicament</th>
+                  <th scope="col" className={ui.celluleEntete}>Lot</th>
+                  <th scope="col" className={ui.celluleEntete}>Attendu</th>
+                  <th scope="col" className={ui.celluleEntete}>Compté</th>
+                  <th scope="col" className={ui.celluleEntete}>Écart</th>
+                  <th scope="col" className={ui.celluleEntete}>Signalé au titulaire</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
@@ -673,19 +672,19 @@ export default function InventairePage() {
                   }`;
                   return (
                     <tr key={l.id} className="align-top">
-                      <th scope="row" className="py-3 pr-3 font-medium text-slate-900 dark:text-white">{l.nom}</th>
-                      <td className="py-3 pr-3 text-slate-800 dark:text-slate-200">{lot}</td>
-                      <td className="py-3 pr-3 text-slate-800 dark:text-slate-200">
+                      <th scope="row" className={`${ui.cellule} py-3 font-medium`}>{l.nom}</th>
+                      <td className={`${ui.cellule} py-3`}>{lot}</td>
+                      <td className={`${ui.cellule} py-3`}>
                         {formaterQuantite(l.quantiteTheorique, coefficient, unite)}
                         {aRegulariser !== null && (
-                          <span className="block text-xs text-amber-700 dark:text-amber-300">{`dont ${aRegulariser}`}</span>
+                          <span className="block text-mc-legende text-amber-700 dark:text-amber-300">{`dont ${aRegulariser}`}</span>
                         )}
                       </td>
-                      <td className="py-3 pr-3 text-slate-800 dark:text-slate-200">
+                      <td className={`${ui.cellule} py-3`}>
                         {formaterQuantite(l.quantiteComptee, coefficient, unite)}
                       </td>
-                      <td className={`py-3 pr-3 font-semibold ${classeEcart(l)}`}>{ecartLisible(l.ecart, coefficient, unite)}</td>
-                      <td className="py-3 text-slate-800 dark:text-slate-200">{l.anomalieId ? "Oui" : "Non"}</td>
+                      <td className={`px-3 py-3 text-mc-normal font-semibold tabular-nums ${classeEcart(l)}`}>{ecartLisible(l.ecart, coefficient, unite)}</td>
+                      <td className={`${ui.cellule} py-3`}>{l.anomalieId ? "Oui" : "Non"}</td>
                     </tr>
                   );
                 })}
@@ -710,7 +709,7 @@ export default function InventairePage() {
       <div className="max-w-5xl mx-auto space-y-6 animate-fade-in">
         {enTete}
         {erreurChargement === null ? (
-          <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+          <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
             <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
             Chargement du stock...
           </div>
@@ -736,7 +735,7 @@ export default function InventairePage() {
     const titre = l.genre === "propose" ? l.libelle : l.genre === "stock" ? "Stock de ce médicament" : "Autre lot trouvé en rayon";
     const champPeremption = l.genre !== "propose" && (
       <div className="w-44">
-        <label htmlFor={`peremption-${l.cle}`} className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+        <label htmlFor={`peremption-${l.cle}`} className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
           {l.genre === "stock" ? "Péremption (si nouveau lot)" : "Péremption"}
         </label>
         <input
@@ -755,24 +754,24 @@ export default function InventairePage() {
           className={`${messagePeremption ? CHAMP_INVALIDE : CHAMP} disabled:opacity-60`}
         />
         {messagePeremption ? (
-          <p id={`info-${l.cle}-peremption`} className="mt-1 text-sm text-rose-700 dark:text-rose-300">
+          <p id={`info-${l.cle}-peremption`} className="mt-1 text-mc-normal text-rose-700 dark:text-rose-300">
             {messagePeremption}
           </p>
         ) : (
           dateLue && (
-            <p id={`info-${l.cle}-peremption`} className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+            <p id={`info-${l.cle}-peremption`} className="mt-1 text-mc-normal text-slate-700 dark:text-slate-300">
               {dateLue}
             </p>
           )
         )}
         {l.genre === "autre" && (
-          <label className="mt-2 flex items-center gap-2 text-sm text-slate-800 dark:text-slate-200">
+          <label className="mt-2 flex items-center gap-2 text-mc-normal text-slate-800 dark:text-slate-200">
             <input
               type="checkbox"
               checked={l.sansDate}
               disabled={verrouille}
               onChange={(ev) => modifierLigne(l.cle, { sansDate: ev.target.checked }, "peremption")}
-              className={`w-5 h-5 rounded accent-primary-600 ${FOCUS}`}
+              className={`w-5 h-5 rounded-mc-petit accent-primary-600 ${FOCUS}`}
             />
             Sans date
           </label>
@@ -781,7 +780,7 @@ export default function InventairePage() {
     );
     const champBoites = (
       <div className="w-28">
-        <label htmlFor={`boites-${l.cle}`} className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+        <label htmlFor={`boites-${l.cle}`} className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
           Boîtes
         </label>
         <input
@@ -801,7 +800,7 @@ export default function InventairePage() {
     );
     const champUnites = l.coefficient > 1 && (
       <div className="w-36">
-        <label htmlFor={`unites-${l.cle}`} className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+        <label htmlFor={`unites-${l.cle}`} className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
           {libelleUnites} en plus
         </label>
         <input
@@ -821,7 +820,7 @@ export default function InventairePage() {
     );
     return (
       <fieldset key={l.cle} className="min-w-0 border-0 m-0 p-0 py-4">
-        <legend className="text-sm font-semibold text-slate-900 dark:text-white mb-3 float-left w-full">{titre}</legend>
+        <legend className="text-mc-normal font-semibold text-slate-900 dark:text-white mb-3 float-left w-full">{titre}</legend>
         <div className="clear-both flex flex-wrap items-start gap-3">
           {l.genre === "autre" ? (
             <>
@@ -849,12 +848,12 @@ export default function InventairePage() {
           )}
         </div>
         {e.boites && (
-          <p id={`erreur-${l.cle}-boites`} className="mt-1 text-sm text-rose-700 dark:text-rose-300">
+          <p id={`erreur-${l.cle}-boites`} className="mt-1 text-mc-normal text-rose-700 dark:text-rose-300">
             {e.boites}
           </p>
         )}
         {e.unites && (
-          <p id={`erreur-${l.cle}-unites`} className="mt-1 text-sm text-rose-700 dark:text-rose-300">
+          <p id={`erreur-${l.cle}-unites`} className="mt-1 text-mc-normal text-rose-700 dark:text-rose-300">
             {e.unites}
           </p>
         )}
@@ -867,11 +866,11 @@ export default function InventairePage() {
       {enTete}
 
       <section className={`${CARTE} space-y-3`} aria-labelledby="titre-ajout">
-        <h2 id="titre-ajout" className="text-lg font-semibold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+        <h2 id="" className={ui.texte.section}>
           Ajouter un médicament à compter
         </h2>
         <div>
-          <label htmlFor="recherche-inventaire" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+          <label htmlFor="recherche-inventaire" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
             Nom ou nom générique
           </label>
           <input
@@ -900,7 +899,7 @@ export default function InventairePage() {
               id="suggestions-inventaire"
               role="listbox"
               aria-label="Médicaments trouvés"
-              className="mt-1 max-h-56 overflow-y-auto rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800"
+              className="mt-1 max-h-56 overflow-y-auto rounded-mc-moyen border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800"
             >
               {suggestions.map((s, i) => (
                 <li
@@ -912,28 +911,28 @@ export default function InventairePage() {
                     ev.preventDefault();
                     ajouterFiche(s);
                   }}
-                  className={`px-4 py-2 cursor-pointer text-sm text-slate-900 dark:text-white ${
+                  className={`px-4 py-2 cursor-pointer text-mc-normal text-slate-900 dark:text-white ${
                     i === Math.min(indexSuggestion, suggestions.length - 1)
                       ? "bg-primary-50 dark:bg-primary-500/15"
                       : "hover:bg-slate-100 dark:hover:bg-slate-800"
                   }`}
                 >
-                  <span className="font-bold">{s.medicament.nom}</span>
+                  <span className="font-semibold">{s.medicament.nom}</span>
                   {s.medicament.nomGenerique && (
-                    <span className="block text-xs text-slate-600 dark:text-slate-400">{s.medicament.nomGenerique}</span>
+                    <span className="block text-mc-legende text-slate-600 dark:text-slate-400">{s.medicament.nomGenerique}</span>
                   )}
                 </li>
               ))}
             </ul>
           )}
           {aucunResultat && (
-            <p className="mt-1 text-sm text-slate-700 dark:text-slate-300">
+            <p className="mt-1 text-mc-normal text-slate-700 dark:text-slate-300">
               Aucun médicament à ajouter ne correspond à « {recherche.trim()} ».
             </p>
           )}
         </div>
         {erreurChargement && (
-          <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+          <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300">
             La liste des médicaments n&apos;a pas pu être actualisée. Vérifiez votre connexion puis réessayez.
           </p>
         )}
@@ -941,7 +940,7 @@ export default function InventairePage() {
 
       <div ref={zoneBlocs} className="space-y-6">
         {blocs.length === 0 && (
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Ajoutez les médicaments que vous comptez : leurs lots s&apos;affichent ici, prêts à être comptés.
           </p>
         )}
@@ -953,7 +952,7 @@ export default function InventairePage() {
           return (
             <section key={bloc.stockId} className={CARTE} aria-labelledby={`titre-${bloc.stockId}`}>
               <div className="flex items-start justify-between gap-3">
-                <h2 id={`titre-${bloc.stockId}`} className="text-lg font-semibold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+                <h2 id={`titre-${bloc.stockId}`} className={ui.texte.section}>
                   {nom}
                 </h2>
                 <button
@@ -967,7 +966,7 @@ export default function InventairePage() {
                 </button>
               </div>
               {bloc.statut === "chargement" && (
-                <div role="status" className="mt-3 flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+                <div role="status" className="mt-3 flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
                   <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
                   Chargement des lots...
                 </div>
@@ -988,7 +987,7 @@ export default function InventairePage() {
                   <div className="mt-2 divide-y divide-slate-200 dark:divide-slate-800">
                     {bloc.lignes.map((l) => ligneEn(l, bloc.stockId, nom, unite))}
                   </div>
-                  {aDesLots && <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{AIDE_LOT_VIDE}</p>}
+                  {aDesLots && <p className="mt-2 text-mc-normal text-slate-600 dark:text-slate-400">{AIDE_LOT_VIDE}</p>}
                   <div className="mt-4 space-y-2">
                     <button
                       type="button"
@@ -999,7 +998,7 @@ export default function InventairePage() {
                       <Plus className="w-4 h-4" aria-hidden="true" />
                       Autre lot trouvé en rayon
                     </button>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">{AIDE_AUTRE_LOT}</p>
+                    <p className="text-mc-normal text-slate-600 dark:text-slate-400">{AIDE_AUTRE_LOT}</p>
                   </div>
                 </>
               )}
@@ -1012,7 +1011,7 @@ export default function InventairePage() {
         <h2 id="titre-commentaire" className="sr-only">
           Commentaire
         </h2>
-        <label htmlFor="commentaire-inventaire" className="block text-sm font-medium text-slate-800 dark:text-slate-200">
+        <label htmlFor="commentaire-inventaire" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200">
           Commentaire (facultatif)
         </label>
         <textarea
@@ -1037,7 +1036,7 @@ export default function InventairePage() {
                   type="button"
                   onClick={() => corpsEnvoye.current && envoyer(corpsEnvoye.current)}
                   disabled={envoi}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-bold bg-rose-700 text-white hover:bg-rose-800 disabled:opacity-60 ${FOCUS}`}
+                  className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-semibold bg-rose-700 text-white hover:bg-rose-800 disabled:opacity-60 ${FOCUS}`}
                 >
                   Réessayer l&apos;envoi
                 </button>
@@ -1045,7 +1044,7 @@ export default function InventairePage() {
                   type="button"
                   onClick={() => setConfirmationModif(true)}
                   disabled={envoi}
-                  className={`px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-60 ${FOCUS}`}
+                  className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-60 ${FOCUS}`}
                 >
                   Modifier la saisie
                 </button>
@@ -1058,14 +1057,14 @@ export default function InventairePage() {
                   <button
                     type="button"
                     onClick={modifierLaSaisie}
-                    className={`px-3 py-1.5 rounded-xl text-sm font-bold bg-rose-700 text-white hover:bg-rose-800 ${FOCUS}`}
+                    className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-semibold bg-rose-700 text-white hover:bg-rose-800 ${FOCUS}`}
                   >
                     Modifier
                   </button>
                   <button
                     type="button"
                     onClick={() => setConfirmationModif(false)}
-                    className={`px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 ${FOCUS}`}
+                    className={`h-mc-controle-petit px-3 rounded-mc-moyen text-mc-petit font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 ${FOCUS}`}
                   >
                     Annuler
                   </button>

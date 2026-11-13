@@ -1,5 +1,6 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { Suspense, useEffect, useRef, useState, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -45,7 +46,7 @@ const FILTRES_TYPE: { type: TypeAnomalie; libelle: string }[] = [
 const MESSAGE_RESEAU = "Le traitement n'a peut-être pas été enregistré. Fermez cette fenêtre et vérifiez la liste.";
 const MESSAGE_COMMENTAIRE = "Indiquez ce que vous avez vérifié ou fait (3 caractères au moins).";
 const LONGUEUR_MAX_COMMENTAIRE = 500;
-const BOUTON_PAGE = `px-4 py-2 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`;
+const BOUTON_PAGE = ui.bouton.discret;
 
 type Etat = { statut: "chargement" } | { statut: "pret"; donnees: PageAnomalies } | { statut: "erreur"; message: string };
 
@@ -97,28 +98,28 @@ function ContenuTraitement({ anomalie, envoiEnCours, erreur, bloque, onClose, on
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-500/15 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-mc-moyen bg-emerald-50 dark:bg-emerald-500/15 flex items-center justify-center shrink-0">
               <CheckCircle2 className="w-6 h-6 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Marquer comme traitée
             </h3>
           </div>
 
-          <div className="space-y-1 text-sm text-slate-700 dark:text-slate-200">
-            <p className="font-bold text-slate-900 dark:text-white">{titreAnomalie(anomalie)}</p>
+          <div className="space-y-1 text-mc-normal text-slate-700 dark:text-slate-200">
+            <p className="font-semibold text-slate-900 dark:text-white">{titreAnomalie(anomalie)}</p>
             <p>{texteDetail(anomalie)}</p>
           </div>
 
           <div>
-            <label htmlFor="commentaire-anomalie" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+            <label htmlFor="commentaire-anomalie" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
               Ce que vous avez vérifié ou fait
             </label>
             <textarea
@@ -134,21 +135,21 @@ function ContenuTraitement({ anomalie, envoiEnCours, erreur, bloque, onClose, on
               aria-describedby="aide-commentaire-anomalie"
               className={CHAMP}
             />
-            <div className="flex items-center justify-between gap-3 mt-1 text-xs text-slate-600 dark:text-slate-400">
+            <div className="flex items-center justify-between gap-3 mt-1 text-mc-legende text-slate-600 dark:text-slate-400">
               <p id="aide-commentaire-anomalie">Entre 3 et 500 caractères.</p>
               <p>
                 {commentaire.length} / {LONGUEUR_MAX_COMMENTAIRE}
               </p>
             </div>
             {refuse && (
-              <p role="alert" className="text-sm text-rose-700 dark:text-rose-300 mt-1">
+              <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300 mt-1">
                 {MESSAGE_COMMENTAIRE}
               </p>
             )}
           </div>
 
           {erreur && (
-            <div role="alert" className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-sm">
+            <div role="alert" className="p-4 rounded-mc-moyen bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-mc-normal">
               {erreur}
             </div>
           )}
@@ -319,7 +320,7 @@ function AnomaliesContenu() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -328,10 +329,10 @@ function AnomaliesContenu() {
 
   const enTete = (
     <div>
-      <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+      <h1 className={ui.titrePage} style={POLICE_TITRE}>
         Anomalies
       </h1>
-      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+      <p className="text-mc-normal text-slate-600 dark:text-slate-400 mt-1">
         Ce qui demande votre attention : écarts de caisse et d&apos;inventaire, ventes sans stock, ventes remontées après une clôture.
       </p>
     </div>
@@ -339,10 +340,10 @@ function AnomaliesContenu() {
 
   if (!structureId || !peutGerer) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+      <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             {structureId
               ? "Vous n'avez pas accès aux anomalies de cette pharmacie. Adressez-vous au titulaire."
               : "Votre compte n'est rattaché à aucune pharmacie. Adressez-vous à l'administrateur de votre pharmacie."}
@@ -358,7 +359,7 @@ function AnomaliesContenu() {
   let corps;
   if (etat.statut === "chargement") {
     corps = (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement des anomalies...
       </div>
@@ -372,7 +373,7 @@ function AnomaliesContenu() {
       <>
         {anomalies.length === 0 ? (
           <div className={CARTE}>
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
               {type !== ""
                 ? onglet === "OUVERTE"
                   ? "Aucune anomalie de ce type à traiter."
@@ -392,19 +393,19 @@ function AnomaliesContenu() {
             {anomalies.map((a) => (
               <li key={a.id} className={`${CARTE} space-y-3`}>
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+                  <h2 className={ui.texte.section} style={POLICE_TITRE}>
                     {titreAnomalie(a)}
                   </h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">{formaterDateHeure(a.creeLe)}</p>
+                  <p className="text-mc-normal text-slate-600 dark:text-slate-400">{formaterDateHeure(a.creeLe)}</p>
                 </div>
-                {a.attribueeA && <p className="text-sm text-slate-700 dark:text-slate-300">Pour : {a.attribueeA.nom}</p>}
-                <p className="text-sm text-slate-800 dark:text-slate-200">{texteDetail(a)}</p>
+                {a.attribueeA && <p className="text-mc-normal text-slate-700 dark:text-slate-300">Pour : {a.attribueeA.nom}</p>}
+                <p className="text-mc-normal text-slate-800 dark:text-slate-200">{texteDetail(a)}</p>
                 {montantAnomalie(a) !== null && (
-                  <p className="text-sm font-bold text-slate-900 dark:text-white">Montant : {formaterGNF(montantAnomalie(a) ?? 0)}</p>
+                  <p className="text-mc-normal font-semibold text-slate-900 dark:text-white">Montant : {formaterGNF(montantAnomalie(a) ?? 0)}</p>
                 )}
                 {a.rattachement && (
                   <>
-                    <p className="text-sm text-slate-800 dark:text-slate-200">{a.rattachement.message}</p>
+                    <p className="text-mc-normal text-slate-800 dark:text-slate-200">{a.rattachement.message}</p>
                     {(a.rattachement.etat === "RATTACHEE" || a.rattachement.etat === "VENTE_ANNULEE") && (
                       <div className={ALERTE_SUCCES}>
                         Le stock est déjà régularisé : il reste seulement à confirmer que c&apos;est vérifié.
@@ -413,7 +414,7 @@ function AnomaliesContenu() {
                   </>
                 )}
                 {a.statut === "TRAITEE" ? (
-                  <p className="text-sm text-slate-700 dark:text-slate-300">
+                  <p className="text-mc-normal text-slate-700 dark:text-slate-300">
                     Traitée{a.traiteeLe ? ` le ${formaterDateHeure(a.traiteeLe)}` : ""}
                     {a.traiteePar ? ` par ${a.traiteePar.nom}` : ""}
                     {a.commentaireTraitement ? ` : ${a.commentaireTraitement}` : ""}
@@ -433,7 +434,7 @@ function AnomaliesContenu() {
             <button type="button" onClick={() => changerPage(page - 1)} disabled={page <= 1} className={BOUTON_PAGE}>
               Page précédente
             </button>
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
               Page {page} sur {totalPages}
             </p>
             <button type="button" onClick={() => changerPage(page + 1)} disabled={page >= totalPages} className={BOUTON_PAGE}>
@@ -446,14 +447,14 @@ function AnomaliesContenu() {
   }
 
   const classeOnglet = (actif: boolean) =>
-    `px-4 py-2 rounded-2xl text-sm font-medium transition-colors ${FOCUS} ${
+    `h-mc-controle px-4 rounded-mc-moyen text-mc-normal font-medium transition-colors ${FOCUS} ${
       actif
         ? "bg-primary-600 text-white"
         : "text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50"
     }`;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+    <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in">
       {enTete}
 
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -492,7 +493,7 @@ function AnomaliesContenu() {
           </button>
         </div>
         <div>
-          <label htmlFor="type-anomalie" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+          <label htmlFor="type-anomalie" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
             Type
           </label>
           <select id="type-anomalie" value={type} onChange={(e) => changerType(e.target.value)} className={`${CHAMP} w-auto`}>
@@ -532,7 +533,7 @@ export default function AnomaliesPage() {
   return (
     <Suspense
       fallback={
-        <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+        <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
           <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
           Chargement...
         </div>

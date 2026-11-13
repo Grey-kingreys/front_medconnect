@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { ui } from "@/theme/ui";
+import { useEffect, useRef, useState, useSyncExternalStore, type KeyboardEvent } from "react";
 import Link from "next/link";
 import { AlertCircle, CircleCheck, Loader2, Minus, Plus, Search, Trash2, X } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
@@ -17,7 +18,9 @@ import {
   type Vente,
 } from "@/lib/api_ventes";
 import { estErreurReseau } from "@/lib/erreurs_api";
-import { sourceEnLigne } from "@/lib/caisse/source_en_ligne";
+import { MESSAGE_IMPRESSION_ECHOUEE, pontDesktop } from "@/lib/caisse/contrat_desktop";
+import { sourceCaisse } from "@/lib/caisse/source_active";
+import { etatPosteAttendu, horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
 import type { EtatCaisse } from "@/lib/caisse/source";
 import { LIBELLES_UNITE_MINIMALE, aArticle, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { MSG_TELEPHONE_INVALIDE, AIDE_TELEPHONE } from "@/lib/erreur_telephone";
@@ -26,7 +29,6 @@ import { formaterGNF } from "@/lib/format_gnf";
 import { estRouteAutorisee } from "@/lib/navigation_tableau_de_bord";
 import {
   ALERTE_INFO,
-  BOUTON_ICONE,
   BOUTON_PRIMAIRE,
   CARTE,
   CHAMP,
@@ -115,13 +117,33 @@ function badgeCaisse(etat: EtatCaisse): { texte: string; classe: string } {
   return { texte: `Caisse ouverte depuis ${formaterHeure(session.ouverteLe)}`, classe: CLASSE_BADGE_OUVERT };
 }
 
+function abonnerConnexion(rappel: () => void) {
+  window.addEventListener("online", rappel);
+  window.addEventListener("offline", rappel);
+  return () => {
+    window.removeEventListener("online", rappel);
+    window.removeEventListener("offline", rappel);
+  };
+}
+
 export default function NouvelleVentePage() {
+  // Côté serveur, on considère la connexion présente (évite l'écart d'hydratation).
+  const enLigne = useSyncExternalStore(
+    abonnerConnexion,
+    () => navigator.onLine,
+    () => true,
+  );
   const { user, loading, profile } = useAuth();
   const peutVoirVentes = user ? estRouteAutorisee("/dashboard/ventes", lireContexteAcces(user, profile ?? null)) : false;
   const peutVoirCaisse = user ? estRouteAutorisee("/dashboard/caisse", lireContexteAcces(user, profile ?? null)) : false;
   const structureId = user?.structureId;
   const userId = user?.id;
   const cleStock = structureId && userId ? cleStockagePanier(structureId, userId) : null;
+  // Poste desktop hors ligne : aucun plafond de stock, la vente sera à régulariser (D737). Faux sur le web.
+  const posteSuivi = useEtatPoste();
+  const sansPlafond = horsLigneSurPoste(posteSuivi);
+  // Poste desktop dont l'état n'est pas encore connu : on attend, sans appliquer ni retirer le plafond à tort.
+  const etatAttendu = etatPosteAttendu(posteSuivi);
 
   const [stock, setStock] = useState<StockMedicament[] | null>(null);
   const [referentiels, setReferentiels] = useState<Referentiels | null>(null);
@@ -138,6 +160,9 @@ export default function NouvelleVentePage() {
   const [sortie, setSortie] = useState<SortieEnCours | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [succes, setSucces] = useState<Vente | null>(null);
+  // Porte la vente concernée : un échec peut arriver jusqu'à une minute plus tard, une autre vente étant déjà à l'écran.
+  const [echecImpression, setEchecImpression] = useState<{ vente: Vente; message: string } | null>(null);
+  const [reimpressionEnCours, setReimpressionEnCours] = useState(false);
   const [erreurTelephone, setErreurTelephone] = useState(false);
   const [erreurOrdonnance, setErreurOrdonnance] = useState(false);
 
@@ -163,9 +188,9 @@ export default function NouvelleVentePage() {
     if (!structureId || !userId) return;
     let actif = true;
     Promise.all([
-      sourceEnLigne.chargerStock(structureId),
-      sourceEnLigne.chargerReferentiels(structureId).catch(() => null),
-      sourceEnLigne.etatCaisse(structureId, userId).catch(() => null),
+      sourceCaisse().chargerStock(structureId),
+      sourceCaisse().chargerReferentiels(structureId).catch(() => null),
+      sourceCaisse().etatCaisse(structureId, userId).catch(() => null),
     ])
       .then(([stocks, refs, caisse]) => {
         if (!actif) return;
@@ -231,18 +256,18 @@ export default function NouvelleVentePage() {
   const enTete = (
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+        <h1 className={ui.titrePage} style={POLICE_TITRE}>
           Nouvelle vente
         </h1>
-        <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+        <p className="text-mc-normal text-slate-600 dark:text-slate-400 mt-1">
           Recherchez les médicaments, ajustez les quantités puis validez la vente.
         </p>
       </div>
       {badge && (
         <div className="flex flex-wrap items-center gap-3">
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${badge.classe}`}>{badge.texte}</span>
+          <span className={`px-3 py-1 rounded-full text-mc-legende font-semibold ${badge.classe}`}>{badge.texte}</span>
           {peutVoirCaisse && (
-            <Link href="/dashboard/caisse" className={`text-xs font-semibold text-primary-700 dark:text-primary-400 underline ${FOCUS}`}>
+            <Link href="/dashboard/caisse" className={`text-mc-legende font-semibold text-primary-700 dark:text-primary-400 underline ${FOCUS}`}>
               Ma caisse
             </Link>
           )}
@@ -253,7 +278,7 @@ export default function NouvelleVentePage() {
 
   if (loading || user === null) {
     return (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement...
       </div>
@@ -262,10 +287,10 @@ export default function NouvelleVentePage() {
 
   if (!structureId) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+      <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={CARTE}>
-          <p className="text-sm text-slate-700 dark:text-slate-300">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-300">
             Votre compte n&apos;est rattaché à aucune pharmacie. Adressez-vous à l&apos;administrateur de votre pharmacie.
           </p>
           <Link href="/dashboard" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -291,7 +316,7 @@ export default function NouvelleVentePage() {
 
   const ajouter = (s: StockMedicament) => {
     const unite = uniteParDefaut(s);
-    setPanier(ajouterAuPanier(panier, s, unite, nouvelleCleIdempotence));
+    setPanier(ajouterAuPanier(panier, s, unite, nouvelleCleIdempotence, sansPlafond));
     setDerniereCle(cleLigne(s.id, unite));
   };
 
@@ -300,7 +325,9 @@ export default function NouvelleVentePage() {
     if (e.key !== "Enter") return;
     e.preventDefault();
     if (verrouille || texte.trim() === "") return;
-    const premier = resultats.find((s) => raisonListe(s, uniteParDefaut(s)) === null && peutAjouter(panier, s, uniteParDefaut(s)));
+    const premier = resultats.find(
+      (s) => raisonListe(s, uniteParDefaut(s), sansPlafond) === null && peutAjouter(panier, s, uniteParDefaut(s), sansPlafond),
+    );
     if (!premier) return;
     ajouter(premier);
     setTexte("");
@@ -404,6 +431,35 @@ export default function NouvelleVentePage() {
     }
   };
 
+  /** Poste desktop : le ticket part sans attendre si l'impression automatique est active. La vente n'en dépend jamais. */
+  const imprimerApresVente = (vente: Vente) => {
+    const pont = pontDesktop();
+    if (pont === null) return;
+    void pont.impression
+      .lireReglages()
+      .then((reglages) => {
+        if (!reglages.ok || !reglages.data.impressionAutomatique) return undefined;
+        return pont.impression.imprimerVente(vente.id).then((rep) => {
+          if (!rep.ok) setEchecImpression({ vente, message: rep.message });
+        });
+      })
+      .catch(() => setEchecImpression({ vente, message: MESSAGE_IMPRESSION_ECHOUEE }));
+  };
+
+  const reimprimer = (vente: Vente) => {
+    const pont = pontDesktop();
+    if (pont === null) return;
+    setEchecImpression(null);
+    setReimpressionEnCours(true);
+    void pont.impression
+      .imprimerVente(vente.id)
+      .then((rep) => {
+        if (!rep.ok) setEchecImpression({ vente, message: rep.message });
+      })
+      .catch(() => setEchecImpression({ vente, message: MESSAGE_IMPRESSION_ECHOUEE }))
+      .finally(() => setReimpressionEnCours(false));
+  };
+
   const envoyerVente = (paiements: PaiementDemande[] | null, base: PanierVente = panier) => {
     if (envoiEnCours.current) return;
     let cle = base.cleIdempotence;
@@ -419,7 +475,7 @@ export default function NouvelleVentePage() {
     setBandeau(null);
     setReessayable(false);
     const aSurOrdonnance = medicamentsSurOrdonnance(envoye, stocks).length > 0;
-    sourceEnLigne
+    sourceCaisse()
       .creerVente(structureId, corpsVente(envoye, aSurOrdonnance, paiements), cle)
       .then((vente) => {
         envoiEnCours.current = false;
@@ -429,9 +485,18 @@ export default function NouvelleVentePage() {
         setPanier(PANIER_VIDE);
         setDerniereCle(null);
         setSucces(vente);
+        setEchecImpression(null);
+        imprimerApresVente(vente);
+        // Sur le poste, le stock local est relu : la liste montre la quantité diminuée.
+        if (sourceCaisse().enLigneSeulement === false) {
+          sourceCaisse()
+            .chargerStock(structureId)
+            .then(setStock)
+            .catch(() => undefined);
+        }
         // Badge à jour : la première vente peut avoir ouvert la caisse.
         if (userId) {
-          sourceEnLigne
+          sourceCaisse()
             .etatCaisse(structureId, userId)
             .then(setEtatCaisse)
             .catch(() => undefined);
@@ -530,38 +595,57 @@ export default function NouvelleVentePage() {
     const rendu = paiements?.find((p) => p.rendu !== null && p.rendu > 0)?.rendu ?? null;
     const autreJour = typeof succes.jourMetier === "string" && succes.jourMetier !== jourConakry(new Date());
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in">
+      <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in">
         {enTete}
         <div className={`${CARTE} flex flex-col items-start gap-4`}>
-          <CircleCheck className="w-10 h-10 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
+          <CircleCheck className="h-10 w-10 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
           <h2
             ref={titreSucces}
             tabIndex={-1}
-            className="text-xl font-bold text-slate-900 dark:text-white focus:outline-none"
+            className="text-mc-page font-semibold text-slate-900 dark:text-white focus:outline-none"
             style={POLICE_TITRE}
           >
             Vente enregistrée
           </h2>
+          {sourceCaisse().enLigneSeulement === false && succes.provisoire === true && (
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
+              Vente enregistrée. Une partie est à régulariser par le titulaire.
+            </p>
+          )}
           {succes.rejeu === true && (
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
               Cette vente était déjà enregistrée : elle n&apos;a pas été comptée deux fois.
             </p>
           )}
-          <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+          <div className="text-mc-normal text-slate-700 dark:text-slate-300 space-y-1">
             <p>Numéro : {succes.numero}</p>
-            <p className="font-bold text-slate-900 dark:text-white">Total : {formaterGNF(succes.total)}</p>
+            <p className="font-semibold text-slate-900 dark:text-white">Total : {formaterGNF(succes.total)}</p>
             {paiements?.map((p) => (
               <p key={p.id}>
                 {p.libelle} : {formaterGNF(p.montant)}
                 {p.reference ? `, référence ${p.reference}` : ""}
               </p>
             ))}
-            {rendu !== null && <p className="font-bold text-slate-900 dark:text-white">Monnaie à rendre : {formaterGNF(rendu)}</p>}
+            {rendu !== null && <p className="font-semibold text-slate-900 dark:text-white">Monnaie à rendre : {formaterGNF(rendu)}</p>}
           </div>
           {autreJour && typeof succes.jourMetier === "string" && (
             <p role="status" className={ALERTE_INFO}>
               Vente comptée pour le {formaterJour(succes.jourMetier)} (journée d&apos;aujourd&apos;hui déjà clôturée).
             </p>
+          )}
+          {echecImpression !== null && (
+            <div role="alert" className={ALERTE_INFO}>
+              {echecImpression.vente.id !== succes.id && <p className="font-medium">Ticket {echecImpression.vente.numero}</p>}
+              <p>{echecImpression.message}</p>
+              <button
+                type="button"
+                onClick={() => reimprimer(echecImpression.vente)}
+                disabled={reimpressionEnCours}
+                className={`mt-2 h-mc-controle px-3 rounded-mc-moyen text-mc-normal font-medium text-primary-700 dark:text-primary-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 disabled:opacity-60 ${FOCUS}`}
+              >
+                Réimprimer
+              </button>
+            </div>
           )}
           <div className="flex flex-col sm:flex-row gap-3">
             <Link href={`/dashboard/ventes/${encodeURIComponent(succes.id)}/recu`} className={BOUTON_PRIMAIRE}>
@@ -570,14 +654,14 @@ export default function NouvelleVentePage() {
             <button
               type="button"
               onClick={nouvelleVente}
-              className={`px-4 py-3 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors ${FOCUS}`}
+              className={ui.bouton.discret}
             >
               Nouvelle vente
             </button>
             {peutVoirVentes && (
               <Link
                 href="/dashboard/ventes"
-                className={`px-4 py-3 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors ${FOCUS}`}
+                className={ui.bouton.discret}
               >
                 Voir les ventes du jour
               </Link>
@@ -594,9 +678,9 @@ export default function NouvelleVentePage() {
   const libelleReliquat = derniereFiche ? LIBELLES_UNITE_MINIMALE[derniereFiche.uniteMinimale ?? "UNITE"] : null;
 
   let corps;
-  if (stock === null && erreurChargement === null) {
+  if ((stock === null && erreurChargement === null) || etatAttendu) {
     corps = (
-      <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
+      <div role="status" className="flex items-center gap-3 text-mc-normal text-slate-600 dark:text-slate-400">
         <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
         Chargement du stock...
       </div>
@@ -606,7 +690,7 @@ export default function NouvelleVentePage() {
   } else if (stock.length === 0) {
     corps = (
       <div className={CARTE}>
-        <p className="text-sm text-slate-700 dark:text-slate-300">
+        <p className="text-mc-normal text-slate-700 dark:text-slate-300">
           Votre stock est vide. Ajoutez des médicaments à votre stock pour pouvoir les vendre.
         </p>
         <Link href="/dashboard/stock" className={`${BOUTON_PRIMAIRE} mt-4`}>
@@ -619,7 +703,7 @@ export default function NouvelleVentePage() {
       <div className="grid grid-cols-1 lg:grid-cols-5 lg:grid-rows-[minmax(0,1fr)] gap-6 lg:flex-1 lg:min-h-0">
         <section className={`${CARTE} lg:col-span-3 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain`} aria-label="Recherche de médicaments">
           <div>
-            <label htmlFor="recherche-vente" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+            <label htmlFor="recherche-vente" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
               Rechercher un médicament
             </label>
             <div className="relative">
@@ -640,21 +724,23 @@ export default function NouvelleVentePage() {
           </div>
 
           {resultats.length === 0 ? (
-            <p className="text-sm text-slate-700 dark:text-slate-300">
+            <p className="text-mc-normal text-slate-700 dark:text-slate-300">
               Aucun médicament ne correspond à « {texte.trim()} ». Vérifiez l&apos;orthographe ou essayez le nom générique.
             </p>
           ) : (
             <ul className="divide-y divide-slate-200 dark:divide-slate-800">
               {resultats.map((s) => {
                 const unite = uniteParDefaut(s);
-                const raison = raisonListe(s, unite);
+                const raison = raisonListe(s, unite, sansPlafond);
                 const dansPanier = nombreDansPanier(s.id, unite);
                 const nom = s.medicament.nom;
                 const coefficient = s.coefficientBoite ?? 1;
                 const libelleUnite = LIBELLES_UNITE_MINIMALE[s.uniteMinimale ?? "UNITE"];
                 const demandeMini = unite === "UNITE" ? 1 : coefficient;
                 const avertissement =
-                  raison === null ? avertissementStock(s, Math.max(demandeEnUm(panier, s), demandeMini)) : null;
+                  raison === null
+                    ? avertissementStock(s, Math.max(demandeEnUm(panier, s), demandeMini), sansPlafond)
+                    : null;
                 const aRegulariser = formaterARegulariser(
                   s.quantiteARegulariser,
                   coefficient,
@@ -666,36 +752,47 @@ export default function NouvelleVentePage() {
                 return (
                   <li key={s.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="font-bold text-slate-900 dark:text-white">{nom}</p>
+                      <p className="font-semibold text-slate-900 dark:text-white">{nom}</p>
                       {s.medicament.nomGenerique && (
-                        <p className="text-sm text-slate-600 dark:text-slate-400">{s.medicament.nomGenerique}</p>
+                        <p className="text-mc-normal text-slate-600 dark:text-slate-400">{s.medicament.nomGenerique}</p>
                       )}
-                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                      <p className="text-mc-normal text-slate-600 dark:text-slate-400">
                         Reste : {formaterQuantite(s.quantite, coefficient, s.uniteMinimale ?? "UNITE")}
                         {aRegulariser !== null && `, ${aRegulariser}`}
-                        {prixBoite !== null && ` · ${formaterGNF(prixBoite)}`}
-                        {prixUnite !== null && ` · ${formaterGNF(prixUnite)} ${libelleUnite.article}`}
-                        {s.medicament.ordonnanceRequise && " · Sur ordonnance"}
                       </p>
+                      {(prixBoite !== null || prixUnite !== null) && (
+                        <p className="flex flex-wrap gap-x-2 text-mc-normal tabular-nums text-slate-600 dark:text-slate-400">
+                          {prixBoite !== null && <span className="whitespace-nowrap">{formaterGNF(prixBoite)}</span>}
+                          {prixBoite !== null && prixUnite !== null && <span aria-hidden="true">·</span>}
+                          {prixUnite !== null && (
+                            <span className="whitespace-nowrap">{`${formaterGNF(prixUnite)} ${libelleUnite.article}`}</span>
+                          )}
+                        </p>
+                      )}
+                      {s.medicament.ordonnanceRequise && (
+                        <p className="mt-1">
+                          <span className={ui.badge.attention}>Sur ordonnance</span>
+                        </p>
+                      )}
                       {avertissement !== null && (
-                        <p className="text-sm text-amber-700 dark:text-amber-300">{texteAvertissement(avertissement, s)}</p>
+                        <p className="text-mc-normal text-amber-700 dark:text-amber-300">{texteAvertissement(avertissement, s)}</p>
                       )}
                     </div>
                     {raison !== null ? (
-                      <span className="inline-flex self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300">
+                      <span className="inline-flex self-start sm:self-center px-3 py-1 rounded-full text-mc-legende font-semibold bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300">
                         {LIBELLES_RAISON_LISTE[raison]}
                       </span>
                     ) : dansPanier === 0 && panierPlein(panier) ? (
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Panier complet</span>
-                    ) : !peutAjouter(panier, s, unite) ? (
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Plus assez de stock à ajouter</span>
+                      <span className="text-mc-normal text-slate-600 dark:text-slate-400">Panier complet</span>
+                    ) : !peutAjouter(panier, s, unite, sansPlafond) ? (
+                      <span className="text-mc-normal text-slate-600 dark:text-slate-400">Plus assez de stock à ajouter</span>
                     ) : (
                       <button
                         type="button"
                         onClick={() => ajouter(s)}
                         disabled={verrouille}
                         aria-label={`Ajouter ${nom} au panier`}
-                        className={`${BOUTON_PRIMAIRE} self-start sm:self-center`}
+                        className={`${ui.bouton.secondaire} !h-mc-controle-petit !px-3 text-mc-petit shrink-0 self-start sm:self-center`}
                       >
                         <Plus className="w-4 h-4" aria-hidden="true" />
                         Ajouter
@@ -707,17 +804,17 @@ export default function NouvelleVentePage() {
             </ul>
           )}
           {plusDeResultats && (
-            <p className="text-sm text-slate-600 dark:text-slate-400">
+            <p className="text-mc-normal text-slate-600 dark:text-slate-400">
               Seuls les {NOMBRE_MAX_RESULTATS} premiers résultats sont affichés. Précisez votre recherche.
             </p>
           )}
         </section>
 
-        <div className="lg:col-span-2 space-y-4 lg:min-h-0 lg:overflow-y-auto lg:overscroll-contain lg:pr-1">
+        <div className="lg:col-span-2 space-y-4 lg:space-y-0 lg:gap-4 lg:flex lg:flex-col lg:min-h-0">
           {info && (
             <div
               role="status"
-              className="p-4 rounded-2xl bg-primary-50 dark:bg-primary-500/15 text-primary-700 dark:text-primary-300 text-sm"
+              className="p-4 rounded-mc-moyen bg-primary-50 dark:bg-primary-500/15 text-primary-700 dark:text-primary-300 text-mc-normal"
             >
               {info}
             </div>
@@ -725,7 +822,7 @@ export default function NouvelleVentePage() {
           {bandeau && (
             <div
               role="alert"
-              className="flex items-start gap-3 p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-sm"
+              className="flex items-start gap-3 p-4 rounded-mc-moyen bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-mc-normal"
             >
               <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
               <div className="flex-1 space-y-2">
@@ -736,7 +833,7 @@ export default function NouvelleVentePage() {
                       type="button"
                       onClick={() => envoyerVente(paiementsEnvoyes.current)}
                       disabled={envoi}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-bold bg-rose-700 text-white hover:bg-rose-800 disabled:opacity-60 ${FOCUS}`}
+                      className={`px-3 py-1.5 rounded-mc-moyen text-mc-normal font-semibold bg-rose-700 text-white hover:bg-rose-800 disabled:opacity-60 ${FOCUS}`}
                     >
                       Réessayer
                     </button>
@@ -744,7 +841,7 @@ export default function NouvelleVentePage() {
                       type="button"
                       onClick={modifierSaisie}
                       disabled={envoi}
-                      className={`px-3 py-1.5 rounded-xl text-sm font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-60 ${FOCUS}`}
+                      className={`px-3 py-1.5 rounded-mc-moyen text-mc-normal font-medium hover:bg-rose-100 dark:hover:bg-rose-500/20 disabled:opacity-60 ${FOCUS}`}
                     >
                       Modifier la saisie
                     </button>
@@ -757,7 +854,7 @@ export default function NouvelleVentePage() {
                   type="button"
                   onClick={() => setBandeau(null)}
                   aria-label="Fermer le message"
-                  className={`p-1 rounded-lg hover:bg-rose-100 dark:hover:bg-rose-500/20 ${FOCUS}`}
+                  className={`p-1 rounded-mc-moyen hover:bg-rose-100 dark:hover:bg-rose-500/20 ${FOCUS}`}
                 >
                   <X className="w-4 h-4" aria-hidden="true" />
                 </button>
@@ -765,13 +862,16 @@ export default function NouvelleVentePage() {
             </div>
           )}
 
-          <section className={`${CARTE} space-y-4`} aria-labelledby="titre-panier">
-            <h2 id="titre-panier" className="text-lg font-semibold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+          <section className={`${CARTE} flex flex-col gap-4 lg:min-h-0 lg:flex-1`} aria-labelledby="titre-panier">
+            <h2 id="titre-panier" className={ui.texte.section} style={POLICE_TITRE}>
               Panier
             </h2>
 
+            <div className="relative lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+            <div className="space-y-4 pr-2 lg:min-h-0 lg:flex-1 lg:overflow-y-auto lg:overscroll-contain scrollbar-thin">
+
             {panier.lignes.length === 0 ? (
-              <p className="text-sm text-slate-700 dark:text-slate-300">
+              <p className="text-mc-normal text-slate-700 dark:text-slate-300">
                 Le panier est vide. Recherchez un médicament puis appuyez sur « Ajouter ».
               </p>
             ) : (
@@ -787,11 +887,11 @@ export default function NouvelleVentePage() {
                   const libelleUnite = LIBELLES_UNITE_MINIMALE[s.uniteMinimale ?? "UNITE"];
                   const autre = autreUnite(ligne.unite);
                   const autrePossible = raisonNonVendable(s, autre) === null;
-                  const peutPlus = peutAugmenter(panier, cle, s);
-                  const avertissementLigne = avertissementStock(s, demandeEnUm(panier, s));
+                  const peutPlus = peutAugmenter(panier, cle, s, sansPlafond);
+                  const avertissementLigne = avertissementStock(s, demandeEnUm(panier, s), sansPlafond);
                   // Au-dessus du stock (stock relu après un refus) : le texte dit ce qu'il reste ; au plafond : le « + » s'arrête.
                   const texteStock =
-                    avertissementLigne === "stock-insuffisant"
+                    avertissementLigne === "stock-insuffisant" || avertissementLigne === "a-regulariser"
                       ? texteAvertissement(avertissementLigne, s)
                       : !peutPlus && ligne.nombre < QUANTITE_MAX_LIGNE && plafondVente(s) > 0
                         ? demandeEnUm(panier, s) >= plafondVente(s)
@@ -806,14 +906,14 @@ export default function NouvelleVentePage() {
                     <li key={cle} className="py-3 space-y-2">
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
-                          <p className="font-bold text-slate-900 dark:text-white">{nom}</p>
+                          <p className="font-semibold text-slate-900 dark:text-white">{nom}</p>
                           {typeof prix === "number" && (
-                            <p className="text-sm text-slate-600 dark:text-slate-400">
+                            <p className="text-mc-normal text-slate-600 dark:text-slate-400">
                               {formaterGNF(prix)} × {ligne.nombre}
                             </p>
                           )}
                         </div>
-                        <p className="text-sm font-bold text-slate-900 dark:text-white whitespace-nowrap">
+                        <p className="text-mc-normal font-semibold tabular-nums text-slate-900 dark:text-white whitespace-nowrap">
                           {formaterGNF(montant)}
                         </p>
                       </div>
@@ -831,7 +931,7 @@ export default function NouvelleVentePage() {
                                 setPanier(changerUnite(panier, cle, s));
                                 setDerniereCle(cleLigne(s.id, autre));
                               }}
-                              className={`px-3 py-1.5 rounded-xl border text-sm font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS} ${
+                              className={`px-3 py-1.5 rounded-mc-moyen border text-mc-normal font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS} ${
                                 actif
                                   ? "border-primary-600 bg-primary-50 dark:bg-primary-500/15 text-primary-700 dark:text-primary-300"
                                   : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -843,40 +943,42 @@ export default function NouvelleVentePage() {
                         })}
                       </div>
                       <div className="flex items-center gap-2">
+                        <div className="inline-flex items-center rounded-mc-moyen border border-slate-300 bg-white dark:border-slate-700 dark:bg-slate-900">
                         <button
                           type="button"
                           onClick={() => setPanier(changerNombre(panier, cle, -1, s))}
                           disabled={verrouille || ligne.nombre <= 1}
                           aria-label={`Diminuer la quantité de ${nom}`}
-                          className={BOUTON_ICONE}
+                          className={ui.bouton.iconePetit}
                         >
                           <Minus className="w-4 h-4" aria-hidden="true" />
                         </button>
-                        <span className="min-w-8 text-center text-sm font-bold text-slate-900 dark:text-white">
+                        <span className="min-w-8 text-center text-mc-normal font-semibold tabular-nums text-slate-900 dark:text-white">
                           {ligne.nombre}
                         </span>
                         <button
                           type="button"
-                          onClick={() => setPanier(changerNombre(panier, cle, 1, s))}
+                          onClick={() => setPanier(changerNombre(panier, cle, 1, s, sansPlafond))}
                           disabled={verrouille || !peutPlus}
                           aria-label={`Augmenter la quantité de ${nom}`}
-                          className={BOUTON_ICONE}
+                          className={ui.bouton.iconePetit}
                         >
                           <Plus className="w-4 h-4" aria-hidden="true" />
                         </button>
+                        </div>
                         <button
                           type="button"
                           onClick={() => setPanier(retirerDuPanier(panier, cle))}
                           disabled={verrouille}
                           aria-label={`Retirer ${nom} du panier`}
-                          className={`ml-auto inline-flex items-center gap-1.5 px-2 py-2 rounded-xl text-sm text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/15 disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}
+                          className={`ml-auto inline-flex items-center gap-1.5 h-mc-controle-petit px-2 rounded-mc-moyen text-mc-normal text-rose-700 dark:text-rose-300 hover:bg-rose-50 dark:hover:bg-rose-500/15 disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}
                         >
                           <Trash2 className="w-4 h-4" aria-hidden="true" />
                           Retirer
                         </button>
                       </div>
                       {texteStock !== null && (
-                        <p className="text-sm text-amber-700 dark:text-amber-300">{texteStock}</p>
+                        <p className="text-mc-normal text-amber-700 dark:text-amber-300">{texteStock}</p>
                       )}
                     </li>
                   );
@@ -884,25 +986,20 @@ export default function NouvelleVentePage() {
               </ul>
             )}
             {panier.lignes.length > 0 && (
-              <p className="text-xs text-slate-600 dark:text-slate-400">
+              <p className="text-mc-legende text-slate-600 dark:text-slate-400">
                 {`F2 : passer de la boîte ${aArticle(libelleReliquat?.article ?? "l'unité")} pour la dernière ligne`}
               </p>
             )}
             {unitesReliquat > 0 && libelleReliquat && (
-              <p className="text-sm text-slate-700 dark:text-slate-300">
+              <p className="text-mc-normal text-slate-700 dark:text-slate-300">
                 {`Boîte entamée : il reste ${unitesReliquat.toLocaleString("fr-FR")} ${unitesReliquat > 1 ? libelleReliquat.pluriel : libelleReliquat.singulier}`}
               </p>
             )}
             {panierPlein(panier) && (
-              <p role="status" className="text-sm text-slate-700 dark:text-slate-300">
+              <p role="status" className="text-mc-normal text-slate-700 dark:text-slate-300">
                 Le panier contient 50 médicaments différents, le maximum pour une vente. Validez cette vente puis commencez-en une nouvelle.
               </p>
             )}
-
-            <div aria-live="polite" className="flex items-center justify-between text-slate-900 dark:text-white">
-              <span className="font-medium">Total</span>
-              <span className="text-lg font-bold">{formaterGNF(total)}</span>
-            </div>
 
             {surOrdonnance.length > 0 && (
               <div className="space-y-2">
@@ -920,15 +1017,15 @@ export default function NouvelleVentePage() {
                     aria-describedby="aide-ordonnance"
                     className={`w-5 h-5 rounded accent-primary-600 ${FOCUS}`}
                   />
-                  <label htmlFor="case-ordonnance" className="text-sm font-medium text-slate-900 dark:text-white">
+                  <label htmlFor="case-ordonnance" className="text-mc-normal font-medium text-slate-900 dark:text-white">
                     J&apos;ai vu l&apos;ordonnance
                   </label>
                 </div>
-                <p id="aide-ordonnance" className="text-sm text-slate-600 dark:text-slate-400">
+                <p id="aide-ordonnance" className="text-mc-normal text-slate-600 dark:text-slate-400">
                   Médicaments sur ordonnance : {surOrdonnance.join(", ")}.
                 </p>
                 {erreurOrdonnance && (
-                  <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+                  <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300">
                     {MSG_COCHER_ORDONNANCE}
                   </p>
                 )}
@@ -936,9 +1033,9 @@ export default function NouvelleVentePage() {
             )}
 
             <fieldset className="space-y-3">
-              <legend className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Client (facultatif)</legend>
+              <legend className="text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">Client (facultatif)</legend>
               <div>
-                <label htmlFor="client-nom" className="block text-sm text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="client-nom" className="block text-mc-normal text-slate-700 dark:text-slate-300 mb-1">
                   Nom du client
                 </label>
                 <input
@@ -952,7 +1049,7 @@ export default function NouvelleVentePage() {
                 />
               </div>
               <div>
-                <label htmlFor="client-telephone" className="block text-sm text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor="client-telephone" className="block text-mc-normal text-slate-700 dark:text-slate-300 mb-1">
                   Téléphone du client
                 </label>
                 <input
@@ -969,16 +1066,26 @@ export default function NouvelleVentePage() {
                   aria-describedby="aide-telephone"
                   className={`${CHAMP} disabled:opacity-60`}
                 />
-                <p id="aide-telephone" className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                <p id="aide-telephone" className="text-mc-legende text-slate-600 dark:text-slate-400 mt-1">
                   {AIDE_TELEPHONE}
                 </p>
                 {erreurTelephone && (
-                  <p role="alert" className="text-sm text-rose-700 dark:text-rose-300 mt-1">
+                  <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300 mt-1">
                     {MSG_TELEPHONE_INVALIDE}
                   </p>
                 )}
               </div>
             </fieldset>
+            </div>
+            {/* Dégradé : signale qu'il y a d'autres lignes sous la zone visible */}
+            <div aria-hidden="true" className="pointer-events-none absolute inset-x-0 bottom-0 hidden h-6 bg-gradient-to-t from-white to-transparent dark:from-slate-900 lg:block" />
+            </div>
+
+            <div className="space-y-3 border-t border-slate-200 bg-white pt-3 dark:border-slate-800 dark:bg-slate-900 max-lg:sticky max-lg:bottom-0 lg:shrink-0">
+            <div aria-live="polite" className="flex items-center justify-between text-slate-900 dark:text-white">
+              <span className="font-medium">Total</span>
+              <span className="text-mc-section font-semibold tabular-nums">{formaterGNF(total)}</span>
+            </div>
 
             <button
               type="button"
@@ -998,11 +1105,12 @@ export default function NouvelleVentePage() {
                   setErreurTelephone(false);
                 }}
                 disabled={verrouille}
-                className={`w-full px-4 py-2 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${FOCUS}`}
+                className={`${ui.bouton.discret} w-full`}
               >
                 Vider le panier
               </button>
             )}
+            </div>
           </section>
         </div>
       </div>
@@ -1010,10 +1118,12 @@ export default function NouvelleVentePage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in lg:h-[calc(100dvh-4rem)] lg:flex lg:flex-col lg:space-y-0 lg:gap-6">
+    <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in lg:h-[calc(100dvh-4rem)] lg:flex lg:flex-col lg:space-y-0 lg:gap-6">
       <div className="lg:shrink-0 space-y-4">
         {enTete}
-        <p className={ALERTE_INFO}>Cette page a besoin d&apos;internet : sans connexion, aucune vente n&apos;est enregistrée.</p>
+        {sourceCaisse().enLigneSeulement !== false && !enLigne && (
+          <p className={ALERTE_INFO}>Cette page a besoin d&apos;internet : sans connexion, aucune vente n&apos;est enregistrée.</p>
+        )}
       </div>
       {corps}
       {dialogues}

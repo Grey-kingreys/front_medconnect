@@ -1,11 +1,12 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useState } from "react";
 import { AlertTriangle, Loader2 } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import type { UniteMinimale } from "@/lib/api_pharmacie";
 import { ChoixLot, type LotChoisissable } from "@/components/pharmacie/ChoixLot";
-import { CHAMP, FOCUS } from "@/components/pharmacie/classes";
+import { CHAMP } from "@/components/pharmacie/classes";
 import { LONGUEUR_MAX_MOTIF, motifValide } from "../ventes/affichage";
 
 interface SortieLotPerimeProps {
@@ -55,22 +56,22 @@ function ContenuSortie({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/15 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-mc-moyen bg-amber-50 dark:bg-amber-500/15 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-6 h-6 text-amber-700 dark:text-amber-300" aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Sortie d&apos;un lot périmé
             </h3>
           </div>
 
-          <p className="text-sm text-slate-700 dark:text-slate-200">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-200">
             Il ne reste que des boîtes périmées de {nom}. Choisissez le lot à sortir et indiquez pourquoi vous le vendez.
           </p>
 
@@ -87,7 +88,7 @@ function ContenuSortie({
           />
 
           <div>
-            <label htmlFor="motif-sortie-lot" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+            <label htmlFor="motif-sortie-lot" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
               Motif
             </label>
             <textarea
@@ -102,18 +103,18 @@ function ContenuSortie({
               aria-describedby="aide-motif-sortie-lot"
               className={CHAMP}
             />
-            <p id="aide-motif-sortie-lot" className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+            <p id="aide-motif-sortie-lot" className="text-mc-legende text-slate-600 dark:text-slate-400 mt-1">
               Par exemple : demande du médecin, aucun autre lot disponible
             </p>
           </div>
 
           {refuse && (
-            <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+            <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300">
               Choisissez un lot et indiquez un motif de 3 caractères au moins.
             </p>
           )}
           {erreur && (
-            <div role="alert" className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-sm">
+            <div role="alert" className="p-4 rounded-mc-moyen bg-rose-50 dark:bg-rose-500/15 text-rose-700 dark:text-rose-300 text-mc-normal">
               {erreur}
             </div>
           )}
@@ -123,7 +124,7 @@ function ContenuSortie({
               type="button"
               onClick={onClose}
               disabled={envoiEnCours}
-              className={`flex-1 px-4 py-3 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-50 ${FOCUS}`}
+              className={`${ui.bouton.discret} flex-1`}
             >
               Revenir au panier
             </button>
@@ -131,7 +132,7 @@ function ContenuSortie({
               type="button"
               onClick={confirmer}
               disabled={envoiEnCours}
-              className={`flex-[2] flex items-center justify-center gap-2 px-4 py-3 bg-primary-600 hover:bg-primary-700 text-white rounded-2xl text-sm font-bold transition-colors disabled:opacity-60 ${FOCUS}`}
+              className={`${ui.bouton.primaire} flex-[2]`}
             >
               {envoiEnCours && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
               {envoiEnCours ? "Enregistrement..." : "Vendre ce lot"}

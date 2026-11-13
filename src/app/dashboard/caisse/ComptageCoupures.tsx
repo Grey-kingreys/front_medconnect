@@ -51,13 +51,13 @@ export function ComptageCoupures({ coupures, valeur, onChange, onTermine, desact
 
   return (
     <fieldset disabled={desactive} className="space-y-3 min-w-0">
-      <legend className="text-sm font-bold text-slate-900 dark:text-white mb-2">{legende}</legend>
+      <legend className="text-mc-normal font-semibold text-slate-900 dark:text-white mb-2">{legende}</legend>
       {ordonnees.map((c, index) => {
         const nombre = valeur.find((l) => l.valeurFaciale === c.valeurFaciale)?.nombre ?? 0;
         const libelle = formaterGNF(c.valeurFaciale);
         return (
           <div key={c.valeurFaciale} className="flex items-center gap-3">
-            <span className="flex-1 text-sm text-slate-700 dark:text-slate-300">Billets de {libelle}</span>
+            <span className="flex-1 text-mc-normal text-slate-700 dark:text-slate-300">Billets de {libelle}</span>
             <input
               ref={(el) => {
                 champs.current[index] = el;
@@ -72,13 +72,13 @@ export function ComptageCoupures({ coupures, valeur, onChange, onTermine, desact
               onKeyDown={(e) => surTouche(e, index)}
               className={`${CHAMP} !w-24 text-right`}
             />
-            <span className="w-32 text-right text-sm font-medium text-slate-900 dark:text-white">
+            <span className="w-32 text-right text-mc-normal font-medium text-slate-900 dark:text-white">
               {formaterGNF(c.valeurFaciale * nombre)}
             </span>
           </div>
         );
       })}
-      <p aria-live="polite" className="pt-2 text-sm font-bold text-slate-900 dark:text-white">
+      <p aria-live="polite" className="pt-2 text-mc-normal font-semibold text-slate-900 dark:text-white">
         Total compté : {formaterGNF(totalComptage(valeur))}
       </p>
     </fieldset>

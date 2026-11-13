@@ -15,10 +15,8 @@ import {
   Archive,
   Edit,
   PackageMinus,
-  Pill,
   ShoppingBag,
   SlidersHorizontal,
-  TrendingUp,
   XCircle,
   FileSpreadsheet
 } from "lucide-react";
@@ -37,7 +35,7 @@ import { jourConakry } from "../ventes/affichage";
 import StockModal from "@/components/modals/StockModal";
 import ImportStockModal from "@/components/modals/ImportStockModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
-import { ALERTE_INFO, ALERTE_SUCCES } from "@/components/pharmacie/classes";
+import { ui } from "@/theme/ui";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { CorrectionQuantite } from "./CorrectionQuantite";
 import { SortieStock } from "./SortieStock";
@@ -154,14 +152,14 @@ export default function StockPage() {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <LoadingSpinner />
-        <p className="text-slate-500 animate-pulse">Chargement de l&apos;inventaire...</p>
+        <p className={`${ui.texte.petit} animate-pulse`}>Chargement de l&apos;inventaire...</p>
       </div>
     );
   }
 
   if (!stockInfo) {
     return (
-      <div className="max-w-7xl mx-auto pb-20">
+      <div className="max-w-mc-contenu mx-auto pb-20">
         <ErreurAvecReessai message={erreurChargement ?? MSG_CHARGEMENT_ECHOUE} onReessayer={fetchData} />
       </div>
     );
@@ -169,120 +167,132 @@ export default function StockPage() {
 
   const valeurStock = calculerApercuStock(stockInfo.stocks, new Date()).valeur;
   const aujourdhui = jourConakry(new Date());
-  const classeFiltreActif = "bg-primary-500/10 text-primary-600 dark:text-primary-400";
-  const classeFiltreInactif = "text-slate-500 hover:text-primary-500";
+  const v = ui.carteChiffreVariantes;
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20">
+    <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in pb-20">
       {erreurChargement && <ErreurAvecReessai message={erreurChargement} onReessayer={fetchData} />}
       {succes && (
-        <div role="status" className={ALERTE_SUCCES}>
+        <div role="status" className={ui.alerte.succes}>
           {succes}
         </div>
       )}
 
       {/* Header Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-6 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500"><Package className="w-6 h-6" /></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-[1fr_1fr_1fr_2fr] gap-4">
+        <div className={ui.carteChiffre.conteneur}>
+          <div className={ui.carteChiffre.icone}><Package size={20} /></div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Produits</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{stockInfo?.stocks.length || 0}</p>
+            <p className={ui.carteChiffre.titre}>Total Produits</p>
+            <p className={ui.carteChiffre.valeur}>{stockInfo?.stocks.length || 0}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-6 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><AlertTriangle className="w-6 h-6" /></div>
+        <div className={ui.carteChiffre.conteneur}>
+          <div className={v.iconeAttention}><AlertTriangle size={20} /></div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Stock Bas</p>
-            <p className="text-2xl font-black text-amber-500">{stockInfo.alertes.stockBas.length}</p>
+            <p className={ui.carteChiffre.titre}>Stock Bas</p>
+            <p className={v.valeurAttention}>{stockInfo.alertes.stockBas.length}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-6 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500"><XCircle className="w-6 h-6" /></div>
+        <div className={ui.carteChiffre.conteneur}>
+          <div className={v.iconeDanger}><XCircle size={20} /></div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Rupture</p>
-            <p className="text-2xl font-black text-rose-500">{stockInfo.alertes.rupture.length}</p>
+            <p className={ui.carteChiffre.titre}>Rupture</p>
+            <p className={v.valeurDanger}>{stockInfo.alertes.rupture.length}</p>
           </div>
         </div>
-        <div className="bg-primary-600 rounded-[2rem] p-6 shadow-2xl text-white flex items-center gap-4 relative overflow-hidden group">
-          <TrendingUp className="absolute -right-2 -bottom-2 w-20 h-20 opacity-10 group-hover:scale-110 transition-transform" />
-          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center"><ShoppingBag className="w-6 h-6" /></div>
-          <div className="relative z-10">
-            <p className="text-xs font-bold text-white/70 uppercase tracking-widest">Valeur Stock</p>
-            <p className="text-xl font-black">{formaterGNF(valeurStock)}</p>
-            <p className="text-xs text-white/90">au prix de vente, hors périmés</p>
+        <div className={`${v.conteneurAccent} sm:col-span-3 xl:col-span-1`}>
+          <div className={v.iconeAccent}><ShoppingBag size={20} /></div>
+          <div className="min-w-0">
+            <p className={v.titreAccent}>Valeur Stock</p>
+            <p className={v.valeurAccent}>
+              <span className="sr-only">{formaterGNF(valeurStock)}</span>
+              <span aria-hidden="true">
+                {formaterGNF(valeurStock).replace(/\s*GNF$/, "")}{" "}
+                <span className="text-mc-petit font-medium">GNF</span>
+              </span>
+            </p>
+            <p className={v.noteAccent}>au prix de vente, hors périmés</p>
           </div>
         </div>
       </div>
 
       {/* Main Controls */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-0 flex-1 basis-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Rechercher un médicament..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all shadow-sm dark:text-white"
+              className={`${ui.champ} pl-9`}
             />
           </div>
-          <div className="flex flex-wrap items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 shadow-sm shrink-0">
-            <button onClick={() => setFilter("all")} aria-pressed={filter === "all"} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "all" ? "bg-slate-100 dark:bg-slate-800 text-primary-500" : "text-slate-500 hover:text-primary-500"}`}>Tous</button>
-            <button onClick={() => setFilter("low")} aria-pressed={filter === "low"} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "low" ? "bg-amber-500/10 text-amber-500" : "text-slate-500 hover:text-amber-500"}`}>Alertes</button>
-            <button onClick={() => setFilter("rupture")} aria-pressed={filter === "rupture"} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "rupture" ? "bg-rose-500/10 text-rose-500" : "text-slate-500 hover:text-rose-500"}`}>Rupture</button>
-            <button onClick={() => setFilter("qualifier")} aria-pressed={filter === "qualifier"} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "qualifier" ? classeFiltreActif : classeFiltreInactif}`}>À qualifier ({nombreAQualifier})</button>
+          <div className="flex flex-wrap items-center gap-3">
+            {peutImporter && (
+              <button
+                onClick={() => setIsImportOpen(true)}
+                className={ui.bouton.secondaire}
+              >
+                <FileSpreadsheet size={16} className="text-primary-600 dark:text-primary-400" />
+                Importer depuis Excel
+              </button>
+            )}
+            <button
+              onClick={openAddModal}
+              className={ui.bouton.primaire}
+            >
+              <Plus size={16} />
+              Ajouter un médicament
+            </button>
           </div>
         </div>
-
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
-          {peutImporter && (
-            <button
-              onClick={() => setIsImportOpen(true)}
-              className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl font-bold text-sm hover:border-primary-500 transition-all flex items-center justify-center gap-2"
-            >
-              <FileSpreadsheet className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-              Importer depuis Excel
-            </button>
-          )}
-          <button
-            onClick={openAddModal}
-            className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
-          >
-            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-            Ajouter un médicament
-          </button>
+        <div className={ui.filtre.groupe}>
+          <button onClick={() => setFilter("all")} aria-pressed={filter === "all"} className={`${ui.filtre.base} ${filter === "all" ? ui.filtre.actif : ui.filtre.inactif}`}>Tous</button>
+          <button onClick={() => setFilter("low")} aria-pressed={filter === "low"} className={`${ui.filtre.base} ${filter === "low" ? ui.filtre.actifAttention : ui.filtre.inactif}`}>Alertes</button>
+          <button onClick={() => setFilter("rupture")} aria-pressed={filter === "rupture"} className={`${ui.filtre.base} ${filter === "rupture" ? ui.filtre.actifDanger : ui.filtre.inactif}`}>Rupture</button>
+          <button onClick={() => setFilter("qualifier")} aria-pressed={filter === "qualifier"} className={`${ui.filtre.base} ${filter === "qualifier" ? ui.filtre.actif : ui.filtre.inactif}`}>À qualifier ({nombreAQualifier})</button>
         </div>
       </div>
 
       {filter === "qualifier" && (
-        <p className={ALERTE_INFO}>
+        <p className={ui.alerte.info}>
           Confirmez le nombre d&apos;unités par boîte de ces médicaments : ouvrez la fiche avec le bouton Modifier.
         </p>
       )}
 
       {/* Stock Table */}
-      <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <div className={`${ui.carte} overflow-hidden p-0`}>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800/50">
-                <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Produit</th>
-                <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Catégorie</th>
-                <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Quantité</th>
-                <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Péremption</th>
-                <th className="px-8 py-5 text-right text-xs font-black text-slate-400 uppercase tracking-widest">Prix (GNF)</th>
-                <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Statut</th>
-                <th className="px-8 py-5 text-right text-xs font-black text-slate-400 uppercase tracking-widest">Actions</th>
+          <table className={`${ui.tableau} table-fixed min-w-224`}>
+            <colgroup>
+              <col className="w-[22%] 2xl:w-[20%]" />
+              <col className="hidden 2xl:table-column 2xl:w-[12%]" />
+              <col className="w-[24%] 2xl:w-[18%]" />
+              <col className="w-[11%] 2xl:w-[10%]" />
+              <col className="w-[16%] 2xl:w-[14%]" />
+              <col className="w-[9%] 2xl:w-[8%]" />
+              <col className="w-[18%]" />
+            </colgroup>
+            <thead className={ui.enteteTableau}>
+              <tr>
+                <th className={`${ui.celluleEntete}`}>Produit</th>
+                <th className={`${ui.celluleEntete} hidden 2xl:table-cell`}>Catégorie</th>
+                <th className={`${ui.celluleEntete} whitespace-nowrap`}>Quantité</th>
+                <th className={`${ui.celluleEntete} text-center`}>Péremption</th>
+                <th className={`${ui.celluleEntete} text-right`}>Prix (GNF)</th>
+                <th className={`${ui.celluleEntete} text-center`}>Statut</th>
+                <th className={`${ui.celluleEntete} ${ui.enteteActions} text-right`}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+            <tbody>
               {filteredStocks.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-8 py-20 text-center">
-                    <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                    <p className="text-slate-600 dark:text-slate-400 font-medium">
+                  <td colSpan={7} className="px-3 py-12 text-center">
+                    <Package className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <p className={ui.texte.petit}>
                       {stockInfo.stocks.length === 0
                         ? peutImporter
                           ? "Votre stock est vide. Ajoutez un médicament ou importez votre fichier Excel."
@@ -303,112 +313,105 @@ export default function StockPage() {
                   const perime = jourPeremption !== null && jourPeremption < aujourdhui;
                   const lotsEnStock = (s.lots ?? []).filter((l) => l.quantite > 0).length;
                   return (
-                  <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${enRupture ? 'bg-rose-500/10 text-rose-500' : 'bg-primary-500/10 text-primary-500'}`}>
-                          <Pill className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{nom}</p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{s.medicament.nomGenerique || "Non renseigné"}</p>
-                        </div>
-                      </div>
+                  <tr key={s.id} className={`${ui.ligneTableau} group`}>
+                    <td className={`${ui.cellule} max-w-0`}>
+                      <p title={nom} className="truncate whitespace-nowrap text-mc-normal font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary-600 transition-colors">{nom}</p>
+                      <p title={s.medicament.nomGenerique || "Non renseigné"} className={`${ui.texte.legende} whitespace-nowrap`}>{s.medicament.nomGenerique || "Non renseigné"}</p>
                     </td>
-                    <td className="px-8 py-5">
-                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest border border-slate-200 dark:border-slate-700">
-                        {s.medicament.categorie}
+                    <td className={`${ui.cellule} hidden 2xl:table-cell`}>
+                      <span title={s.medicament.categorie} className={`${ui.badge.neutre} max-w-full`}>
+                        <span className="truncate whitespace-nowrap">{s.medicament.categorie}</span>
                       </span>
                     </td>
-                    <td className="px-8 py-5">
-                      <div className="flex flex-col items-center gap-1">
-                        <span className={`text-sm font-black text-center ${enRupture ? 'text-rose-700 dark:text-rose-300' : stockBas ? 'text-amber-700 dark:text-amber-300' : 'text-slate-900 dark:text-white'}`}>
+                    <td className={ui.cellule}>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span className={`text-mc-normal font-medium ${enRupture ? 'text-rose-700 dark:text-rose-300' : stockBas ? 'text-amber-700 dark:text-amber-300' : 'text-slate-900 dark:text-slate-100'}`}>
                           {formaterQuantite(s.quantite, coefficient, unite)}
                         </span>
                         {s.reliquat && s.reliquat.length > 0 && (
-                          <span className="text-xs text-slate-600 dark:text-slate-400">boîte entamée</span>
+                          <span className={ui.texte.legende}>boîte entamée</span>
                         )}
                         {formaterARegulariser(s.quantiteARegulariser, coefficient, unite) !== null && (
-                          <span className="text-xs text-amber-700 dark:text-amber-300">
+                          <span className="text-mc-legende text-amber-700 dark:text-amber-300">
                             {formaterARegulariser(s.quantiteARegulariser, coefficient, unite)}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-5">
+                    <td className={ui.cellule}>
                       <div className="flex flex-col items-center gap-1">
                         {jourPeremption === null ? (
-                          <span className="text-sm text-slate-600 dark:text-slate-400">Sans date</span>
+                          <span className={ui.texte.petit}>Sans date</span>
                         ) : (
-                          <span className={`text-sm font-bold ${perime ? "text-rose-700 dark:text-rose-300" : "text-slate-900 dark:text-white"}`}>
+                          <span className={`text-mc-normal whitespace-nowrap ${perime ? "text-rose-700 dark:text-rose-300" : "text-slate-900 dark:text-slate-100"}`}>
                             {afficherDatePeremption(jourPeremption)}
                             {perime && " Périmé"}
                           </span>
                         )}
                         {lotsEnStock > 1 && (
-                          <span className="text-xs text-slate-600 dark:text-slate-400">
+                          <span className={`${ui.texte.legende} whitespace-nowrap`}>
                             {`+${lotsEnStock - 1} autre${lotsEnStock - 1 > 1 ? "s" : ""} lot${lotsEnStock - 1 > 1 ? "s" : ""}`}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-right font-mono text-sm font-bold text-slate-600 dark:text-slate-400">
+                    <td className={`${ui.cellule} text-right tabular-nums whitespace-nowrap`}>
                       <div>{typeof s.prixUnitaire === "number" ? formaterGNF(s.prixUnitaire) : "Non renseigné"}</div>
                       {typeof s.prixUnite === "number" && (
-                        <div className="text-xs font-normal">
+                        <div className={`${ui.texte.legende} whitespace-nowrap`} title={`${formaterGNF(s.prixUnite)} ${LIBELLES_UNITE_MINIMALE[unite].article}`}>
                           {formaterGNF(s.prixUnite)} {LIBELLES_UNITE_MINIMALE[unite].article}
                         </div>
                       )}
                     </td>
-                    <td className="px-8 py-5 text-center">
-                      <div className="flex flex-wrap justify-center gap-1.5">
+                    <td className={`${ui.cellule} px-1 text-center`}>
+                      <div className="flex flex-col items-center gap-1 whitespace-nowrap">
                         {enRupture ? (
-                          <span className="px-2.5 py-1 bg-rose-500/10 text-rose-700 dark:text-rose-300 text-[10px] font-black rounded-full border border-rose-500/20 uppercase tracking-widest">Rupture</span>
+                          <span className={ui.badge.danger}>Rupture</span>
                         ) : stockBas ? (
-                          <span className="px-2.5 py-1 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-black rounded-full border border-amber-500/20 uppercase tracking-widest">Stock bas</span>
+                          <span className={ui.badge.attention}>Stock bas</span>
                         ) : (
-                          <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 text-[10px] font-black rounded-full border border-emerald-500/20 uppercase tracking-widest">OK</span>
+                          <span className={ui.badge.succes}>OK</span>
                         )}
                         {s.qualifie === false && (
-                          <span className="px-2.5 py-1 bg-amber-500/10 text-amber-700 dark:text-amber-300 text-[10px] font-black rounded-full border border-amber-500/20 uppercase tracking-widest">À qualifier</span>
+                          <span className={ui.badge.attention}>À qualifier</span>
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
+                    <td className={`${ui.cellule} ${ui.celluleActions} text-right`}>
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           onClick={() => openEditModal(s)}
                           title="Modifier"
                           aria-label={`Modifier ${nom}`}
-                          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10 transition-all"
+                          className={`${ui.bouton.iconePetit} hover:text-amber-700 dark:hover:text-amber-300`}
                         >
-                          <Edit className="w-4 h-4" aria-hidden="true" />
+                          <Edit size={16} aria-hidden="true" />
                         </button>
                         <button
                           onClick={() => setStockACorriger(s)}
                           title="Corriger la quantité"
                           aria-label={`Corriger la quantité de ${nom}`}
-                          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10 transition-all"
+                          className={`${ui.bouton.iconePetit} hover:text-amber-700 dark:hover:text-amber-300`}
                         >
-                          <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
+                          <SlidersHorizontal size={16} aria-hidden="true" />
                         </button>
                         {s.quantite > 0 && (
                           <button
                             onClick={() => setStockASortir(s)}
                             title="Sortir du stock"
                             aria-label={`Sortir ${nom} du stock`}
-                            className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-amber-700 dark:hover:text-amber-300 hover:bg-amber-500/10 transition-all"
+                            className={`${ui.bouton.iconePetit} hover:text-amber-700 dark:hover:text-amber-300`}
                           >
-                            <PackageMinus className="w-4 h-4" aria-hidden="true" />
+                            <PackageMinus size={16} aria-hidden="true" />
                           </button>
                         )}
                         <button
                           onClick={() => openDeleteModal(s)}
                           title={`Archiver ${nom}`}
                           aria-label={`Archiver ${nom}`}
-                          className="p-2 rounded-xl text-slate-600 dark:text-slate-400 hover:text-rose-700 dark:hover:text-rose-300 hover:bg-rose-500/10 transition-all"
+                          className={`${ui.bouton.iconePetit} hover:text-rose-700 dark:hover:text-rose-300`}
                         >
-                          <Archive className="w-4 h-4" aria-hidden="true" />
+                          <Archive size={16} aria-hidden="true" />
                         </button>
                       </div>
                     </td>

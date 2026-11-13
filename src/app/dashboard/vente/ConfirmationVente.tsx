@@ -1,5 +1,6 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import { Loader2, ShoppingCart } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
@@ -46,7 +47,7 @@ const chiffres = (valeur: string) => valeur.replace(/\D/g, "").slice(0, 10);
 const entier = (valeur: string) => (valeur === "" ? 0 : Number(valeur));
 
 const CLASSE_MODE = (actif: boolean) =>
-  `px-4 py-2 rounded-2xl border text-sm font-medium transition-colors ${FOCUS} ${
+  `h-mc-controle px-4 rounded-mc-moyen border text-mc-normal font-medium transition-colors ${FOCUS} ${
     actif
       ? "border-primary-600 bg-primary-50 dark:bg-primary-500/15 text-primary-700 dark:text-primary-300"
       : "border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800"
@@ -80,7 +81,7 @@ function ChampMontant({
 }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm text-slate-700 dark:text-slate-300 mb-1">
+      <label htmlFor={id} className="block text-mc-normal text-slate-700 dark:text-slate-300 mb-1">
         {libelle}
       </label>
       <input
@@ -92,7 +93,7 @@ function ChampMontant({
         onChange={(e) => onChange(chiffres(e.target.value))}
         className={CHAMP}
       />
-      {aide && <p className="text-sm text-slate-700 dark:text-slate-300 mt-1">{aide}</p>}
+      {aide && <p className="text-mc-normal text-slate-700 dark:text-slate-300 mt-1">{aide}</p>}
     </div>
   );
 }
@@ -100,7 +101,7 @@ function ChampMontant({
 function ChampReference({ id, valeur, onChange }: { id: string; valeur: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <label htmlFor={id} className="block text-sm text-slate-700 dark:text-slate-300 mb-1">
+      <label htmlFor={id} className="block text-mc-normal text-slate-700 dark:text-slate-300 mb-1">
         Référence de la transaction (facultatif)
       </label>
       <input
@@ -206,22 +207,22 @@ function ContenuConfirmation({
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={envoiEnCours ? undefined : onClose} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-mc-moyen bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
               <ShoppingCart className="w-6 h-6 text-primary-700 dark:text-primary-300" aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Valider la vente ?
             </h3>
           </div>
 
-          <ul className="space-y-2 text-sm text-slate-700 dark:text-slate-200">
+          <ul className="space-y-2 text-mc-normal text-slate-700 dark:text-slate-200">
             {lignes.map((ligne) => (
               <li key={ligne.cle} className="flex items-start justify-between gap-4">
                 <span>
@@ -234,14 +235,14 @@ function ContenuConfirmation({
             ))}
           </ul>
 
-          <div className="space-y-1 border-t border-slate-200 dark:border-slate-800 pt-4 text-sm text-slate-700 dark:text-slate-200">
-            <p className="font-bold text-slate-900 dark:text-white">Total : {formaterGNF(total)}</p>
+          <div className="space-y-1 border-t border-slate-200 dark:border-slate-800 pt-4 text-mc-normal text-slate-700 dark:text-slate-200">
+            <p className="font-semibold text-slate-900 dark:text-white">Total : {formaterGNF(total)}</p>
             {client !== "" && <p>Client : {client}</p>}
             {ordonnanceVue && <p>Ordonnance vue</p>}
           </div>
 
           <div className="space-y-3">
-            <p id="libelle-mode-paiement" className="text-sm font-medium text-slate-800 dark:text-slate-200">
+            <p id="libelle-mode-paiement" className="text-mc-normal font-medium text-slate-800 dark:text-slate-200">
               Mode de paiement
             </p>
             <div
@@ -287,7 +288,7 @@ function ContenuConfirmation({
               <div className="space-y-4">
                 {modesTries.map((mode) => (
                   <fieldset key={mode.code} className="space-y-2">
-                    <legend className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-1">{mode.libelle}</legend>
+                    <legend className="text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-1">{mode.libelle}</legend>
                     <ChampMontant
                       id={`partage-montant-${mode.code}`}
                       libelle={`Montant en ${mode.libelle}`}
@@ -311,27 +312,27 @@ function ContenuConfirmation({
                     )}
                   </fieldset>
                 ))}
-                <p aria-live="polite" className="text-sm font-bold text-slate-900 dark:text-white">
+                <p aria-live="polite" className="text-mc-normal font-semibold text-slate-900 dark:text-white">
                   Reste à répartir : {formaterGNF(reste)}
                 </p>
               </div>
             )}
 
             {erreurPaiement !== null && (
-              <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+              <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300">
                 {erreurPaiement}
               </p>
             )}
           </div>
 
-          <p className="text-sm text-slate-600 dark:text-slate-300">Les quantités seront retirées de votre stock.</p>
+          <p className="text-mc-normal text-slate-600 dark:text-slate-300">Les quantités seront retirées de votre stock.</p>
 
           <div className="flex flex-col-reverse sm:flex-row gap-3 w-full">
             <button
               type="button"
               onClick={onClose}
               disabled={envoiEnCours}
-              className="flex-1 px-4 py-3 rounded-2xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors disabled:opacity-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              className={`${ui.bouton.discret} flex-1`}
             >
               Revenir au panier
             </button>
@@ -340,7 +341,7 @@ function ContenuConfirmation({
               type="button"
               onClick={confirmer}
               disabled={envoiEnCours || erreurPaiement !== null}
-              className="flex-[2] flex items-center justify-center gap-2 px-4 py-3 rounded-2xl text-sm font-bold text-white bg-primary-600 hover:bg-primary-700 transition-colors disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500 focus-visible:ring-offset-2"
+              className={`${ui.bouton.primaire} flex-[2]`}
             >
               {envoiEnCours && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
               {envoiEnCours ? "Enregistrement..." : "Confirmer la vente"}

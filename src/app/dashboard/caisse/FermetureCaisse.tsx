@@ -1,11 +1,13 @@
 "use client";
 
+import { ui } from "@/theme/ui";
 import { useEffect, useRef, useState, type KeyboardEvent, type RefObject } from "react";
 import Link from "next/link";
 import { AlertCircle, CircleCheck, Loader2, Lock } from "lucide-react";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
+import { sourceCaisse } from "@/lib/caisse/source_active";
 import { fermerSession, type BilanCaisse, type Coupure, type LigneComptage, type ModePaiement } from "@/lib/api_caisse";
 import { codeErreur, estErreurReseau } from "@/lib/erreurs_api";
 import { formaterGNF } from "@/lib/format_gnf";
@@ -156,7 +158,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
     setErreur(null);
     setCorpsARejouer(null);
     try {
-      const res = await fermerSession(structureId, sessionId, corps);
+      const res = await sourceCaisse().fermerSession(structureId, sessionId, corps);
       onFermee(res.data);
     } catch (err) {
       if (estErreurReseau(err)) {
@@ -195,7 +197,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
   return (
     <>
       <div id="fermeture-caisse" className={`${CARTE} space-y-5`}>
-        <h2 className="text-lg font-bold text-slate-900 dark:text-white" style={POLICE_TITRE}>
+        <h2 className={ui.texte.section} style={POLICE_TITRE}>
           Fermeture de la caisse
         </h2>
         {jourPasse !== null && (
@@ -203,7 +205,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
             Les ventes de cette caisse sont comptées pour le {formaterJour(jourPasse)}.
           </p>
         )}
-        <p className="text-sm text-slate-700 dark:text-slate-300">Comptez l&apos;argent de votre caisse.</p>
+        <p className="text-mc-normal text-slate-700 dark:text-slate-300">Comptez l&apos;argent de votre caisse.</p>
 
         <ComptageCoupures
           coupures={coupures}
@@ -216,10 +218,10 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
 
         {modesSansComptage.length > 0 && (
           <fieldset disabled={verrouille} className="space-y-4 min-w-0">
-            <legend className="text-sm font-bold text-slate-900 dark:text-white mb-2">Relevés du téléphone</legend>
+            <legend className="text-mc-normal font-semibold text-slate-900 dark:text-white mb-2">Relevés du téléphone</legend>
             {modesSansComptage.map((m, index) => (
               <div key={m.code}>
-                <label htmlFor={`releve-${m.code}`} className="block text-sm text-slate-700 dark:text-slate-300 mb-1">
+                <label htmlFor={`releve-${m.code}`} className="block text-mc-normal text-slate-700 dark:text-slate-300 mb-1">
                   Relevé {m.libelle} (facultatif)
                 </label>
                 <input
@@ -236,7 +238,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
                   aria-describedby={`aide-releve-${m.code}`}
                   className={CHAMP}
                 />
-                <p id={`aide-releve-${m.code}`} className="text-xs text-slate-600 dark:text-slate-400 mt-1">
+                <p id={`aide-releve-${m.code}`} className="text-mc-legende text-slate-600 dark:text-slate-400 mt-1">
                   Montant reçu sur le téléphone de la pharmacie pendant votre service.
                 </p>
               </div>
@@ -244,7 +246,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
           </fieldset>
         )}
 
-        <div aria-live="polite" className="space-y-1 text-sm font-medium">
+        <div aria-live="polite" className="space-y-1 text-mc-normal font-medium">
           <p className={classeEcart(ecartEspeces)}>Écart espèces : {texteEcart(ecartEspeces)}</p>
           {modesSansComptage.map((m) => {
             const saisi = releves[m.code] ?? "";
@@ -265,7 +267,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
         </div>
 
         <div>
-          <label htmlFor="commentaire-fermeture" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+          <label htmlFor="commentaire-fermeture" className="block text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
             {commentaireRequis
               ? `Commentaire (obligatoire : écart supérieur à ${formaterGNF(bilan.seuilEcartCaisse)})`
               : "Commentaire"}
@@ -343,21 +345,21 @@ function ContenuConfirmation({ especes, onClose, onConfirmer, dialogProps, title
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={onClose} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={onClose} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90dvh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
+            <div className="h-10 w-10 rounded-mc-moyen bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
               <Lock className="w-6 h-6 text-primary-700 dark:text-primary-300" aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Fermer la caisse ?
             </h3>
           </div>
-          <p className="text-sm text-slate-700 dark:text-slate-200">
+          <p className="text-mc-normal text-slate-700 dark:text-slate-200">
             Espèces comptées : {formaterGNF(especes)}. Après la fermeture, plus aucune vente ne peut être ajoutée à cette caisse.
           </p>
           <div className="flex flex-col-reverse sm:flex-row gap-3 w-full">
@@ -407,11 +409,11 @@ export function CaisseFermee({ bilan, jourPasse, onNouvelleCaisse }: CaisseFerme
 
   return (
     <div className={`${CARTE} flex flex-col items-start gap-4`}>
-      <CircleCheck className="w-10 h-10 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
+      <CircleCheck className="h-10 w-10 text-emerald-700 dark:text-emerald-300" aria-hidden="true" />
       <h2
         ref={titre}
         tabIndex={-1}
-        className="text-xl font-bold text-slate-900 dark:text-white focus:outline-none"
+        className="text-mc-page font-semibold text-slate-900 dark:text-white focus:outline-none"
         style={POLICE_TITRE}
       >
         Caisse fermée
@@ -421,18 +423,18 @@ export function CaisseFermee({ bilan, jourPasse, onNouvelleCaisse }: CaisseFerme
           Les ventes de cette caisse sont comptées pour le {formaterJour(jourPasse)}.
         </p>
       )}
-      <div className="text-sm text-slate-700 dark:text-slate-300 space-y-1">
+      <div className="text-mc-normal text-slate-700 dark:text-slate-300 space-y-1">
         <p>Ventes : {bilan.activite.nombreVentes}</p>
         <p>Annulations : {bilan.activite.nombreAnnulations}</p>
-        <p className="font-bold text-slate-900 dark:text-white">Encaissé : {formaterGNF(bilan.activite.montantEncaisse)}</p>
+        <p className="font-semibold text-slate-900 dark:text-white">Encaissé : {formaterGNF(bilan.activite.montantEncaisse)}</p>
       </div>
-      <ul className="w-full space-y-3 text-sm text-slate-700 dark:text-slate-300">
+      <ul className="w-full space-y-3 text-mc-normal text-slate-700 dark:text-slate-300">
         {bilan.theorique.map((t) => {
           const compteMode = bilan.compte.find((c) => c.mode === t.mode)?.montant ?? null;
           const ecart = bilan.ecarts.find((e) => e.mode === t.mode)?.ecart ?? null;
           return (
             <li key={t.mode} className="space-y-0.5">
-              <p className="font-bold text-slate-900 dark:text-white">{t.libelle}</p>
+              <p className="font-semibold text-slate-900 dark:text-white">{t.libelle}</p>
               <p>Attendu : {formaterGNF(t.montant)}</p>
               <p>Compté : {compteMode === null ? "non rapproché" : formaterGNF(compteMode)}</p>
               {ecart !== null && <p className={`font-medium ${classeEcart(ecart)}`}>Écart : {texteEcart(ecart)}</p>}
@@ -440,7 +442,7 @@ export function CaisseFermee({ bilan, jourPasse, onNouvelleCaisse }: CaisseFerme
           );
         })}
       </ul>
-      {commentaire && <p className="text-sm text-slate-700 dark:text-slate-300">Commentaire : {commentaire}</p>}
+      {commentaire && <p className="text-mc-normal text-slate-700 dark:text-slate-300">Commentaire : {commentaire}</p>}
       {!bilan.fond.compte && (
         <p role="status" className={ALERTE_ATTENTION}>
           <AlertCircle className="w-5 h-5 flex-shrink-0" aria-hidden="true" />

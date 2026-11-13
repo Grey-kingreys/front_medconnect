@@ -3,7 +3,8 @@
  * Logique pure, aucune dépendance à React.
  */
 import type { LigneVente, StatutVente, TypePiece } from "@/lib/api_ventes";
-import { deOuD } from "@/lib/caisse/regles/quantites";
+import type { UniteMinimale } from "@/lib/api_pharmacie";
+import { LIBELLES_UNITE_MINIMALE, deOuD } from "@/lib/caisse/regles/quantites";
 
 export type FormatRecu = "58" | "80" | "A4";
 export const FORMATS_RECU: readonly { valeur: FormatRecu; libelle: string }[] = [
@@ -25,10 +26,25 @@ export const LIBELLES_TYPE_PIECE: Record<TypePiece, string> = {
 };
 
 /** « 2 boîtes de Paracétamol », « 6 unités de Paracétamol » : le libellé exact de l'unité n'est pas connu côté reçu. */
-export function libelleLigneVente(ligne: Pick<LigneVente, "uniteAffichee" | "nombreAffiche" | "nomMedicament">): string {
+export function libelleLigneVente(
+  ligne: Pick<LigneVente, "uniteAffichee" | "nombreAffiche" | "nomMedicament"> & { uniteMinimale?: string },
+): string {
   // Une pièce d'annulation porte des nombres négatifs : le libellé compte toujours en positif.
   const n = Math.abs(ligne.nombreAffiche);
-  const mot = ligne.uniteAffichee === "BOITE" ? (n > 1 ? "boîtes" : "boîte") : n > 1 ? "unités" : "unité";
+  // Vente locale du poste : l'unité de la fiche est connue (« 25 plaquettes de X »). Lue depuis l'API, elle ne l'est pas.
+  const uniteFiche = ligne.uniteAffichee === "UNITE" && ligne.uniteMinimale !== undefined ? LIBELLES_UNITE_MINIMALE[ligne.uniteMinimale as UniteMinimale] : undefined;
+  const mot =
+    ligne.uniteAffichee === "BOITE"
+      ? n > 1
+        ? "boîtes"
+        : "boîte"
+      : uniteFiche !== undefined
+        ? n > 1
+          ? uniteFiche.pluriel
+          : uniteFiche.singulier
+        : n > 1
+          ? "unités"
+          : "unité";
   return `${n.toLocaleString("fr-FR")} ${mot} ${deOuD(ligne.nomMedicament)}`;
 }
 

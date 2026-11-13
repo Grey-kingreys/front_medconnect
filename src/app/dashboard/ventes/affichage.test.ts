@@ -119,3 +119,17 @@ describe("ligne de vente", () => {
     expect(prixUnitaireAffiche({ sousTotal: 2000, nombreAffiche: 3 })).toBe(667);
   });
 });
+
+describe("libellé d'une ligne de vente locale", () => {
+  it("nomme l'unité de la fiche quand la vente locale la connaît", () => {
+    const base = { uniteAffichee: "UNITE" as const, nomMedicament: "Spasfon" };
+    expect(libelleLigneVente({ ...base, nombreAffiche: 25, uniteMinimale: "PLAQUETTE" })).toBe("25 plaquettes de Spasfon");
+    expect(libelleLigneVente({ ...base, nombreAffiche: 1, uniteMinimale: "PLAQUETTE" })).toBe("1 plaquette de Spasfon");
+    expect(libelleLigneVente({ ...base, nombreAffiche: -3, uniteMinimale: "COMPRIME" })).toBe("3 comprimés de Spasfon");
+  });
+
+  it("garde « unités » sans unité connue (vente lue depuis l'API) et « boîtes » pour une boîte", () => {
+    expect(libelleLigneVente({ uniteAffichee: "UNITE", nombreAffiche: 25, nomMedicament: "Spasfon" })).toBe("25 unités de Spasfon");
+    expect(libelleLigneVente({ uniteAffichee: "BOITE", nombreAffiche: 2, nomMedicament: "Spasfon", uniteMinimale: "PLAQUETTE" })).toBe("2 boîtes de Spasfon");
+  });
+});

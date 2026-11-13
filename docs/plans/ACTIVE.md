@@ -3,7 +3,8 @@
 Index du run orchestré en cours. 150 lignes max. Protocole : docs/ORCHESTRATOR.md, section 9.
 Reprise : lire ce fichier, puis seulement le fichier de la prochaine tâche.
 
-Run: 2026-10-25-pharmacie-t1 (tranche pharmacie 1, partie front) | Branche: orch/pharmacie-t1-front | Parallélisme: 1 | Audience: non-dev (écrans de la pharmacie)
+Run: 2026-10-25-pharmacie-t1 (tranche pharmacie 1, partie desktop ; le web est fusionné vers dev, PR #43) | Branche: orch/pharmacie-t1-desktop | Parallélisme: 1 | Audience: non-dev (écrans de la pharmacie)
+Desktop, une fiche à la fois, dans cet ordre (tasks/ du run dans le dépôt back) : PD01 à PD06 validés (rapports/PD01-chef.md à PD06-chef.md ; preuve `https` et mesure sur 4 Go restent bloquantes pour livrer à une officine). Décisions D733 à D760. Le back (`annulation` enrichie, D753) doit partir avant ou avec le desktop.
 Détails du run (fiches, décisions, rapports) : dans le dépôt back, back_medconnect/docs/plans/runs/2026-10-25-pharmacie-t1/ (tasks/PF*.md, decisions.md D683 à D709, rapports/). Suivi complet : back_medconnect/docs/plans/ACTIVE.md. Contrat du back : orch/pharmacie-t1-back (tête 0ae19c1, PB01 à PB19 validés ; puis correctif D707 de l'upsert du stock commité avec PF02b), non fusionné vers dev.
 Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 = d338e70, fusionnés par la PR #39).
 
@@ -28,7 +29,7 @@ Run précédent terminé : docs/plans/runs/2026-10-22-lot9/ (F14 = 430e02d, F15 
 | PF06a | File d'anomalies | contrôlé par le chef (rapports/PF06a-chef.md du run), test navigateur et build à faire |
 | PF06b | Alertes de péremption et marge | contrôlé par le chef (rapports/PF06b-chef.md du run), test navigateur et build à faire ; bilan : rapports/front-t1-chef.md du run |
 
-Arrêt obligatoire avant le desktop (PD01 à PD05) : le porteur teste d'abord.
+Desktop commencé à la demande du porteur, voir l'ordre en tête de ce fichier.
 
 ## Faites (preuve = commit)
 

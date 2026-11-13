@@ -3,13 +3,8 @@
 import { useRef, useState } from "react";
 import { Loader2, SlidersHorizontal } from "lucide-react";
 import { ChoixLot } from "@/components/pharmacie/ChoixLot";
-import {
-  ALERTE_ERREUR,
-  BOUTON_PRIMAIRE,
-  BOUTON_SECONDAIRE,
-  CHAMP,
-  FOCUS,
-} from "@/components/pharmacie/classes";
+import { FOCUS } from "@/components/pharmacie/classes";
+import { ui } from "@/theme/ui";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
 import { updateStockQuantite, type StockMedicament } from "@/lib/api_pharmacie";
@@ -103,29 +98,29 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoiEnCours ? undefined : fermer} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={envoiEnCours ? undefined : fermer} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-primary-50 dark:bg-primary-500/15 flex items-center justify-center shrink-0">
-              <SlidersHorizontal className="w-6 h-6 text-primary-700 dark:text-primary-300" aria-hidden="true" />
+            <div className={ui.carteChiffre.icone}>
+              <SlidersHorizontal size={20} aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Corriger la quantité de {stock.medicament.nom}
             </h3>
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm font-bold text-slate-900 dark:text-white">
+            <p className="text-mc-normal font-semibold text-slate-900 dark:text-slate-100">
               Stock actuel : {formaterQuantite(stock.quantite, coefficient, unite)}
             </p>
             {aRegulariser !== null && (
               <>
-                <p className="text-sm text-amber-700 dark:text-amber-300">{aRegulariser}</p>
-                <p className="text-sm text-slate-700 dark:text-slate-300">
+                <p className="text-mc-normal text-amber-700 dark:text-amber-300">{aRegulariser}</p>
+                <p className={ui.texte.petit}>
                   Ces ventes se régularisent à la prochaine réception ou au prochain inventaire.
                 </p>
               </>
@@ -134,20 +129,20 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
 
           <fieldset disabled={issueInconnue || envoiEnCours} className="flex flex-col gap-5 min-w-0">
             <fieldset className="space-y-2">
-              <legend className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Sens de la correction</legend>
+              <legend className={`${ui.label} mb-2`}>Sens de la correction</legend>
               {(
                 [
                   ["retirer", "Retirer du stock"],
                   ["ajouter", "Ajouter au stock"],
                 ] as const
               ).map(([valeur, libelle]) => (
-                <label key={valeur} className="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+                <label key={valeur} className={`flex items-center gap-3 ${ui.texte.normal}`}>
                   <input
                     type="radio"
                     name="sens-correction"
                     checked={sens === valeur}
                     onChange={() => setSens(valeur)}
-                    className={`w-5 h-5 accent-primary-600 ${FOCUS}`}
+                    className={`h-4 w-4 accent-primary-600 ${FOCUS}`}
                   />
                   {libelle}
                 </label>
@@ -155,7 +150,7 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
             </fieldset>
 
             <div>
-              <label htmlFor="quantite-correction" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="quantite-correction" className={`${ui.label} mb-2`}>
                 Quantité
               </label>
               <input
@@ -168,7 +163,7 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
                   setQuantite(e.target.value);
                   setRefusLocal(false);
                 }}
-                className={CHAMP}
+                className={ui.champ}
               />
               {coefficient > 1 && (
                 <fieldset className="mt-3 flex flex-wrap gap-x-6 gap-y-2">
@@ -179,13 +174,13 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
                       ["unites", `en ${libelleUnite.pluriel}`],
                     ] as const
                   ).map(([valeur, libelle]) => (
-                    <label key={valeur} className="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+                    <label key={valeur} className={`flex items-center gap-3 ${ui.texte.normal}`}>
                       <input
                         type="radio"
                         name="unite-correction"
                         checked={uniteSaisie === valeur}
                         onChange={() => setUniteSaisie(valeur)}
-                        className={`w-5 h-5 accent-primary-600 ${FOCUS}`}
+                        className={`h-4 w-4 accent-primary-600 ${FOCUS}`}
                       />
                       {libelle}
                     </label>
@@ -209,7 +204,7 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
             )}
 
             <div>
-              <label htmlFor="motif-correction" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+              <label htmlFor="motif-correction" className={`${ui.label} mb-2`}>
                 Motif de la correction
               </label>
               <textarea
@@ -222,9 +217,9 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
                   setRefusLocal(false);
                 }}
                 aria-describedby="aide-motif-correction"
-                className={CHAMP}
+                className={ui.zoneTexte}
               />
-              <div id="aide-motif-correction" className="mt-1 space-y-1 text-xs text-slate-600 dark:text-slate-400">
+              <div id="aide-motif-correction" className={`mt-1 space-y-1 ${ui.texte.legende}`}>
                 <p>Par exemple : boîte retrouvée, erreur de comptage</p>
                 <p>Pour un médicament cassé, perdu ou périmé, utilisez plutôt « Sortir du stock » (raison enregistrée).</p>
               </div>
@@ -232,20 +227,20 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
           </fieldset>
 
           {refusLocal && (
-            <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+            <p role="alert" className={ui.dialogue.erreurChamp}>
               {MESSAGE_REFUS_LOCAL}
             </p>
           )}
 
           {erreur && (
-            <div role="alert" className={ALERTE_ERREUR}>
+            <div role="alert" className={ui.alerte.erreur}>
               {erreur}
             </div>
           )}
 
           <div className="flex flex-col-reverse sm:flex-row gap-3 w-full">
             {issueInconnue ? (
-              <button type="button" onClick={fermer} className={`flex-1 ${BOUTON_PRIMAIRE}`}>
+              <button type="button" onClick={fermer} className={`flex-1 ${ui.bouton.primaire}`}>
                 Fermer
               </button>
             ) : (
@@ -254,7 +249,7 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
                   type="button"
                   onClick={fermer}
                   disabled={envoiEnCours}
-                  className={`flex-1 ${BOUTON_SECONDAIRE} disabled:opacity-50`}
+                  className={`flex-1 ${ui.bouton.secondaire}`}
                 >
                   Annuler
                 </button>
@@ -262,9 +257,9 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
                   type="button"
                   onClick={enregistrer}
                   disabled={envoiEnCours}
-                  className={`flex-[2] ${BOUTON_PRIMAIRE}`}
+                  className={`flex-[2] ${ui.bouton.primaire}`}
                 >
-                  {envoiEnCours && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                  {envoiEnCours && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                   {envoiEnCours ? "Enregistrement..." : "Enregistrer la correction"}
                 </button>
               </>

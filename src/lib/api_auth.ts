@@ -7,6 +7,7 @@
 
 import { deconnexionForcee, motifDepuisReponse, MESSAGES_DECONNEXION, type MotifDeconnexion } from "./deconnexion_forcee";
 import { estPermissionRefusee, signalerAccesRefuse } from "./acces";
+import { deconnecterPoste, panneReseauDesktop, pousserJeton } from "./connexion_desktop";
 import type { StructureType } from "./api_admin";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -282,6 +283,7 @@ async function avecRafraichissement<R>(appel: (token: string | null) => Promise<
     if (typeof window !== "undefined") {
       localStorage.setItem("access_token", nouveauJeton);
     }
+    pousserJeton(nouveauJeton);
   } catch (errRafraichissement) {
     // Nettoyer la promesse en cas d'échec
     refreshPromise = null;
@@ -289,6 +291,10 @@ async function avecRafraichissement<R>(appel: (token: string | null) => Promise<
       const motif = motifDepuisReponse(errRafraichissement.status, errRafraichissement.details);
       if (motif) throw arreterConnexion(motif, errRafraichissement.details);
     }
+
+    // Application desktop : une panne de réseau n'est pas un refus du serveur, la session reste (PD04b)
+    if (panneReseauDesktop(errRafraichissement)) throw errRafraichissement;
+    deconnecterPoste();
 
     // Refresh échoué → session expirée, nettoyer le localStorage
     if (typeof window !== "undefined") {

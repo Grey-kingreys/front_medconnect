@@ -3,13 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, PackageMinus } from "lucide-react";
 import { ChoixLot, coefficientDuLot } from "@/components/pharmacie/ChoixLot";
-import {
-  ALERTE_ERREUR,
-  BOUTON_PRIMAIRE,
-  BOUTON_SECONDAIRE,
-  CHAMP,
-  FOCUS,
-} from "@/components/pharmacie/classes";
+import { FOCUS } from "@/components/pharmacie/classes";
+import { ui } from "@/theme/ui";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
@@ -173,28 +168,28 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
     setRefusLocal(false);
   };
 
-  const classeRadio = `w-5 h-5 accent-primary-600 ${FOCUS}`;
+  const classeRadio = `h-4 w-4 accent-primary-600 ${FOCUS}`;
 
   return (
     <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-sm" onClick={envoiEnCours ? undefined : fermer} aria-hidden="true" />
+      <div className={ui.dialogue.fond} onClick={envoiEnCours ? undefined : fermer} aria-hidden="true" />
       <div
         {...dialogProps}
-        className="relative w-full max-w-md max-h-[90vh] overflow-y-auto bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 animate-slide-up"
+        className={ui.dialogue.panneau}
       >
         <div className="flex flex-col gap-5">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-500/15 flex items-center justify-center shrink-0">
-              <PackageMinus className="w-6 h-6 text-amber-700 dark:text-amber-300" aria-hidden="true" />
+            <div className={ui.dialogue.iconeAttention}>
+              <PackageMinus size={20} aria-hidden="true" />
             </div>
-            <h3 id={titleId} className="text-xl font-bold text-slate-900 dark:text-white">
+            <h3 id={titleId} className={ui.texte.section}>
               Sortir {stock.medicament.nom} du stock
             </h3>
           </div>
 
           {etatLots.statut === "chargement" && (
-            <div role="status" className="flex items-center gap-3 text-sm text-slate-600 dark:text-slate-400">
-              <Loader2 className="w-5 h-5 animate-spin" aria-hidden="true" />
+            <div role="status" className={`flex items-center gap-3 ${ui.texte.petit}`}>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
               Chargement des lots...
             </div>
           )}
@@ -202,7 +197,7 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
           {etatLots.statut === "erreur" && (
             <>
               <ErreurAvecReessai message={etatLots.message} onReessayer={reessayerLots} />
-              <button type="button" onClick={fermer} className={BOUTON_SECONDAIRE}>
+              <button type="button" onClick={fermer} className={ui.bouton.secondaire}>
                 Annuler
               </button>
             </>
@@ -210,8 +205,8 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
 
           {etatLots.statut === "pret" && lots.length === 0 && (
             <>
-              <p className="text-sm text-slate-700 dark:text-slate-300">Aucun lot en stock pour ce médicament.</p>
-              <button type="button" onClick={fermer} className={BOUTON_PRIMAIRE}>
+              <p className={ui.texte.petit}>Aucun lot en stock pour ce médicament.</p>
+              <button type="button" onClick={fermer} className={ui.bouton.primaire}>
                 Fermer
               </button>
             </>
@@ -237,9 +232,9 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                 )}
 
                 <fieldset className="space-y-2" disabled={verrouille}>
-                  <legend className="text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">Raison</legend>
+                  <legend className={`${ui.label} mb-2`}>Raison</legend>
                   {RAISONS.map((valeur) => (
-                    <label key={valeur} className="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+                    <label key={valeur} className={`flex items-center gap-3 ${ui.texte.normal}`}>
                       <input
                         type="radio"
                         name="raison-sortie"
@@ -256,7 +251,7 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                 </fieldset>
 
                 <div>
-                  <label htmlFor="quantite-sortie" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                  <label htmlFor="quantite-sortie" className={`${ui.label} mb-2`}>
                     Quantité
                   </label>
                   <div className="flex items-start gap-3">
@@ -271,13 +266,13 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                         setQuantite(e.target.value);
                         setRefusLocal(false);
                       }}
-                      className={CHAMP}
+                      className={ui.champ}
                     />
                     <button
                       type="button"
                       onClick={toutLeLot}
                       disabled={verrouille || lot === null}
-                      className={`${BOUTON_SECONDAIRE} border border-slate-200 dark:border-slate-700 whitespace-nowrap disabled:opacity-50`}
+                      className={`${ui.bouton.secondaire}`}
                     >
                       Tout le lot
                     </button>
@@ -291,7 +286,7 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                           ["unites", `en ${libelleUnite.pluriel}`],
                         ] as const
                       ).map(([valeur, libelle]) => (
-                        <label key={valeur} className="flex items-center gap-3 text-sm text-slate-800 dark:text-slate-200">
+                        <label key={valeur} className={`flex items-center gap-3 ${ui.texte.normal}`}>
                           <input
                             type="radio"
                             name="unite-sortie"
@@ -304,12 +299,12 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                       ))}
                     </fieldset>
                   ) : (
-                    <p className="mt-2 text-sm text-slate-700 dark:text-slate-300">en boîtes</p>
+                    <p className={`mt-2 ${ui.texte.petit}`}>en boîtes</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="commentaire-sortie" className="block text-sm font-medium text-slate-800 dark:text-slate-200 mb-2">
+                  <label htmlFor="commentaire-sortie" className={`${ui.label} mb-2`}>
                     Précisez
                   </label>
                   <input
@@ -324,22 +319,22 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                       setRefusLocal(false);
                     }}
                     aria-describedby="aide-commentaire-sortie"
-                    className={CHAMP}
+                    className={ui.champ}
                   />
-                  <p id="aide-commentaire-sortie" className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+                  <p id="aide-commentaire-sortie" className={`mt-1 ${ui.texte.legende}`}>
                     Obligatoire pour « Autre raison », facultatif sinon.
                   </p>
                 </div>
               </div>
 
               {refusLocal && (
-                <p role="alert" className="text-sm text-rose-700 dark:text-rose-300">
+                <p role="alert" className={ui.dialogue.erreurChamp}>
                   {MESSAGE_REFUS_LOCAL}
                 </p>
               )}
 
               {erreur && (
-                <div role="alert" className={ALERTE_ERREUR}>
+                <div role="alert" className={ui.alerte.erreur}>
                   {erreur}
                 </div>
               )}
@@ -349,7 +344,7 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                   type="button"
                   onClick={fermer}
                   disabled={envoiEnCours}
-                  className={`flex-1 ${BOUTON_SECONDAIRE} disabled:opacity-50`}
+                  className={`flex-1 ${ui.bouton.secondaire}`}
                 >
                   {issueInconnue ? "Fermer" : "Annuler"}
                 </button>
@@ -357,7 +352,7 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                   <button
                     type="button"
                     onClick={() => corpsEnvoye.current && void envoyer(corpsEnvoye.current)}
-                    className={`flex-[2] ${BOUTON_PRIMAIRE}`}
+                    className={`flex-[2] ${ui.bouton.primaire}`}
                   >
                     Réessayer l&apos;envoi
                   </button>
@@ -366,9 +361,9 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
                     type="button"
                     onClick={enregistrer}
                     disabled={envoiEnCours}
-                    className={`flex-[2] ${BOUTON_PRIMAIRE}`}
+                    className={`flex-[2] ${ui.bouton.primaire}`}
                   >
-                    {envoiEnCours && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+                    {envoiEnCours && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
                     {envoiEnCours ? "Enregistrement..." : "Enregistrer la sortie"}
                   </button>
                 )}
@@ -397,8 +392,8 @@ function ResumeLot({
   if (!lot) return null;
   const numero = lot.numeroLot ? `Lot ${lot.numeroLot}` : "Lot sans numéro";
   return (
-    <p className="text-sm text-slate-800 dark:text-slate-200">
-      <span className="block font-medium mb-1">Lot à sortir</span>
+    <p className={ui.texte.normal}>
+      <span className="block text-mc-petit font-medium mb-1">Lot à sortir</span>
       {numero}, {formaterQuantite(lot.quantite, coefficientDuLot(lot, coefficient), unite)}
     </p>
   );

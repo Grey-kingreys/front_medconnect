@@ -5,10 +5,17 @@
 import type { UniteMinimale } from "../../api_pharmacie";
 
 /** Lève une RangeError si la valeur n'est pas un entier supérieur ou égal au minimum. */
-function exigerEntier(valeur: number, nom: string, minimum: number): void {
+export function exigerEntier(valeur: number, nom: string, minimum: number): void {
   if (!Number.isInteger(valeur) || valeur < minimum) {
     throw new RangeError(`${nom} doit être un entier supérieur ou égal à ${minimum} (reçu : ${valeur}).`);
   }
+}
+
+/** Reliquat dérivé d'un lot : solde modulo coefficient de réception si solde > 0 et coefficient > 1, sinon 0 (D405). */
+export function reliquatLot(soldeLot: number, coefficientReception: number): number {
+  exigerEntier(soldeLot, "soldeLot", Number.MIN_SAFE_INTEGER);
+  exigerEntier(coefficientReception, "coefficientReception", 1);
+  return soldeLot > 0 && coefficientReception > 1 ? soldeLot % coefficientReception : 0;
 }
 
 /** Nombre de boîtes vers unités minimales : n x coefficient. */
