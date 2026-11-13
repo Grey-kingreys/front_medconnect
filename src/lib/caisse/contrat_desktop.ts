@@ -103,6 +103,8 @@ export interface InfosPoste {
   adresseApi?: string;
   /** Vrai si les mises à jour se font toutes seules, faux si elles sont manuelles. */
   majAutomatique?: boolean;
+  /** Dossier des données de ce poste (base, appareil.json, journal.log), ajouté par le processus principal. */
+  dossierDonnees?: string;
 }
 
 /** Codes d'échec d'une impression (ReponsePont, `code`). */
@@ -145,6 +147,8 @@ export interface PontDesktop {
     lireReglages(): Promise<ReponsePont<ReglagesPoste>>;
     enregistrerReglages(modif: Partial<ReglagesPoste>): Promise<ReponsePont<ReglagesPoste>>;
     lireInfosPoste(): Promise<ReponsePont<InfosPoste>>;
+    /** Ouvre le dossier des données de ce poste dans l'explorateur de fichiers. */
+    ouvrirDossierDonnees(): Promise<ReponsePont<null>>;
     /** Imprime le ticket de la vente locale sans dialogue, avec l'imprimante et le format réglés. */
     imprimerVente(venteId: string): Promise<ReponsePont<null>>;
     /** Appelé par la fenêtre cachée d'impression quand le reçu est rendu (logo chargé ou replié). */

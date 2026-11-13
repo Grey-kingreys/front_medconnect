@@ -45,6 +45,7 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
     lireReglages: () => appeler("impression:lireReglages"),
     enregistrerReglages: (modif: unknown) => appeler("impression:enregistrerReglages", modif),
     lireInfosPoste: () => appeler("impression:lireInfosPoste"),
+    ouvrirDossierDonnees: () => appeler("impression:ouvrirDossierDonnees"),
     imprimerVente: (venteId: string) => appeler("impression:imprimerVente", venteId),
     signalerPret: () => appeler("impression:signalerPret"),
   },

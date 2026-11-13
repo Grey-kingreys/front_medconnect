@@ -111,6 +111,7 @@ export const schemasImpression = {
       .strict(),
   ]),
   lireInfosPoste: z.tuple([]),
+  ouvrirDossierDonnees: z.tuple([]),
   imprimerVente: z.tuple([z.string().uuid()]),
 } as const;
 

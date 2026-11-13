@@ -3,6 +3,7 @@
   "productName": "MedConnecte Caisse",
   "version": "0.1.0",
   "private": true,
+  "author": "MedConnecte",
   "main": "dist/main.cjs",
   "scripts": {
     "preparer": "node node_modules/electron/install.js",

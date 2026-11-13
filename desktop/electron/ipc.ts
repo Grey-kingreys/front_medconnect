@@ -21,6 +21,8 @@ export interface DepsIpc {
   etat: () => EtatPosteDesktop;
   /** Installe la mise à jour prête si la règle le permet ; faux sinon. */
   installerMaj: () => boolean;
+  /** Ouvre le dossier des données du poste dans l'explorateur ; texte vide si réussi, sinon le message d'erreur du système. */
+  ouvrirDossierDonnees: () => Promise<string>;
   impression: ServiceImpression;
   reglages: {
     lire: () => ReglagesPoste;
@@ -103,6 +105,12 @@ export function enregistrerIpc(deps: DepsIpc): void {
           return ok(deps.reglages.enregistrer(valeurs[0] as Partial<ReglagesPoste>), "Réglages enregistrés.");
         case "lireInfosPoste":
           return ok(deps.reglages.infosPoste(), "Informations de ce poste.");
+        case "ouvrirDossierDonnees": {
+          const erreur = await deps.ouvrirDossierDonnees();
+          return erreur === ""
+            ? ok(null, "Dossier ouvert.")
+            : { ok: false, status: 500, code: "DOSSIER_NON_OUVERT", message: "Le dossier des données n'a pas pu être ouvert." };
+        }
         case "imprimerVente":
           return deps.impression.imprimerVente(valeurs[0] as string);
       }

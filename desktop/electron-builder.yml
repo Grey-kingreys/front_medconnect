@@ -1,4 +1,4 @@
-# Installateur Windows par utilisateur (PD06). L'adresse de mise à jour (`publish`) n'est pas ici :
+# Installateur Windows avec assistant (PD06) : par utilisateur ou pour tous, au choix. L'adresse de mise à jour (`publish`) n'est pas ici :
 # `scripts/empaqueter.mjs` l'ajoute seulement si MC_MAJ_URL est donnée (sinon, mises à jour manuelles).
 appId: com.medconnecte.caisse
 productName: MedConnecte Caisse
@@ -26,6 +26,21 @@ win:
         - x64
   icon: ../public/icons/icon-512x512.png
 nsis:
-  oneClick: true
+  # Assistant d'installation standard, en français : accueil, conditions, portée, dossier, raccourcis, fin.
+  oneClick: false
   perMachine: false
+  allowElevation: true
+  allowToChangeInstallationDirectory: true
+  license: build/conditions-utilisation.txt
+  language: "1036"
+  installerLanguages:
+    - fr_FR
+  # Une seule langue (le français) : electron-builder ignore installerLanguages si cette option est fausse.
+  multiLanguageInstaller: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: MedConnecte Caisse
+  runAfterFinish: true
+  uninstallDisplayName: MedConnecte Caisse
+  # Les données du poste (base SQLite, appareil.json, journal.log) restent après la désinstallation.
   deleteAppDataOnUninstall: false

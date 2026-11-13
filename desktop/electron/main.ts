@@ -215,9 +215,10 @@ if (!premiereInstance) {
       reglages: {
         lire: () => coeur.lireReglages(),
         enregistrer: (modif) => coeur.enregistrerReglages(modif),
-        infosPoste: () => ({ ...coeur.infosPoste(), adresseApi: adresseApiAffichee(), majAutomatique: maj?.automatique ?? false }),
+        infosPoste: () => ({ ...coeur.infosPoste(), adresseApi: adresseApiAffichee(), majAutomatique: maj?.automatique ?? false, dossierDonnees: app.getPath("userData") }),
       },
       installerMaj: () => maj?.installerMaintenant() ?? false,
+      ouvrirDossierDonnees: () => shell.openPath(app.getPath("userData")),
       definirJeton: (jeton) => service!.definirJeton(jeton),
       deconnecter: () => {
         service!.deconnecter();

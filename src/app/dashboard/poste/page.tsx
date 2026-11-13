@@ -13,7 +13,7 @@ import {
   type ReglagesPoste,
 } from "@/lib/caisse/contrat_desktop";
 import { useEtatPoste } from "@/lib/caisse/etat_poste";
-import { ALERTE_ERREUR, ALERTE_SUCCES, BOUTON_PRIMAIRE, CARTE, CHAMP, FOCUS, POLICE_TITRE } from "@/components/pharmacie/classes";
+import { ALERTE_ERREUR, ALERTE_SUCCES, BOUTON_PRIMAIRE, BOUTON_SECONDAIRE, CARTE, CHAMP, FOCUS, POLICE_TITRE } from "@/components/pharmacie/classes";
 import { FORMATS_RECU, formaterDateHeure } from "../ventes/affichage";
 
 const MESSAGE_CHARGEMENT = "Impossible de lire les réglages de ce poste. Redémarrez l'application puis réessayez.";
@@ -91,6 +91,16 @@ export default function PostePage() {
       setBandeau({ texte: MESSAGE_IMPRESSION_ECHOUEE, ton: "erreur" });
     } finally {
       setEssaiEnCours(false);
+    }
+  };
+
+  const ouvrirDossier = async () => {
+    setBandeau(null);
+    try {
+      const rep = await pont.impression.ouvrirDossierDonnees();
+      if (!rep.ok) setBandeau({ texte: rep.message, ton: "erreur" });
+    } catch {
+      setBandeau({ texte: MESSAGE_CHARGEMENT, ton: "erreur" });
     }
   };
 
@@ -256,6 +266,17 @@ export default function PostePage() {
               {etat?.dernierContactLe ? formaterDateHeure(etat.dernierContactLe) : "Aucun pour le moment"}
             </dd>
           </div>
+          {infos?.dossierDonnees ? (
+            <div className="sm:col-span-2">
+              <dt className="text-slate-600 dark:text-slate-400">Dossier des données</dt>
+              <dd className="font-medium text-slate-900 dark:text-white break-all">{infos.dossierDonnees}</dd>
+              <dd className="mt-2">
+                <button type="button" onClick={() => void ouvrirDossier()} className={BOUTON_SECONDAIRE}>
+                  Ouvrir le dossier
+                </button>
+              </dd>
+            </div>
+          ) : null}
           {infos?.adresseApi ? (
             <div className="sm:col-span-2">
               <dt className="text-slate-600 dark:text-slate-400">Adresse du serveur</dt>
