@@ -68,7 +68,8 @@ const formVide = (): FormState => ({
   sansPeremption: false,
   notes: "",
   confirme: false,
-  conversion: "",
+  // Par défaut, le stock d'une fiche à 1 par boîte compte des boîtes : elles se convertissent en unités.
+  conversion: "MULTIPLIER",
   categorie: "Générique",
   nomGenerique: "",
   ordonnanceRequise: false,
@@ -88,6 +89,8 @@ const MESSAGE_PAS_DE_DROIT_LIVRAISON = "Pour ajouter des boîtes, demandez au ti
 // Filet de sécurité : la fiche existe côté serveur sans figurer dans la liste de la page (archivée, liste périmée).
 const MESSAGE_FICHE_EXISTANTE = "Ce médicament a déjà une fiche dans votre stock. Rien n'a été modifié.";
 const MESSAGE_RESEAU = "L'enregistrement n'a peut-être pas abouti. Vérifiez votre connexion puis appuyez sur Réessayer.";
+const MESSAGE_CONVERSION_REFUSEE =
+  "Le stock ne peut pas être converti en unités. Choisissez « le stock compte des unités » pour le garder tel quel, ou corrigez d'abord les lots du produit.";
 const MESSAGE_CHOIX_CONVERSION = "Indiquez si le stock actuel compte des boîtes ou des unités.";
 const MESSAGE_PAR_DEFAUT = "Une erreur est survenue";
 
@@ -491,7 +494,8 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
       } else {
         setVerrou(false);
         if (codeErreur(err) === "CONVERSION_REQUISE") setConversionRequise(true);
-        setError((err instanceof Error && err.message) || MESSAGE_PAR_DEFAUT);
+        const repliConversion = codeErreur(err) === "CONVERSION_IMPOSSIBLE" ? MESSAGE_CONVERSION_REFUSEE : MESSAGE_PAR_DEFAUT;
+        setError((err instanceof Error && err.message) || repliConversion);
       }
     } finally {
       envoiRef.current = false;
@@ -541,6 +545,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     : null;
   const lotsEnStock = (editItem?.lots ?? []).filter((l) => l.quantite > 0);
   const unitesEnPlus = (editItem?.quantite ?? 0) * coefficientCourant;
+  const nombreStock = (editItem?.quantite ?? 0).toLocaleString("fr-FR");
   // Ajout : médicament choisi qui a déjà une fiche active. Le reste de la fenêtre n'apparaît qu'après un choix valable.
   const ficheExistante = !editItem && selectedMed ? ficheDuMedicament(fichesActives, selectedMed) : undefined;
   const afficherSaisie = !!editItem || ((!!selectedMed || isCreatingNew) && !ficheExistante);
@@ -902,18 +907,18 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                 {afficherChoix && (
                   <fieldset className="space-y-2">
                     <legend className="text-mc-normal font-medium text-slate-800 dark:text-slate-200 mb-2">
-                      {`Le stock actuel de ${formaterQuantite(editItem.quantite, 1, "UNITE")}${aRegulariser === null ? "" : `, avec ${aRegulariser},`} compte :`}
+                      {`Le stock actuel compte ${nombreStock} ${Math.abs(editItem.quantite) > 1 ? "boîtes" : "boîte"} ou ${nombreStock} ${Math.abs(editItem.quantite) > 1 ? pluriel : singulier} ?${aRegulariser === null ? "" : ` (avec ${aRegulariser})`}`}
                     </legend>
                     <label className="flex items-start gap-3 text-mc-normal text-slate-800 dark:text-slate-200">
                       <input
                         type="radio"
                         name="stock-conversion"
-                        checked={form.conversion === "MULTIPLIER"}
+                        checked={form.conversion !== "CONSERVER"}
                         onChange={() => maj({ conversion: "MULTIPLIER" })}
                         className="w-5 h-5 mt-0.5 accent-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                       />
                       <span>
-                        {`des boîtes : les convertir en unités (${editItem.quantite.toLocaleString("fr-FR")} ${Math.abs(editItem.quantite) > 1 ? "boîtes deviennent" : "boîte devient"} ${unitesEnPlus.toLocaleString("fr-FR")} ${Math.abs(unitesEnPlus) > 1 ? pluriel : singulier})`}
+                        {`${nombreStock} ${Math.abs(editItem.quantite) > 1 ? "boîtes" : "boîte"} : le stock devient ${unitesEnPlus.toLocaleString("fr-FR")} ${Math.abs(unitesEnPlus) > 1 ? pluriel : singulier} (${nombreStock} ${Math.abs(editItem.quantite) > 1 ? "boîtes" : "boîte"} de ${coefficientCourant.toLocaleString("fr-FR")})`}
                       </span>
                     </label>
                     <label className="flex items-start gap-3 text-mc-normal text-slate-800 dark:text-slate-200">
@@ -924,8 +929,13 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                         onChange={() => maj({ conversion: "CONSERVER" })}
                         className="w-5 h-5 mt-0.5 accent-primary-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
                       />
-                      <span>déjà des unités : ne rien changer</span>
+                      <span>
+                        {`${nombreStock} ${Math.abs(editItem.quantite) > 1 ? pluriel : singulier} : le stock devient ${formaterQuantite(editItem.quantite, coefficientCourant, form.unite)} de ${coefficientCourant.toLocaleString("fr-FR")}`}
+                      </span>
                     </label>
+                    <p className={AIDE} role="status">
+                      {`Après l'enregistrement, le stock affichera ${formaterQuantite(form.conversion === "CONSERVER" ? editItem.quantite : unitesEnPlus, coefficientCourant, form.unite)}.`}
+                    </p>
                     <p className={AIDE}>Ce choix ne se fera qu&apos;une fois.</p>
                   </fieldset>
                 )}
