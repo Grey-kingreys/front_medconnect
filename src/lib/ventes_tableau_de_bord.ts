@@ -3,7 +3,7 @@ import type { VentesDuJour } from "./api_ventes";
 export interface ResumeVentesDuJour {
   totalJour: number;
   nombre: number;
-  /** Ventes de la page lue au statut ANNULEE. */
+  /** Pièces d'annulation de la page lue : une annulation du jour compte même si la vente date d'un autre jour. */
   annulees: number;
   /** Vrai quand la journée tient sur plusieurs pages : seules les dernières ventes sont lues. */
   partiel: boolean;
@@ -11,9 +11,9 @@ export interface ResumeVentesDuJour {
 }
 
 export interface ResumeMesVentes {
-  /** Somme des ventes validées du vendeur. */
+  /** Somme signée des pièces du vendeur : ses annulations sont déduites. */
   total: number;
-  /** Nombre de ventes validées du vendeur. */
+  /** Nombre de ventes (pièces de type VENTE) du vendeur. */
   nombre: number;
   annulees: number;
   partiel: boolean;
@@ -30,7 +30,7 @@ export function resumerVentesDuJour(data: VentesDuJour): ResumeVentesDuJour {
   return {
     totalJour: data.totalJour,
     nombre: data.nombre,
-    annulees: ventes.filter((v) => v.statut === "ANNULEE").length,
+    annulees: ventes.filter((v) => v.typePiece === "ANNULATION").length,
     partiel: data.totalPages > 1,
     ventesLues: ventes.length,
   };
@@ -40,11 +40,10 @@ export function resumerVentesDuJour(data: VentesDuJour): ResumeVentesDuJour {
 export function resumerMesVentes(data: VentesDuJour, utilisateurId: string): ResumeMesVentes {
   const ventes = ventesDe(data);
   const miennes = ventes.filter((v) => v.vendeur.id === utilisateurId);
-  const validees = miennes.filter((v) => v.statut === "VALIDEE");
   return {
-    total: validees.reduce((somme, v) => somme + v.total, 0),
-    nombre: validees.length,
-    annulees: miennes.filter((v) => v.statut === "ANNULEE").length,
+    total: miennes.reduce((somme, v) => somme + v.total, 0),
+    nombre: miennes.filter((v) => v.typePiece === "VENTE").length,
+    annulees: miennes.filter((v) => v.typePiece === "ANNULATION").length,
     partiel: data.totalPages > 1,
     ventesLues: ventes.length,
   };

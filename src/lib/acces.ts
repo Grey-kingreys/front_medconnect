@@ -4,6 +4,7 @@
  */
 import type { StructureType } from "./api_admin";
 import { ApiError } from "./api_auth";
+import { pontDesktop } from "./caisse/contrat_desktop";
 import type { AuthUser, UserProfile } from "./api_auth";
 
 export type RoleUtilisateur =
@@ -40,16 +41,28 @@ export type CodePermission =
   | "platform:admin"
   | "vente:read"
   | "vente:write"
-  | "vente:annuler";
+  | "vente:annuler"
+  | "caisse:utiliser"
+  | "caisse:superviser"
+  | "cloture:gerer"
+  | "inventaire:write"
+  | "reception:write"
+  | "marge:read"
+  | "anomalie:gerer"
+  | "credit:read"
+  | "credit:write";
 
 export interface ContexteAcces {
   mode: "permissions" | "repli";
   role: string;
   typeStructure: StructureType | null;
   permissions: ReadonlySet<string>;
+  /** Vrai dans l'application de caisse (desktop) : certaines entrées de menu n'existent que là. Absent sur le web. */
+  desktop?: boolean;
 }
 
 export function lireContexteAcces(user: Pick<AuthUser, "role">, profile: UserProfile | null): ContexteAcces {
+  const desktop = pontDesktop() !== null;
   if (profile !== null && Array.isArray(profile.permissions) && profile.structureType !== undefined) {
     const type = profile.structureType;
     return {
@@ -57,6 +70,7 @@ export function lireContexteAcces(user: Pick<AuthUser, "role">, profile: UserPro
       role: user.role,
       typeStructure: type === "HOPITAL" || type === "CLINIQUE" || type === "PHARMACIE" ? type : null,
       permissions: new Set(profile.permissions),
+      ...(desktop ? { desktop } : {}),
     };
   }
   return {
@@ -64,6 +78,7 @@ export function lireContexteAcces(user: Pick<AuthUser, "role">, profile: UserPro
     role: user.role,
     typeStructure: user.role === "PHARMACIEN" ? "PHARMACIE" : null,
     permissions: new Set<string>(),
+    ...(desktop ? { desktop } : {}),
   };
 }
 

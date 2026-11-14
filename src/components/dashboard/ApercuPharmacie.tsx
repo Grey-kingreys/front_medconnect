@@ -34,6 +34,8 @@ export interface ApercuPharmacieProps {
   peutVendre?: boolean;
   /** Le registre ouvre Ventes du jour à ce profil. */
   peutVoirVentes?: boolean;
+  /** reception:write ou inventaire:write : sans l'un des deux, l'import Excel n'est pas proposé. */
+  peutImporter?: boolean;
   /** Titre de la section ; par défaut « Aperçu de votre pharmacie ». */
   titre?: string;
   /** Date de référence, pour les tests ; par défaut l'instant du calcul. */
@@ -124,6 +126,7 @@ export default function ApercuPharmacie({
   peutVoirEquipe,
   peutVendre = false,
   peutVoirVentes = false,
+  peutImporter = false,
   titre = "Aperçu de votre pharmacie",
   maintenant,
 }: ApercuPharmacieProps) {
@@ -270,7 +273,7 @@ export default function ApercuPharmacie({
             libelle={LIBELLES_STOCK.stockBas}
             icone={AlertTriangle}
             couleur="text-amber-600 dark:text-amber-400"
-            sousTexte="Moins de 10 unités"
+            sousTexte="Moins de 10 boîtes"
           >
             <Valeur>{nombre(a.stockBas)}</Valeur>
           </Carte>
@@ -350,7 +353,9 @@ export default function ApercuPharmacie({
         <div className={CLASSES_BLOC}>
           <h3 className="text-base font-semibold text-slate-900 dark:text-white">Votre stock est vide</h3>
           <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-            Ajoutez vos médicaments un par un ou importez votre fichier Excel pour suivre ici vos ruptures et vos dates de péremption.
+            {peutImporter
+              ? "Ajoutez vos médicaments un par un ou importez votre fichier Excel pour suivre ici vos ruptures et vos dates de péremption."
+              : "Ajoutez vos médicaments pour suivre ici vos ruptures et vos dates de péremption."}
           </p>
           <div className="mt-4 flex flex-wrap gap-3">
             <Link
@@ -359,12 +364,14 @@ export default function ApercuPharmacie({
             >
               Ouvrir le stock
             </Link>
-            <Link
-              href="/dashboard/stock?importer=1"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:border-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
-            >
-              Importer un fichier Excel
-            </Link>
+            {peutImporter && (
+              <Link
+                href="/dashboard/stock?importer=1"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:border-primary-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary-500"
+              >
+                Importer un fichier Excel
+              </Link>
+            )}
           </div>
         </div>
       );

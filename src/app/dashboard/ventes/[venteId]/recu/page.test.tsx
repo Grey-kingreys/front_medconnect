@@ -53,6 +53,21 @@ const VENTE: Vente = {
       prixUnitaire: 1500,
       quantite: 2,
       sousTotal: 3000,
+      uniteAffichee: "BOITE",
+      nombreAffiche: 2,
+      coefficientApplique: 1,
+      allocations: [
+        {
+          lotId: "lot-secret-1",
+          numeroLot: "LOT-A12",
+          dateExpiration: "2027-03-31",
+          quantite: 2,
+          statut: "DEFINITIVE",
+          sortieManuelle: false,
+          motif: null,
+          lotTechnique: false,
+        },
+      ],
     },
   ],
   pharmacie: {
@@ -63,7 +78,31 @@ const VENTE: Vente = {
     telephone: "622 11 22 33",
     logoUrl: null,
   },
+  typePiece: "VENTE",
+  numeroTicket: 1,
+  jourMetier: "2026-10-22",
+  provisoire: false,
+  poste: { id: "po1", code: "W1" },
+  session: { id: "se1", ouverteAutomatiquement: false },
+  paiements: [],
+  annulation: null,
+  venteOrigine: null,
+  motif: null,
 };
+
+const PAIEMENT_ESPECES = {
+  id: "pa1",
+  mode: "ESPECES",
+  libelle: "Espèces",
+  montant: 3000,
+  reference: null,
+  montantRecu: 5000,
+  rendu: 2000,
+};
+
+/** Ligne de reçu au texte exact : formaterGNF contient des espaces insécables que la recherche par texte normalise. */
+const ligneExacte = (texte: string) => (_contenu: string, el: Element | null) =>
+  el?.tagName === "P" && el.textContent === texte;
 
 const reponse = (vente: Vente) => ({ data: vente, message: "ok", success: true });
 
@@ -88,6 +127,21 @@ afterEach(() => {
   cleanup();
 });
 
+describe("Reçu de vente : prescripteur", () => {
+  it("affiche la ligne Prescripteur seulement si le numéro est rempli", async () => {
+    getVente.mockResolvedValue(reponse({ ...VENTE, telephonePrescripteur: "+224 622 33 44 55" }));
+    const { unmount } = render(<RecuVentePage />);
+    const recu = await screen.findByRole("article", { name: "Reçu V-2026-0001" });
+    expect(within(recu).getByText("Prescripteur : +224 622 33 44 55")).toBeInTheDocument();
+    unmount();
+
+    getVente.mockResolvedValue(reponse({ ...VENTE, telephonePrescripteur: null }));
+    render(<RecuVentePage />);
+    const recuSans = await screen.findByRole("article", { name: "Reçu V-2026-0001" });
+    expect(within(recuSans).queryByText(/Prescripteur/)).toBeNull();
+  });
+});
+
 describe("Reçu de vente", () => {
   it("affiche le contenu du reçu", async () => {
     render(<RecuVentePage />);
@@ -104,7 +158,7 @@ describe("Reçu de vente", () => {
     expect(dans.getByText("Vendeur : Mariama Diallo")).toBeInTheDocument();
     expect(dans.getByText("Client : Barry")).toBeInTheDocument();
     expect(dans.getByText("Téléphone du client : 620 00 00 00")).toBeInTheDocument();
-    expect(dans.getByText("Paracétamol 500 mg")).toBeInTheDocument();
+    expect(dans.getByText("2 boîtes de Paracétamol 500 mg")).toBeInTheDocument();
     const detail = `2 × ${formaterGNF(1500)} = ${formaterGNF(3000)}`;
     expect(dans.getByText((_, el) => el?.tagName === "P" && el.textContent === detail)).toBeInTheDocument();
     expect(dans.getByText("Total").parentElement?.textContent).toBe(`Total${formaterGNF(3000)}`);
@@ -132,13 +186,116 @@ describe("Reçu de vente", () => {
     cleanup();
 
     getVente.mockResolvedValue(
-      reponse({ ...VENTE, statut: "ANNULEE", annuleeLe: "2026-10-22T11:00:00.000Z", motifAnnulation: "Erreur de quantité" }),
+      reponse({
+        ...VENTE,
+        statut: "ANNULEE",
+        annuleeLe: "2026-10-22T11:00:00.000Z",
+        motifAnnulation: "Erreur de quantité",
+        annulation: {
+          id: "a1",
+          numero: "A-V-2026-0001",
+          motif: "Erreur de quantité",
+          le: "2026-10-22T11:00:00.000Z",
+          par: { id: "u2", nom: "Djénabou Baldé" },
+        },
+      }),
     );
     render(<RecuVentePage />);
     expect(await screen.findByText("ANNULÉE")).toBeInTheDocument();
-    expect(screen.getByText("Annulée le 22/10/2026 à 11:00")).toBeInTheDocument();
-    expect(screen.queryByText(/Erreur de quantité/)).toBeNull();
+    expect(screen.getByText("Annulée le 22/10/2026 à 11:00 par Djénabou Baldé (pièce A-V-2026-0001)")).toBeInTheDocument();
+    expect(screen.getByText("Motif : Erreur de quantité")).toBeInTheDocument();
     verifierTermes();
+  });
+
+  it("titre une pièce d'annulation avec sa vente d'origine et son motif", async () => {
+    getVente.mockResolvedValue(
+      reponse({
+        ...VENTE,
+        id: "a1",
+        numero: "A-T1-0000012",
+        total: -3000,
+        typePiece: "ANNULATION",
+        numeroTicket: null,
+        venteOrigine: { id: "v12", numero: "T1-0000012" },
+        motif: "Erreur de quantité",
+        lignes: [{ ...VENTE.lignes[0], nombreAffiche: -2, quantite: -2, sousTotal: -3000 }],
+        paiements: [{ ...PAIEMENT_ESPECES, montant: -3000, montantRecu: null, rendu: null }],
+      }),
+    );
+    render(<RecuVentePage />);
+    const recu = within(await screen.findByRole("article"));
+
+    expect(recu.getByText("Pièce d'annulation n° A-T1-0000012")).toBeInTheDocument();
+    expect(recu.getByText("Annule la vente n° T1-0000012")).toBeInTheDocument();
+    expect(recu.getByText("Motif : Erreur de quantité")).toBeInTheDocument();
+    expect(recu.queryByText(/Reçu n°/)).toBeNull();
+    expect(recu.getByText("2 boîtes de Paracétamol 500 mg")).toBeInTheDocument();
+    // Le calcul de la ligne reste juste : le nombre porte le signe du sous-total.
+    expect(recu.getByText(ligneExacte(`-2 × ${formaterGNF(1500)} = ${formaterGNF(-3000)}`))).toBeInTheDocument();
+    expect(recu.getByText("Total").parentElement?.textContent).toBe(`Total${formaterGNF(-3000)}`);
+    expect(recu.getByText(ligneExacte(`Espèces : ${formaterGNF(-3000)}`))).toBeInTheDocument();
+    verifierTermes();
+  });
+
+  it("titre une régularisation et indique le jour où elle est comptée", async () => {
+    getVente.mockResolvedValue(
+      reponse({ ...VENTE, numero: "T2-0000009", typePiece: "REGULARISATION", jourMetier: "2026-10-23" }),
+    );
+    render(<RecuVentePage />);
+    const recu = within(await screen.findByRole("article"));
+
+    expect(recu.getByText("Régularisation n° T2-0000009")).toBeInTheDocument();
+    expect(recu.getByText("Comptée pour le vendredi 23 octobre 2026")).toBeInTheDocument();
+  });
+
+  it("n'indique pas de jour de comptage quand il est celui de la vente", async () => {
+    render(<RecuVentePage />);
+    const recu = within(await screen.findByRole("article"));
+    expect(recu.queryByText(/Comptée pour le/)).toBeNull();
+  });
+
+  it("liste les paiements avec la monnaie rendue en espèces", async () => {
+    getVente.mockResolvedValue(
+      reponse({
+        ...VENTE,
+        total: 8000,
+        paiements: [
+          PAIEMENT_ESPECES,
+          {
+            id: "pa2",
+            mode: "ORANGE_MONEY",
+            libelle: "Orange Money",
+            montant: 5000,
+            reference: "OM123456",
+            montantRecu: null,
+            rendu: null,
+          },
+        ],
+      }),
+    );
+    render(<RecuVentePage />);
+    const recu = within(await screen.findByRole("article"));
+
+    expect(recu.getByText(ligneExacte(`Espèces : ${formaterGNF(3000)}`))).toBeInTheDocument();
+    expect(recu.getByText(ligneExacte(`Reçu : ${formaterGNF(5000)}`))).toBeInTheDocument();
+    expect(recu.getByText(ligneExacte(`Rendu : ${formaterGNF(2000)}`))).toBeInTheDocument();
+    expect(recu.getByText(ligneExacte(`Orange Money : ${formaterGNF(5000)}`))).toBeInTheDocument();
+    expect(recu.getByText("Référence : OM123456")).toBeInTheDocument();
+  });
+
+  it("n'affiche aucune ligne de paiement quand il n'y en a pas", async () => {
+    render(<RecuVentePage />);
+    const recu = within(await screen.findByRole("article"));
+    expect(recu.queryByText(/Espèces|Orange Money|Rendu/)).toBeNull();
+  });
+
+  it("n'affiche aucun numéro de lot ni coût", async () => {
+    render(<RecuVentePage />);
+    await screen.findByRole("article");
+    const contenu = document.body.textContent ?? "";
+    expect(contenu).not.toContain("LOT-A12");
+    expect(contenu).not.toContain("2027");
+    expect(contenu).not.toMatch(/lot|coût|marge/i);
   });
 
   it("propose le ticket 58 mm par défaut et mémorise le choix", async () => {

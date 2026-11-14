@@ -23,6 +23,7 @@ import {
   updateMedicament, 
   deleteMedicament 
 } from "@/lib/api_pharmacie";
+import { ui } from "@/theme/ui";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 import { ImportCatalogueModal } from "@/components/modals/ImportStockModal";
 
@@ -119,21 +120,21 @@ export default function CataloguePage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight" style={{ fontFamily: "var(--font-outfit)" }}>
+          <h1 className={ui.titrePage}>
             Catalogue Global
           </h1>
-          <p className="text-slate-500 text-sm mt-1">Gérez la liste de référence des médicaments pour toutes les pharmacies.</p>
+          <p className={`${ui.texte.petit} mt-1`}>Gérez la liste de référence des médicaments pour toutes les pharmacies.</p>
         </div>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
           {peutImporter && (
             <button
               type="button"
               onClick={() => setIsImportOpen(true)}
-              className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-white border border-slate-200 dark:border-slate-700 rounded-2xl font-bold text-sm hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2"
+              className={`${ui.bouton.secondaire} w-full sm:w-auto`}
             >
               <FileSpreadsheet className="w-5 h-5" />
               Importer depuis Excel
@@ -141,7 +142,7 @@ export default function CataloguePage() {
           )}
           <button
             onClick={openAddModal}
-            className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
+            className={`${ui.bouton.primaire} w-full sm:w-auto group`}
           >
             <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
             Ajouter au catalogue
@@ -157,74 +158,74 @@ export default function CataloguePage() {
           placeholder="Rechercher un médicament dans le catalogue..." 
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-14 pr-4 py-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
+          className={`${ui.champ} pl-12`}
         />
       </div>
 
       {/* Table */}
-      <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-mc-grand overflow-hidden shadow-mc">
         <div className="overflow-x-auto">
-          <table className="w-full">
+          <table className={ui.tableau}>
             <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800/50">
-                <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Médicament</th>
-                <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Générique (DCI)</th>
-                <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Catégorie</th>
-                <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Ordonnance</th>
-                <th className="px-8 py-5 text-right text-xs font-black text-slate-400 uppercase tracking-widest">Actions</th>
+              <tr className={ui.enteteTableau}>
+                <th className={`${ui.celluleEntete} text-left`}>Médicament</th>
+                <th className={`${ui.celluleEntete} text-left`}>Générique (DCI)</th>
+                <th className={`${ui.celluleEntete} text-left`}>Catégorie</th>
+                <th className={`${ui.celluleEntete} text-center`}>Ordonnance</th>
+                <th className={`${ui.celluleEntete} text-right`}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
               {loading && medicaments.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center">
+                  <td colSpan={5} className="px-3 py-16 text-center">
                     <LoadingSpinner />
-                    <p className="text-slate-500">Chargement du catalogue...</p>
+                    <p className={ui.texte.petit}>Chargement du catalogue...</p>
                   </td>
                 </tr>
               ) : medicaments.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center">
+                  <td colSpan={5} className="px-3 py-16 text-center">
                     <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                    <p className="text-slate-500 font-medium">Aucun médicament trouvé.</p>
+                    <p className={`${ui.texte.petit} font-medium`}>Aucun médicament trouvé.</p>
                   </td>
                 </tr>
               ) : (
                 medicaments.map((m) => (
-                  <tr key={m.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                    <td className="px-8 py-5">
+                  <tr key={m.id} className={`group ${ui.ligneTableau}`}>
+                    <td className={ui.cellule}>
                       <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 rounded-xl bg-primary-500/10 text-primary-500 flex items-center justify-center">
+                        <div className={ui.carteChiffre.icone}>
                           <Pill className="w-5 h-5" />
                         </div>
-                        <p className="font-bold text-slate-900 dark:text-white">{m.nom}</p>
+                        <p className="font-semibold text-slate-900 dark:text-white">{m.nom}</p>
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-sm text-slate-500 italic">{m.nomGenerique || "Non renseigné"}</td>
-                    <td className="px-8 py-5">
-                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest border border-slate-200 dark:border-slate-700">
+                    <td className={`${ui.cellule} text-slate-500 italic`}>{m.nomGenerique || "Non renseigné"}</td>
+                    <td className={ui.cellule}>
+                      <span className={ui.badge.neutre}>
                         {m.categorie}
                       </span>
                     </td>
-                    <td className="px-8 py-5 text-center">
+                    <td className={`${ui.cellule} text-center`}>
                       {m.ordonnanceRequise ? (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black rounded-full border border-amber-500/20 uppercase tracking-widest">Requis</span>
+                        <span className={ui.badge.attention}>Requis</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black rounded-full border border-emerald-500/20 uppercase tracking-widest">Libre</span>
+                        <span className={ui.badge.succes}>Libre</span>
                       )}
                     </td>
-                    <td className="px-8 py-5 text-right">
+                    <td className={`${ui.cellule} text-right`}>
                       <div className="flex items-center justify-end gap-2">
                         <button 
                           onClick={() => openEditModal(m)}
-                          className="p-2 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-all"
+                          className={`${ui.bouton.icone} hover:text-amber-700 dark:hover:text-amber-300`}
                           title="Modifier"
                         >
                           <Edit className="w-4 h-4" />
                         </button>
                         <button 
                           onClick={() => openDeleteModal(m)}
-                          className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+                          className={`${ui.bouton.icone} hover:text-rose-700 dark:hover:text-rose-300`}
                           title="Supprimer"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -241,62 +242,62 @@ export default function CataloguePage() {
 
       {/* Add/Edit Modal */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in">
-          <div className="bg-white dark:bg-[#0f172a] w-full max-w-xl rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden animate-scale-in">
-            <div className="p-8 border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/50 animate-fade-in">
+          <div className={`${ui.dialogue.panneauLarge} overflow-hidden`}>
+            <div className="p-mc-carte border-b border-slate-100 dark:border-slate-800/50 flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${selectedMed ? 'bg-amber-500/10 text-amber-500' : 'bg-primary-500/10 text-primary-500'}`}>
+                <div className={`w-12 h-12 rounded-mc-grand flex items-center justify-center ${selectedMed ? 'bg-amber-500/10 text-amber-500' : 'bg-primary-500/10 text-primary-500'}`}>
                   <Pill className="w-6 h-6" />
                 </div>
-                <h2 className="text-xl font-black text-slate-900 dark:text-white">
+                <h2 className="text-mc-section font-semibold text-slate-900 dark:text-white">
                   {selectedMed ? "Modifier le médicament" : "Nouveau Médicament"}
                 </h2>
               </div>
-              <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+              <button onClick={() => setIsModalOpen(false)} className={ui.bouton.icone}>
                 <XCircle className="w-6 h-6 text-slate-400" />
               </button>
             </div>
             
-            <form onSubmit={handleSubmit} className="p-8 space-y-6">
+            <form onSubmit={handleSubmit} className="p-mc-carte space-y-4">
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Nom commercial</label>
+                <label className={ui.label}>Nom commercial</label>
                 <input 
                   type="text" required
                   placeholder="Ex: Coartem 20/120"
                   value={form.nom}
                   onChange={(e) => setForm({...form, nom: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
+                  className={ui.champ}
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">DCI (Générique)</label>
+                  <label className={ui.label}>DCI (Générique)</label>
                   <input 
                     type="text" placeholder="Ex: Artémether"
                     value={form.nomGenerique}
                     onChange={(e) => setForm({...form, nomGenerique: e.target.value})}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
+                    className={ui.champ}
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Catégorie</label>
+                  <label className={ui.label}>Catégorie</label>
                   <input 
                     type="text" required placeholder="Ex: Antipaludéen"
                     value={form.categorie}
                     onChange={(e) => setForm({...form, categorie: e.target.value})}
-                    className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all dark:text-white"
+                    className={ui.champ}
                   />
                 </div>
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Description</label>
+                <label className={ui.label}>Description</label>
                 <textarea 
                   placeholder="Usage, contre-indications..."
                   value={form.description}
                   onChange={(e) => setForm({...form, description: e.target.value})}
-                  className="w-full p-4 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all h-24 resize-none dark:text-white"
+                  className={`${ui.zoneTexte} h-24`}
                 />
               </div>
 
@@ -305,21 +306,21 @@ export default function CataloguePage() {
                   type="checkbox"
                   checked={form.ordonnanceRequise}
                   onChange={(e) => setForm({...form, ordonnanceRequise: e.target.checked})}
-                  className="w-5 h-5 rounded border-slate-300 text-primary-500 focus:ring-primary-500"
+                  className="w-5 h-5 rounded-mc-petit border-slate-300 text-primary-500 focus:ring-primary-500"
                 />
-                <span className="text-sm font-bold text-slate-600 dark:text-slate-400 group-hover:text-primary-500 transition-colors">Vendu uniquement sur ordonnance ?</span>
+                <span className="text-mc-normal font-semibold text-slate-600 dark:text-slate-400 group-hover:text-primary-500 transition-colors">Vendu uniquement sur ordonnance ?</span>
               </label>
 
               {error && (
-                <div className="p-4 bg-rose-500/10 border border-rose-500/20 rounded-2xl flex items-center gap-3 text-rose-500 text-sm">
+                <div className={ui.alerte.erreur}>
                   <AlertCircle className="w-5 h-5" />
                   <p>{error}</p>
                 </div>
               )}
 
               <div className="flex gap-4 pt-4">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-all">Annuler</button>
-                <button type="submit" disabled={saving} className={`flex-[2] py-4 text-white rounded-2xl font-bold shadow-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 ${selectedMed ? 'bg-amber-500 hover:bg-amber-600 shadow-amber-500/20' : 'bg-primary-500 hover:bg-primary-600 shadow-primary-500/20'}`}>
+                <button type="button" onClick={() => setIsModalOpen(false)} className={`${ui.bouton.secondaire} flex-1`}>Annuler</button>
+                <button type="submit" disabled={saving} className={`${ui.bouton.primaire} flex-[2]`}>
                   {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <CheckCircle2 className="w-5 h-5" />}
                   {selectedMed ? "Mettre à jour" : "Enregistrer au catalogue"}
                 </button>

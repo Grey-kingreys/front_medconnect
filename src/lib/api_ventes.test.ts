@@ -70,11 +70,15 @@ describe("annulerVente", () => {
 
 describe("codeErreurVente", () => {
   it("reconnaît un code connu", () => {
-    expect(codeErreurVente(new ApiError("x", 409, { code: "STOCK_INSUFFISANT" }))).toBe("STOCK_INSUFFISANT");
+    expect(codeErreurVente(new ApiError("x", 409, { code: "SORTIE_MANUELLE_REQUISE" }))).toBe("SORTIE_MANUELLE_REQUISE");
   });
 
-  it.each(["STOCK_INTROUVABLE", "VENTE_DEJA_ANNULEE", "ANNULATION_HORS_DELAI"])("reconnaît %s", (code) => {
+  it.each(["STOCK_INTROUVABLE", "VENTE_DEJA_ANNULEE", "PIECE_NON_ANNULABLE", "JOURNEE_CLOTUREE"])("reconnaît %s", (code) => {
     expect(codeErreurVente(new ApiError("x", 409, { code }))).toBe(code);
+  });
+
+  it("reconnaît PAIEMENTS_INCOHERENTS", () => {
+    expect(codeErreurVente(new ApiError("x", 400, { code: "PAIEMENTS_INCOHERENTS" }))).toBe("PAIEMENTS_INCOHERENTS");
   });
 
   it("ignore un code inconnu", () => {
@@ -100,6 +104,22 @@ describe("lignesErreurVente", () => {
     expect(lignesErreurVente(err)).toEqual([{ stockId: "s1", disponible: 2, demande: 5 }]);
   });
 
+  it("lit les détails de STOCK_INSUFFISANT : unité et stock en unités minimales", () => {
+    const err = new ApiError("x", 409, {
+      code: "STOCK_INSUFFISANT",
+      details: [{ stockId: "s1", nom: "Ventoline", unite: "BOITE", demande: 2, disponible: 1, disponibleUm: 1 }],
+    });
+    expect(codeErreurVente(err)).toBe("STOCK_INSUFFISANT");
+    expect(lignesErreurVente(err)).toEqual([
+      { stockId: "s1", nom: "Ventoline", unite: "BOITE", demande: 2, disponible: 1, disponibleUm: 1 },
+    ]);
+  });
+
+  it("ignore un disponibleUm mal typé", () => {
+    const err = new ApiError("x", 409, { details: [{ stockId: "s1", unite: 3, disponibleUm: -2 }] });
+    expect(lignesErreurVente(err)).toEqual([{ stockId: "s1" }]);
+  });
+
   it("ignore les anciens emplacements", () => {
     expect(lignesErreurVente(new ApiError("x", 409, { donnees: { details: [ligne] } }))).toEqual([]);
     expect(lignesErreurVente(new ApiError("x", 409, { donnees: { lignes: [ligne] } }))).toEqual([]);
@@ -119,6 +139,26 @@ describe("lignesErreurVente", () => {
       ],
     });
     expect(lignesErreurVente(err)).toEqual([{ stockId: "s1" }, { stockId: "s2" }, { stockId: "s3", nom: "Aspirine", disponible: 0 }]);
+  });
+
+  it("lit les lots d'une sortie manuelle requise et ignore les lots invalides", () => {
+    const err = new ApiError("x", 409, {
+      code: "SORTIE_MANUELLE_REQUISE",
+      details: [
+        {
+          stockId: "s1",
+          nom: "Doliprane",
+          lots: [{ lotId: "l1", numeroLot: "DL23K052", dateExpiration: "2026-10-01", quantite: 6 }, { lotId: "" }],
+        },
+      ],
+    });
+    expect(lignesErreurVente(err)).toEqual([
+      {
+        stockId: "s1",
+        nom: "Doliprane",
+        lots: [{ lotId: "l1", numeroLot: "DL23K052", dateExpiration: "2026-10-01", quantite: 6 }],
+      },
+    ]);
   });
 
   it("renvoie une liste vide sans détails ou pour une autre erreur", () => {

@@ -214,14 +214,20 @@ export default function DashboardPage() {
   if (!mounted || !user || !contexte) return <LoadingSpinner fullPage message="Vérification de l'accès..." />;
   if (user.role === "SUPER_ADMIN") return <LoadingSpinner fullPage message="Redirection vers l'espace Super Admin..." />;
 
+  // Même règle de droit que le raccourci « Importer le stock » et le bouton de la page du stock
+  const peutImporter = contexte.permissions.has("reception:write") || contexte.permissions.has("inventaire:write");
   const droitsPilotage: DroitsPilotage = {
+    peutImporter,
     peutModifier: contexte.permissions.has("structure:write") && estRouteAutorisee("/dashboard/structure", contexte),
     peutVoirEquipe: estRouteAutorisee("/dashboard/membres", contexte),
     peutVoirVentes: estRouteAutorisee("/dashboard/ventes", contexte),
     peutAnnuler: contexte.permissions.has("vente:annuler"),
     peutVoirStock: estRouteAutorisee("/dashboard/stock", contexte),
+    peutVoirAnomalies: estRouteAutorisee("/dashboard/anomalies", contexte),
+    peutVoirMarge: contexte.permissions.has("marge:read"),
   };
   const droitsComptoir: DroitsComptoir = {
+    peutImporter,
     peutVendre: estRouteAutorisee("/dashboard/vente", contexte),
     peutVoirVentes: estRouteAutorisee("/dashboard/ventes", contexte),
     peutVoirOrdonnances: estRouteAutorisee("/dashboard/ordonnances", contexte),
@@ -327,6 +333,7 @@ export default function DashboardPage() {
           structureId={user.structureId}
           peutVoirStock={estRouteAutorisee("/dashboard/stock", contexte)}
           peutVoirEquipe={estRouteAutorisee("/dashboard/membres", contexte)}
+          peutImporter={peutImporter}
           peutVendre={estRouteAutorisee("/dashboard/vente", contexte)}
           peutVoirVentes={estRouteAutorisee("/dashboard/ventes", contexte)}
         />

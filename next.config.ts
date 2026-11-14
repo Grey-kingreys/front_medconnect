@@ -1,14 +1,14 @@
-/* import withSerwistInit from "@serwist/next";
-
-const withSerwist = withSerwistInit({
-  swSrc: "src/app/sw.ts",
-  swDest: "public/sw.js",
-  cacheOnNavigation: false,
-}); */
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {},
+  // Sortie autonome, seulement pour l'application de bureau (desktop/).
+  ...(process.env.NEXT_OUTPUT === "standalone"
+    ? {
+        output: "standalone" as const,
+        outputFileTracingRoot: process.cwd(),
+        outputFileTracingExcludes: { "/*": ["desktop/**"] },
+      }
+    : {}),
   async headers() {
     return [
       {

@@ -4,6 +4,7 @@ import { ApiError, type AuthUser, type UserProfile } from "@/lib/api_auth";
 import { getConsultations, getRendezVous } from "@/lib/api_carnet";
 import { getMyPatients } from "@/lib/api_patients";
 import { getMyStock } from "@/lib/api_pharmacie";
+import { getAlertesPeremption, getRapportMarge, listerAnomalies } from "@/lib/api_pilotage";
 import { getMyStructure } from "@/lib/api_structure";
 import { listerVentes } from "@/lib/api_ventes";
 import DashboardPage from "./page";
@@ -24,6 +25,7 @@ vi.mock("@/lib/api_carnet", () => ({ getConsultations: vi.fn(), getRendezVous: v
 vi.mock("@/lib/api_patients", () => ({ getMyPatients: vi.fn() }));
 vi.mock("@/lib/api_pharmacie", () => ({ getMyStock: vi.fn() }));
 vi.mock("@/lib/api_ventes", () => ({ listerVentes: vi.fn() }));
+vi.mock("@/lib/api_pilotage", () => ({ listerAnomalies: vi.fn(), getAlertesPeremption: vi.fn(), getRapportMarge: vi.fn() }));
 
 // Réponse d'API simulée (le type exact n'importe pas pour ces tests)
 const reponse = (data: unknown) => ({ data, message: "ok", success: true }) as never;
@@ -53,6 +55,32 @@ describe("Aperçu du tableau de bord", () => {
     vi.resetAllMocks();
     etat.utilisateur = medecin;
     etat.profil = null;
+    vi.mocked(listerAnomalies).mockResolvedValue(
+      reponse({ anomalies: [], page: 1, parPage: 20, total: 0, ouvertes: 0 }),
+    );
+    vi.mocked(getAlertesPeremption).mockResolvedValue(
+      reponse({
+        jour: "2026-11-03",
+        horizons: [],
+        perimes: { nombreLots: 0, valeurVente: null, nombreLotsSansPrix: 0, lots: [] },
+        sansDate: { nombreLots: 0 },
+      }),
+    );
+    vi.mocked(getRapportMarge).mockResolvedValue(
+      reponse({
+        du: "2026-11-01",
+        au: "2026-11-03",
+        debutFiabilite: null,
+        periodeAvantFiabilite: false,
+        nombrePieces: 0,
+        chiffreAffairesTotal: 0,
+        chiffreAffairesValorise: 0,
+        coutAlloue: 0,
+        marge: 0,
+        nonValorisable: { nombreVentes: 0, chiffreAffaires: 0 },
+        provisoires: { nombreLignes: 0, chiffreAffaires: 0 },
+      }),
+    );
   });
 
   afterEach(() => {
@@ -185,7 +213,7 @@ describe("Aperçu du tableau de bord", () => {
       prenom: "Ali",
       role: "PHARMACIEN",
       isActive: true,
-      permissions: ["stock:read", "stock:write", "catalogue:write", "chat:structure", "structure:read", "membre:read"],
+      permissions: ["stock:read", "stock:write", "reception:write", "catalogue:write", "chat:structure", "structure:read", "membre:read"],
       structureType: "PHARMACIE",
       createdAt: "2026-01-01T00:00:00.000Z",
       updatedAt: "2026-01-01T00:00:00.000Z",
@@ -254,6 +282,23 @@ describe("Aperçu du tableau de bord", () => {
       expect(within(acces).queryByText("Équipe de la pharmacie")).toBeNull();
       expect(within(acces).queryByText("Ventes du jour")).toBeNull();
       expect(within(acces).getByText("Nouvelle vente")).toBeTruthy();
+    });
+
+    it("calcule le droit sur la marge d'après marge:read", async () => {
+      profilDemo("STRUCTURE_ADMIN", "a9", [...ADMIN_DEMO, "marge:read"]);
+      vi.mocked(listerVentes).mockResolvedValue(journeeVide());
+      const { unmount } = render(<DashboardPage />);
+      expect(await screen.findByRole("heading", { name: "Marge" })).toBeTruthy();
+      expect(getRapportMarge).toHaveBeenCalledWith("s9", expect.anything());
+      unmount();
+
+      vi.mocked(getRapportMarge).mockClear();
+      profilDemo("STRUCTURE_ADMIN", "a9", ADMIN_DEMO);
+      render(<DashboardPage />);
+      expect(await screen.findByText("Pilotage de la pharmacie")).toBeTruthy();
+      await screen.findByRole("heading", { name: "Péremptions à surveiller" });
+      expect(screen.queryByRole("heading", { name: "Marge" })).toBeNull();
+      expect(getRapportMarge).not.toHaveBeenCalled();
     });
 
     it("donne la vue du comptoir au pharmacien", async () => {

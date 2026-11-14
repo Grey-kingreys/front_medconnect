@@ -7,6 +7,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import { BandeauPoste } from "@/components/caisse/BandeauPoste";
+import ActionEnLigne, { VersLaVente } from "@/components/caisse/ActionEnLigne";
+import { horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
+import { routeHorsLigneAutorisee } from "@/lib/caisse/routes_hors_ligne";
 import { useAuth } from "@/hooks/useAuth";
 import { LogOut, ChevronLeft, ChevronRight, Menu, X } from "lucide-react";
 import { lireContexteAcces, EVENEMENT_ACCES_REFUSE } from "@/lib/acces";
@@ -19,6 +23,7 @@ import EmergencyListener from "@/components/EmergencyListener";
 import NotificationBell from "@/components/NotificationBell";
 import ToastProvider from "@/components/Toast";
 import { NotificationsProvider } from "@/hooks/useNotifications";
+import { ui } from "@/theme/ui";
 
 function getRoleLabel(role: string): string {
   const labels: Record<string, string> = {
@@ -74,7 +79,7 @@ function Sidebar({
       {/* Mobile overlay */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden print:hidden"
+          className={ui.menu.superposition}
           onClick={() => setMobileOpen(false)}
         />
       )}
@@ -82,26 +87,24 @@ function Sidebar({
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-0 left-0 h-full z-50 flex flex-col print:hidden
-          bg-white dark:bg-[#0a0f1e]/95 backdrop-blur-2xl border-r border-slate-200 dark:border-slate-800/50
-          transition-all duration-300 ease-in-out overflow-visible
-          ${collapsed ? "w-[72px]" : "w-[280px]"}
+          ${ui.menu.cadre}
+          ${collapsed ? ui.menu.cadreReplie : ui.menu.cadreOuvert}
           ${mobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
         `}
       >
         {/* Header */}
-        <div className={`flex items-center ${collapsed ? "justify-center" : "justify-between"} p-4 border-b border-slate-200 dark:border-slate-800/50`}>
+        <div className={`${ui.menu.enTete} ${collapsed ? "justify-center" : "justify-between"}`}>
           {!collapsed && (
-            <Link href="/" className="inline-flex items-center gap-2.5 group">
+            <Link href="/" className="inline-flex items-center gap-2 group">
               <Image
                 src="/images/logo.png"
                 alt="MedConnecte Logo"
-                width={36}
-                height={36}
-                className="rounded-lg group-hover:scale-105 transition-transform duration-300"
+                width={32}
+                height={32}
+                className={ui.menu.logoImage}
               />
               <span
-                className="text-lg font-bold tracking-tight"
+                className={ui.menu.logoTexte}
                 style={{ fontFamily: "var(--font-outfit, var(--font-inter))" }}
               >
                 <span className="text-slate-900 dark:text-white">Med</span>
@@ -113,18 +116,18 @@ function Sidebar({
             <Image
               src="/images/logo.png"
               alt="MedConnecte"
-              width={36}
-              height={36}
-              className="rounded-lg"
+              width={32}
+              height={32}
+              className="rounded-mc-moyen"
             />
           )}
 
           {/* Close button mobile */}
           <button
             onClick={() => setMobileOpen(false)}
-            className="lg:hidden p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
+            className={`${ui.bouton.iconePetit} lg:hidden`}
           >
-            <X className="w-5 h-5" />
+            <X className={ui.menu.icone} />
           </button>
 
           {/* Notification Bell + Collapse button desktop */}
@@ -132,41 +135,37 @@ function Sidebar({
             <NotificationBell align="left" />
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 dark:text-white hover:bg-slate-800/50 transition-colors"
+              className={ui.bouton.iconePetit}
             >
               {collapsed ? (
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className={ui.menu.icone} />
               ) : (
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className={ui.menu.icone} />
               )}
             </button>
           </div>
         </div>
 
         {/* User card */}
-        <div className={`p-4 border-b border-slate-200 dark:border-slate-800/50 ${collapsed ? "flex justify-center" : ""}`}>
+        <div className={`${ui.menu.zoneProfil} ${collapsed ? "flex justify-center" : ""}`}>
           <Link
             href="/dashboard/profil"
-            className={`
-              group flex items-center gap-3 rounded-2xl transition-all duration-200
-              hover:bg-slate-100 dark:hover:bg-slate-800/40
-              ${collapsed ? "p-2 justify-center" : "p-3"}
-            `}
+            className={`${ui.menu.profil} ${collapsed ? "justify-center" : ""}`}
             title="Voir mon profil"
           >
             {/* Avatar */}
-            <div className={`relative flex-shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br ${roleGradient} flex items-center justify-center shadow-lg`}>
-              <span className="text-sm font-bold text-slate-900 dark:text-white">{initials}</span>
-              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-secondary-500 rounded-full border-2 border-white dark:border-[#0a0f1e]" />
+            <div className={`${ui.menu.avatar} ${roleGradient}`}>
+              <span className={ui.menu.avatarInitiales}>{initials}</span>
+              <div className={ui.menu.avatarPastille} />
             </div>
 
             {/* Name & role */}
             {!collapsed && (
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-900 dark:text-white truncate group-hover:text-primary-300 transition-colors">
+                <p className={ui.menu.profilNom}>
                   {user.prenom} {user.nom}
                 </p>
-                <p className={`text-xs font-medium bg-gradient-to-r ${roleGradient} bg-clip-text text-transparent`}>
+                <p className={`${ui.menu.profilRole} ${roleGradient}`}>
                   {roleLabel}
                 </p>
               </div>
@@ -174,17 +173,17 @@ function Sidebar({
 
             {/* Arrow */}
             {!collapsed && (
-              <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-primary-400 transition-colors" />
+              <ChevronRight className={`${ui.menu.icone} text-slate-600 group-hover:text-primary-400 transition-colors`} />
             )}
           </Link>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-6 scrollbar-thin">
+        <nav className={ui.menu.navigation}>
           {sections.map((section) => (
             <div key={section.id}>
               {!collapsed && (
-                <p className="px-3 mb-2 text-[10px] font-bold uppercase tracking-wider text-slate-600">
+                <p className={ui.menu.titreGroupe}>
                   {section.titre}
                 </p>
               )}
@@ -202,22 +201,13 @@ function Sidebar({
                       onClick={() => setMobileOpen(false)}
                       title={collapsed ? lien.libelle : undefined}
                       className={`
-                        group relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium
-                        transition-all duration-200
-                        ${
-                          isActive
-                            ? "bg-primary-500/10 text-primary-500 shadow-sm shadow-primary-500/5"
-                            : "text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-white"
-                        }
-                        ${collapsed ? "justify-center" : ""}
+                        ${isActive ? ui.menu.lienActif : ui.menu.lien}
+                        ${collapsed ? "justify-center px-0" : ""}
                       `}
                     >
-                      {/* Active indicator */}
-                      {isActive && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-6 rounded-r-full bg-gradient-to-b from-primary-400 to-cyan-400" />
-                      )}
-                      <span className={`flex-shrink-0 transition-colors ${isActive ? "text-primary-400" : "text-slate-500 group-hover:text-slate-900 dark:text-white"}`}>
-                        <lien.icone className="w-5 h-5" />
+                      {isActive && <div className={ui.menu.indicateurActif} />}
+                      <span className="flex-shrink-0">
+                        <lien.icone className={ui.menu.icone} />
                       </span>
                       {!collapsed && <span>{lien.libelle}</span>}
                     </Link>
@@ -229,24 +219,22 @@ function Sidebar({
         </nav>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800/50 space-y-2">
+        <div className={ui.menu.bas}>
           {!collapsed && <PWAInstallButton />}
           <button
             onClick={logout}
             title={collapsed ? "Se déconnecter" : undefined}
             className={`
-              group flex items-center gap-3 w-full rounded-xl px-3 py-2.5 text-sm font-medium
-              text-slate-500 dark:text-slate-400 hover:bg-emergency-500/10 hover:text-emergency-600 dark:hover:text-emergency-500
-              transition-all duration-200
-              ${collapsed ? "justify-center" : ""}
+              ${ui.menu.lienDanger}
+              ${collapsed ? "justify-center px-0" : ""}
             `}
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
+            <LogOut className={ui.menu.icone} />
             {!collapsed && <span>Se déconnecter</span>}
           </button>
-          
-          <div className={`mt-2 ${collapsed ? "flex justify-center" : "flex items-center justify-between px-3"}`}>
-            {!collapsed && <span className="text-sm font-medium text-slate-500 dark:text-slate-400">Thème</span>}
+
+          <div className={collapsed ? "flex justify-center" : ui.menu.ligneTheme}>
+            {!collapsed && <span className={ui.menu.ligneThemeTexte}>Thème</span>}
             <ThemeSwitcher up={true} />
           </div>
         </div>
@@ -264,6 +252,8 @@ export default function DashboardLayout({
 }) {
   const { user, profile, loading } = useAuth();
   const pathname = usePathname();
+  const poste = useEtatPoste();
+  const horsLigne = horsLigneSurPoste(poste);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -272,6 +262,7 @@ export default function DashboardLayout({
   useEffect(() => {
     setMounted(true);
   }, []);
+
 
   // Le serveur a refusé une lecture faute de droit : la page affichée est remplacée par un message
   useEffect(() => {
@@ -315,7 +306,7 @@ export default function DashboardLayout({
       <div
         className={`
           transition-all duration-300 print:ml-0
-          ${collapsed ? "lg:ml-[72px]" : "lg:ml-[280px]"}
+          ${collapsed ? ui.menu.decalageReplie : ui.menu.decalageOuvert}
         `}
       >
         {/* Top bar mobile */}
@@ -351,7 +342,14 @@ export default function DashboardLayout({
 
         {/* Page content */}
         <main className="p-4 sm:p-6 lg:p-8 print:p-0">
-          {pageNonDisponible ? <PageNonDisponible /> : children}
+          <BandeauPoste />
+          {pageNonDisponible ? (
+            <PageNonDisponible />
+          ) : horsLigne && !routeHorsLigneAutorisee(pathname) ? (
+            pathname === "/dashboard" ? <VersLaVente /> : <ActionEnLigne />
+          ) : (
+            children
+          )}
         </main>
       </div>
       <div className="print:hidden">

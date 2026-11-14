@@ -31,6 +31,20 @@ const vente = (id: string, vendeurId: string, statut: StatutVente, total: number
   nombreArticles: 1,
   vendeur: { id: vendeurId, nom: vendeurId },
   clientNom: null,
+  typePiece: "VENTE",
+  numeroTicket: Number(id),
+  jourMetier: "2026-10-22",
+  venteOrigine: null,
+  annulation: null,
+});
+
+/** Pièce d'annulation du jour : total négatif, sans numéro de ticket. */
+const annulation = (id: string, vendeurId: string, total: number): VenteResume => ({
+  ...vente(id, vendeurId, "VALIDEE", total),
+  numero: `A-V-${id}`,
+  typePiece: "ANNULATION",
+  numeroTicket: null,
+  venteOrigine: { id: "origine", numero: "V-0" },
 });
 
 const journee = (ventes: VenteResume[], totalPages = 1) =>
@@ -39,7 +53,7 @@ const journee = (ventes: VenteResume[], totalPages = 1) =>
 const VENTES = [
   vente("1", "u1", "VALIDEE", 3000),
   vente("2", "u1", "VALIDEE", 4500),
-  vente("3", "u1", "ANNULEE", 800),
+  annulation("3", "u1", -800),
   vente("4", "u2", "VALIDEE", 7777),
 ];
 
@@ -86,8 +100,8 @@ describe("Comptoir de la pharmacie", () => {
   it("ne compte que les ventes du vendeur connecté", async () => {
     afficher();
     await waitFor(() => expect(groupe("Mes ventes").getByText("2")).toBeTruthy());
-    expect(screen.getByRole("group", { name: "Montant de mes ventes" }).textContent).toContain(formaterGNF(7500));
-    expect(groupe("Mes ventes").getByText("1 vente annulée, non comptée")).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Montant de mes ventes" }).textContent).toContain(formaterGNF(6700));
+    expect(groupe("Mes ventes").getByText("1 annulation déduite")).toBeTruthy();
     expect(document.body.textContent).not.toContain(formaterGNF(7777));
     expect(document.body.textContent).not.toContain(formaterGNF(99999));
     expect(screen.queryByText("Pilotage de la pharmacie")).toBeNull();

@@ -6,24 +6,31 @@
 import type { ComponentType } from "react";
 import {
   Activity,
+  AlertTriangle,
   Bot,
   Building2,
   Calendar,
+  CalendarCheck,
+  ClipboardCheck,
   ClipboardList,
   Clock,
   FileSpreadsheet,
   FileText,
+  HandCoins,
   Headset,
   LayoutDashboard,
   MapPin,
   MessageSquare,
+  Monitor,
   Package,
   Pill,
   Receipt,
   ShoppingCart,
   Stethoscope,
   Syringe,
+  Truck,
   Users,
+  Wallet,
 } from "lucide-react";
 import type { CodePermission, ContexteAcces, RoleUtilisateur } from "./acces";
 import type { StructureType } from "./api_admin";
@@ -52,6 +59,10 @@ interface EntreeTableauDeBord {
   acces: RegleAcces;
   /** Ancien serveur (sans structureType) : rôles qui voient l'entrée, comme avant F9. */
   rolesRepli: readonly RoleUtilisateur[];
+  /** Vrai : la même règle d'accès garde aussi les pages sous `href` (`href/...`), absentes du menu. */
+  couvreSousPages?: boolean;
+  /** Vrai : l'entrée n'existe que dans l'application de caisse (desktop). La page, elle, répond « introuvable » sur le web. */
+  desktopSeulement?: boolean;
   raccourci?: {
     libelle?: TexteSelonType;
     description: TexteSelonType;
@@ -386,6 +397,59 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
     },
   },
   {
+    id: "credits",
+    section: "activite",
+    href: "/dashboard/credits",
+    icone: HandCoins,
+    libelle: { defaut: "Crédits" },
+    acces: perm(["credit:read"], { typesStructure: P }),
+    rolesRepli: [],
+    // Fiche d'un client (`/<id>`) et nouveau crédit (`/nouveau`) sous la même permission.
+    couvreSousPages: true,
+  },
+  {
+    id: "caisse",
+    section: "activite",
+    href: "/dashboard/caisse",
+    icone: Wallet,
+    libelle: { defaut: "Ma caisse" },
+    acces: perm(["caisse:utiliser"], { typesStructure: P }),
+    rolesRepli: [],
+    raccourci: {
+      description: { defaut: "Ouvrez, comptez et fermez votre caisse" },
+      degrade: "from-emerald-500 to-teal-500",
+      rolesRepli: [],
+    },
+  },
+  {
+    id: "poste",
+    section: "activite",
+    href: "/dashboard/poste",
+    icone: Monitor,
+    libelle: { defaut: "Ce poste" },
+    acces: { genre: "tous" },
+    rolesRepli: TOUS_LES_ROLES,
+    desktopSeulement: true,
+  },
+  {
+    id: "clotures",
+    section: "activite",
+    href: "/dashboard/clotures",
+    icone: CalendarCheck,
+    libelle: { defaut: "Clôture de caisse" },
+    acces: perm(["cloture:gerer"], { typesStructure: P }),
+    rolesRepli: [],
+  },
+  {
+    id: "anomalies",
+    section: "activite",
+    href: "/dashboard/anomalies",
+    icone: AlertTriangle,
+    libelle: { defaut: "Anomalies" },
+    acces: perm(["anomalie:gerer"], { typesStructure: P }),
+    rolesRepli: [],
+  },
+  {
     id: "ordonnances-recues",
     section: "activite",
     href: "/dashboard/ordonnances",
@@ -422,6 +486,26 @@ const ENTREES: readonly EntreeTableauDeBord[] = [
       degrade: "from-accent-500 to-primary-500",
       rolesRepli: ["PHARMACIEN"],
     },
+  },
+  {
+    id: "receptions",
+    section: "activite",
+    href: "/dashboard/receptions",
+    icone: Truck,
+    libelle: { defaut: "Réceptions" },
+    acces: perm(["reception:write"], { typesStructure: P }),
+    rolesRepli: [],
+    // Saisie (`/nouvelle`) et détail (`/<id>`, PF07b) sous la même permission.
+    couvreSousPages: true,
+  },
+  {
+    id: "inventaire",
+    section: "activite",
+    href: "/dashboard/inventaire",
+    icone: ClipboardCheck,
+    libelle: { defaut: "Inventaire" },
+    acces: perm(["inventaire:write"], { typesStructure: P }),
+    rolesRepli: [],
   },
   {
     id: "catalogue",
@@ -540,9 +624,9 @@ const RACCOURCIS_SUPPLEMENTAIRES: readonly RaccourciSupplementaire[] = [
     href: "/dashboard/stock?importer=1",
     icone: FileSpreadsheet,
     libelle: { defaut: "Importer le stock" },
-    description: { defaut: "Mettez à jour votre stock depuis un fichier Excel" },
+    description: { defaut: "Ajoutez une livraison ou un inventaire depuis un fichier Excel" },
     degrade: "from-secondary-500 to-cyan-500",
-    acces: perm(["stock:read", "stock:write"], { typesStructure: P }),
+    acces: perm(["reception:write", "inventaire:write"], { typesStructure: P }),
   },
   {
     id: "catalogue-pharmacie",
@@ -608,6 +692,7 @@ export function sectionsMenu(ctx: ContexteAcces): SectionMenu[] {
   const dejaVus = new Set<string>();
   const liens = new Map<IdSection, LienMenu[]>();
   for (const entree of ENTREES) {
+    if (entree.desktopSeulement === true && ctx.desktop !== true) continue;
     if (!estVisible(entree.acces, entree.rolesRepli, ctx)) continue;
     if (dejaVus.has(entree.href)) continue;
     dejaVus.add(entree.href);
@@ -668,7 +753,9 @@ export function cartesCompteurs(ctx: ContexteAcces): CarteCompteur[] {
 export function estRouteAutorisee(chemin: string, ctx: ContexteAcces): boolean {
   const propre = chemin.length > 1 && chemin.endsWith("/") ? chemin.slice(0, -1) : chemin;
   if (propre === "/dashboard") return true;
-  const entrees = ENTREES.filter((entree) => entree.href === propre);
+  const entrees = ENTREES.filter(
+    (entree) => entree.href === propre || (entree.couvreSousPages === true && propre.startsWith(`${entree.href}/`)),
+  );
   if (entrees.length === 0) return true;
   return entrees.some((entree) => estVisible(entree.acces, entree.rolesRepli, ctx));
 }

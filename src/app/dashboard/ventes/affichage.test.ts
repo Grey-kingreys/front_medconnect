@@ -6,8 +6,10 @@ import {
   formaterJour,
   jourConakry,
   libelleArticles,
+  libelleLigneVente,
   lireFormatRecu,
   motifValide,
+  prixUnitaireAffiche,
 } from "./affichage";
 
 beforeEach(() => {
@@ -87,5 +89,47 @@ describe("libelleArticles", () => {
   it("accorde le mot article", () => {
     expect(libelleArticles(1)).toBe("1 article");
     expect(libelleArticles(3)).toBe("3 articles");
+    expect(libelleArticles(-3)).toBe("3 articles");
+    expect(libelleArticles(-1)).toBe("1 article");
+  });
+});
+
+describe("ligne de vente", () => {
+  it("écrit une ligne en boîtes", () => {
+    expect(libelleLigneVente({ uniteAffichee: "BOITE", nombreAffiche: 2, nomMedicament: "Paracétamol" })).toBe(
+      "2 boîtes de Paracétamol",
+    );
+    expect(libelleLigneVente({ uniteAffichee: "BOITE", nombreAffiche: 1, nomMedicament: "Amoxicilline" })).toBe(
+      "1 boîte d'Amoxicilline",
+    );
+  });
+
+  it("écrit une ligne en unités", () => {
+    expect(libelleLigneVente({ uniteAffichee: "UNITE", nombreAffiche: 6, nomMedicament: "Paracétamol" })).toBe(
+      "6 unités de Paracétamol",
+    );
+    expect(libelleLigneVente({ uniteAffichee: "UNITE", nombreAffiche: 1, nomMedicament: "Paracétamol" })).toBe(
+      "1 unité de Paracétamol",
+    );
+  });
+
+  it("affiche le prix d'une boîte ou d'une unité comme le sous-total divisé par le nombre, arrondi", () => {
+    expect(prixUnitaireAffiche({ sousTotal: 3000, nombreAffiche: 2 })).toBe(1500);
+    expect(prixUnitaireAffiche({ sousTotal: 1000, nombreAffiche: 3 })).toBe(333);
+    expect(prixUnitaireAffiche({ sousTotal: 2000, nombreAffiche: 3 })).toBe(667);
+  });
+});
+
+describe("libellé d'une ligne de vente locale", () => {
+  it("nomme l'unité de la fiche quand la vente locale la connaît", () => {
+    const base = { uniteAffichee: "UNITE" as const, nomMedicament: "Spasfon" };
+    expect(libelleLigneVente({ ...base, nombreAffiche: 25, uniteMinimale: "PLAQUETTE" })).toBe("25 plaquettes de Spasfon");
+    expect(libelleLigneVente({ ...base, nombreAffiche: 1, uniteMinimale: "PLAQUETTE" })).toBe("1 plaquette de Spasfon");
+    expect(libelleLigneVente({ ...base, nombreAffiche: -3, uniteMinimale: "COMPRIME" })).toBe("3 comprimés de Spasfon");
+  });
+
+  it("garde « unités » sans unité connue (vente lue depuis l'API) et « boîtes » pour une boîte", () => {
+    expect(libelleLigneVente({ uniteAffichee: "UNITE", nombreAffiche: 25, nomMedicament: "Spasfon" })).toBe("25 unités de Spasfon");
+    expect(libelleLigneVente({ uniteAffichee: "BOITE", nombreAffiche: 2, nomMedicament: "Spasfon", uniteMinimale: "PLAQUETTE" })).toBe("2 boîtes de Spasfon");
   });
 });

@@ -3,55 +3,122 @@
 /* eslint-disable react-hooks/preserve-manual-memoization, react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
-import { 
-  Package, 
-  Plus, 
-  Search, 
-  AlertTriangle, 
-  ArrowUpRight, 
-  ArrowDownRight, 
-  Trash2,
+import { messageErreurPour } from "@/hooks/useToast";
+import { lireContexteAcces } from "@/lib/acces";
+import {
+  Package,
+  Plus,
+  Search,
+  AlertTriangle,
+  Archive,
   Edit,
-  Pill,
+  PackageMinus,
   ShoppingBag,
-  TrendingUp,
+  SlidersHorizontal,
   XCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Download
 } from "lucide-react";
-import { 
-  getMyStock, 
-  StockMedicament, 
-  StockInfo, 
-  removeStockItem, 
-  updateStockQuantite 
+import {
+  StockMedicament,
+  StockInfo,
+  removeStockItem,
+  exporterStock,
+  type FiltreExportStock,
+  type ModeImportStock
 } from "@/lib/api_pharmacie";
+import { calculerApercuStock } from "@/lib/apercu_pharmacie";
+import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { formaterGNF } from "@/lib/format_gnf";
+import { afficherDatePeremption } from "@/lib/date_peremption";
+import { estErreurReseau } from "@/lib/erreurs_api";
+import { MESSAGE_ACTION_EN_LIGNE } from "@/lib/caisse/source_desktop";
+import { horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
+import { jourConakry } from "../ventes/affichage";
 import StockModal from "@/components/modals/StockModal";
 import ImportStockModal from "@/components/modals/ImportStockModal";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
+import { ui } from "@/theme/ui";
+import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
+import { CorrectionQuantite } from "./CorrectionQuantite";
+import { SortieStock } from "./SortieStock";
+
+type Filtre = "all" | "low" | "rupture" | "qualifier";
+
+const MESSAGE_EXPORT_LOCAL = "Stock exporté depuis ce poste. Les prix d'achat ne sont pas dans le fichier (ils ne sont pas gardés sur le poste).";
+const MSG_EXPORT_ECHOUE = "Le stock n'a pas pu être exporté. Vérifiez votre connexion puis réessayez.";
+const FILTRE_VERS_API: Record<Filtre, FiltreExportStock> = { all: "tous", low: "alertes", rupture: "rupture", qualifier: "qualifier" };
+
+const MSG_CHARGEMENT_ECHOUE = "Le stock n'a pas pu être chargé. Vérifiez votre connexion puis réessayez.";
 
 export default function StockPage() {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
+  // Hors ligne sur le poste desktop : le stock se lit, se sort et se corrige ; le reste demande une connexion.
+  const suiviPoste = useEtatPoste();
+  const horsLigne = horsLigneSurPoste(suiviPoste);
+  const exigerConnexion = (): boolean => {
+    if (!horsLigne) return false;
+    setErreurExport(MESSAGE_ACTION_EN_LIGNE);
+    return true;
+  };
+  // Modes d'import permis par les droits : livraison (réception) et inventaire (D695)
+  const permissions = user ? lireContexteAcces(user, profile ?? null).permissions : null;
+  const modesPermis: ModeImportStock[] = [
+    ...(permissions?.has("reception:write") ? (["livraison"] as const) : []),
+    ...(permissions?.has("inventaire:write") ? (["inventaire"] as const) : []),
+  ];
+  const peutImporter = modesPermis.length > 0;
   const [stockInfo, setStockInfo] = useState<StockInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [erreurChargement, setErreurChargement] = useState<string | null>(null);
+  const [succes, setSucces] = useState<string | null>(null);
   const [search, setSearch] = useState("");
-  const [filter, setFilter] = useState<"all" | "low" | "rupture">("all");
-  
+  const [filter, setFilter] = useState<Filtre>("all");
+  const [exportEnCours, setExportEnCours] = useState(false);
+  const [choixExportOuvert, setChoixExportOuvert] = useState(false);
+  const [erreurExport, setErreurExport] = useState<string | null>(null);
+  const zoneExportRef = useRef<HTMLDivElement>(null);
+  const boutonExportRef = useRef<HTMLButtonElement>(null);
+
+  // Le menu d'export se ferme sur un clic extérieur ou Échap (le focus revient au bouton)
+  useEffect(() => {
+    if (!choixExportOuvert) return;
+    const surClic = (e: MouseEvent) => {
+      if (!zoneExportRef.current?.contains(e.target as Node)) setChoixExportOuvert(false);
+    };
+    const surTouche = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setChoixExportOuvert(false);
+      boutonExportRef.current?.focus();
+    };
+    document.addEventListener("mousedown", surClic);
+    document.addEventListener("keydown", surTouche);
+    return () => {
+      document.removeEventListener("mousedown", surClic);
+      document.removeEventListener("keydown", surTouche);
+    };
+  }, [choixExportOuvert]);
+
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isImportOpen, setIsImportOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedStock, setSelectedStock] = useState<StockMedicament | null>(null);
+  const [stockACorriger, setStockACorriger] = useState<StockMedicament | null>(null);
+  const [stockASortir, setStockASortir] = useState<StockMedicament | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!user?.structureId) return;
     setLoading(true);
+    setSucces(null);
+    setErreurChargement(null);
     try {
-      const res = await getMyStock(user.structureId);
-      setStockInfo(res.data);
+      setStockInfo(await sourcePharmacie().chargerStockInfo(user.structureId));
     } catch (err) {
-      console.error(err);
+      setErreurChargement(messageErreurPour(err, MSG_CHARGEMENT_ECHOUE));
     } finally {
       setLoading(false);
     }
@@ -64,42 +131,81 @@ export default function StockPage() {
   // Accès rapide « Importer le stock » du tableau de bord : ouvre directement la fenêtre d'import
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("importer") !== "1") return;
-    setIsImportOpen(true);
+    if (params.get("importer") !== "1" || !peutImporter) return;
+    if (horsLigne) setErreurExport(MESSAGE_ACTION_EN_LIGNE);
+    else setIsImportOpen(true);
     params.delete("importer");
     const reste = params.toString();
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${reste ? `?${reste}` : ""}`);
-  }, []);
+  }, [peutImporter, horsLigne]);
 
+  // Statuts lus des alertes du serveur (seuil des paramètres, quantité négative comprise)
+  const idsStockBas = new Set(stockInfo?.alertes.stockBas.map((a) => a.id) ?? []);
+  const idsRupture = new Set(stockInfo?.alertes.rupture.map((a) => a.id) ?? []);
+  const nombreAQualifier = stockInfo?.stocks.filter((s) => s.qualifie === false).length ?? 0;
+
+  // Recherche sans espaces de début ni de fin, comme l'export côté serveur
+  const rechercheNettoyee = search.trim().toLowerCase();
   const filteredStocks = stockInfo?.stocks.filter(s => {
-    const matchesSearch = s.medicament.nom.toLowerCase().includes(search.toLowerCase()) || 
-                          s.medicament.nomGenerique?.toLowerCase().includes(search.toLowerCase());
-    if (filter === "low") return matchesSearch && s.quantite > 0 && s.quantite < 10;
-    if (filter === "rupture") return matchesSearch && s.quantite === 0;
+    const matchesSearch = s.medicament.nom.toLowerCase().includes(rechercheNettoyee) ||
+                          s.medicament.nomGenerique?.toLowerCase().includes(rechercheNettoyee);
+    if (filter === "low") return matchesSearch && idsStockBas.has(s.id);
+    if (filter === "rupture") return matchesSearch && idsRupture.has(s.id);
+    if (filter === "qualifier") return matchesSearch && s.qualifie === false;
     return matchesSearch;
   }) || [];
 
-  const handleUpdateQuantite = async (stockId: string, variation: number) => {
+  // Exporte tout le stock ou seulement l'affichage actuel (onglet et recherche)
+  const exporter = async (seulementAffichage: boolean) => {
     if (!user?.structureId) return;
+    setChoixExportOuvert(false);
+    setErreurExport(null);
+    setExportEnCours(true);
     try {
-      await updateStockQuantite(user.structureId, stockId, variation);
-      fetchData();
+      // Hors ligne sur le poste : le fichier est fait sur le poste, sans coût, et enregistré par « Enregistrer sous ».
+      if (horsLigne) {
+        const resultat = await sourcePharmacie().exporterStock(
+          user.structureId,
+          seulementAffichage ? { filtre: FILTRE_VERS_API[filter], q: search.trim() } : {},
+        );
+        if (resultat.enregistre) setSucces(MESSAGE_EXPORT_LOCAL);
+        return;
+      }
+      const { blob, filename } = await exporterStock(
+        user.structureId,
+        seulementAffichage ? { filtre: FILTRE_VERS_API[filter], q: search.trim() } : {},
+      );
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = filename;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
     } catch (err) {
-      console.error(err);
+      setErreurExport(estErreurReseau(err) ? MESSAGE_ACTION_EN_LIGNE : messageErreurPour(err, MSG_EXPORT_ECHOUE));
+    } finally {
+      setExportEnCours(false);
     }
   };
 
+  const affichageFiltre = filter !== "all" || search.trim() !== "";
+
   const openAddModal = () => {
+    if (exigerConnexion()) return;
     setSelectedStock(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (item: StockMedicament) => {
+    if (exigerConnexion()) return;
     setSelectedStock(item);
     setIsModalOpen(true);
   };
 
   const openDeleteModal = (item: StockMedicament) => {
+    if (exigerConnexion()) return;
     setSelectedStock(item);
     setIsDeleteModalOpen(true);
   };
@@ -110,183 +216,326 @@ export default function StockPage() {
     fetchData();
   };
 
+  // Le message du serveur s'affiche après le rechargement, qui efface l'ancien message.
+  const handleCorrectionReussie = (message: string) => {
+    fetchData();
+    setSucces(message);
+  };
+
+  const fermerCorrection = (rechargerStock?: boolean) => {
+    setStockACorriger(null);
+    if (rechargerStock) fetchData();
+  };
+
+  const fermerSortie = (rechargerStock?: boolean) => {
+    setStockASortir(null);
+    if (rechargerStock) fetchData();
+  };
+
   if (loading && !stockInfo) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <LoadingSpinner />
-        <p className="text-slate-500 animate-pulse">Chargement de l&apos;inventaire...</p>
+        <p className={`${ui.texte.petit} animate-pulse`}>Chargement de l&apos;inventaire...</p>
       </div>
     );
   }
 
+  if (!stockInfo) {
+    return (
+      <div className="max-w-mc-contenu mx-auto pb-20">
+        <ErreurAvecReessai message={erreurChargement ?? MSG_CHARGEMENT_ECHOUE} onReessayer={fetchData} />
+      </div>
+    );
+  }
+
+  const valeurStock = calculerApercuStock(stockInfo.stocks, new Date()).valeur;
+  const aujourdhui = jourConakry(new Date());
+  const v = ui.carteChiffreVariantes;
+
   return (
-    <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20">
+    <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in pb-20">
+      {erreurChargement && <ErreurAvecReessai message={erreurChargement} onReessayer={fetchData} />}
+      {erreurExport && (
+        <div role="alert" className={ui.alerte.erreur}>
+          {erreurExport}
+        </div>
+      )}
+      {succes && (
+        <div role="status" className={ui.alerte.succes}>
+          {succes}
+        </div>
+      )}
+
       {/* Header Stat Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-6 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-primary-500/10 flex items-center justify-center text-primary-500"><Package className="w-6 h-6" /></div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-[1fr_1fr_1fr_2fr] gap-4">
+        <div className={ui.carteChiffre.conteneur}>
+          <div className={ui.carteChiffre.icone}><Package size={20} /></div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Total Produits</p>
-            <p className="text-2xl font-black text-slate-900 dark:text-white">{stockInfo?.stocks.length || 0}</p>
+            <p className={ui.carteChiffre.titre}>Total Produits</p>
+            <p className={ui.carteChiffre.valeur}>{stockInfo?.stocks.length || 0}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-6 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500"><AlertTriangle className="w-6 h-6" /></div>
+        <div className={ui.carteChiffre.conteneur}>
+          <div className={v.iconeAttention}><AlertTriangle size={20} /></div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Stock Bas</p>
-            <p className="text-2xl font-black text-amber-500">{stockInfo?.alertes.stockBas.length || 0}</p>
+            <p className={ui.carteChiffre.titre}>Stock Bas</p>
+            <p className={v.valeurAttention}>{stockInfo.alertes.stockBas.length}</p>
           </div>
         </div>
-        <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2rem] p-6 shadow-xl flex items-center gap-4">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 flex items-center justify-center text-rose-500"><XCircle className="w-6 h-6" /></div>
+        <div className={ui.carteChiffre.conteneur}>
+          <div className={v.iconeDanger}><XCircle size={20} /></div>
           <div>
-            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Rupture</p>
-            <p className="text-2xl font-black text-rose-500">{stockInfo?.alertes.rupture.length || 0}</p>
+            <p className={ui.carteChiffre.titre}>Rupture</p>
+            <p className={v.valeurDanger}>{stockInfo.alertes.rupture.length}</p>
           </div>
         </div>
-        <div className="bg-primary-600 rounded-[2rem] p-6 shadow-2xl text-white flex items-center gap-4 relative overflow-hidden group">
-          <TrendingUp className="absolute -right-2 -bottom-2 w-20 h-20 opacity-10 group-hover:scale-110 transition-transform" />
-          <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center"><ShoppingBag className="w-6 h-6" /></div>
-          <div className="relative z-10">
-            <p className="text-xs font-bold text-white/70 uppercase tracking-widest">Valeur Stock</p>
-            <p className="text-xl font-black">GNF {stockInfo?.stocks.reduce((acc, curr) => acc + (curr.prixUnitaire || 0) * curr.quantite, 0).toLocaleString() || 0}</p>
+        <div className={`${v.conteneurAccent} sm:col-span-3 xl:col-span-1`}>
+          <div className={v.iconeAccent}><ShoppingBag size={20} /></div>
+          <div className="min-w-0">
+            <p className={v.titreAccent}>Valeur Stock</p>
+            <p className={v.valeurAccent}>
+              <span className="sr-only">{formaterGNF(valeurStock)}</span>
+              <span aria-hidden="true">
+                {formaterGNF(valeurStock).replace(/\s*GNF$/, "")}{" "}
+                <span className="text-mc-petit font-medium">GNF</span>
+              </span>
+            </p>
+            <p className={v.noteAccent}>au prix de vente, hors périmés</p>
           </div>
         </div>
       </div>
 
       {/* Main Controls */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-        <div className="flex items-center gap-4 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-80">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <input 
-              type="text" 
-              placeholder="Rechercher un médicament..." 
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative min-w-0 flex-1 basis-64">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+            <input
+              type="text"
+              placeholder="Rechercher un médicament..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl text-sm focus:outline-none focus:border-primary-500 transition-all shadow-sm dark:text-white"
+              className={`${ui.champ} pl-9`}
             />
           </div>
-          <div className="flex items-center bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-1 shadow-sm shrink-0">
-            <button onClick={() => setFilter("all")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "all" ? "bg-slate-100 dark:bg-slate-800 text-primary-500" : "text-slate-500 hover:text-primary-500"}`}>Tous</button>
-            <button onClick={() => setFilter("low")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "low" ? "bg-amber-500/10 text-amber-500" : "text-slate-500 hover:text-amber-500"}`}>Alertes</button>
-            <button onClick={() => setFilter("rupture")} className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${filter === "rupture" ? "bg-rose-500/10 text-rose-500" : "text-slate-500 hover:text-rose-500"}`}>Rupture</button>
+          <div className="flex flex-wrap items-center gap-3">
+            {peutImporter && (
+              <button
+                onClick={() => {
+                  if (!exigerConnexion()) setIsImportOpen(true);
+                }}
+                className={ui.bouton.secondaire}
+              >
+                <FileSpreadsheet size={16} className="text-primary-600 dark:text-primary-400" />
+                Importer depuis Excel
+              </button>
+            )}
+            <div className="relative" ref={zoneExportRef}>
+              <button
+                type="button"
+                ref={boutonExportRef}
+                onClick={() => (affichageFiltre ? setChoixExportOuvert((o) => !o) : exporter(false))}
+                disabled={exportEnCours}
+                aria-haspopup={affichageFiltre ? "menu" : undefined}
+                aria-expanded={affichageFiltre ? choixExportOuvert : undefined}
+                className={ui.bouton.secondaire}
+              >
+                <Download size={16} className="text-primary-600 dark:text-primary-400" />
+                {exportEnCours ? "Export en cours..." : "Exporter le stock"}
+              </button>
+              {choixExportOuvert && (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-2 flex w-64 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <button type="button" role="menuitem" onClick={() => exporter(false)} className={ui.bouton.secondaire}>
+                    Tout le stock
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => exporter(true)} className={ui.bouton.secondaire}>
+                    Seulement l&apos;affichage actuel
+                  </button>
+                </div>
+              )}
+            </div>
+            <button
+              onClick={openAddModal}
+              className={ui.bouton.primaire}
+            >
+              <Plus size={16} />
+              Ajouter un médicament
+            </button>
           </div>
         </div>
-        
-        <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-3">
-          <button
-            onClick={() => setIsImportOpen(true)}
-            className="w-full sm:w-auto px-6 py-3.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white rounded-2xl font-bold text-sm hover:border-primary-500 transition-all flex items-center justify-center gap-2"
-          >
-            <FileSpreadsheet className="w-5 h-5 text-primary-600 dark:text-primary-400" />
-            Importer depuis Excel
-          </button>
-          <button
-            onClick={openAddModal}
-            className="w-full sm:w-auto px-6 py-3.5 bg-primary-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-primary-500/20 hover:bg-primary-600 transition-all flex items-center justify-center gap-2 group"
-          >
-            <Plus className="w-5 h-5 group-hover:rotate-90 transition-transform" />
-            Ajouter un médicament
-          </button>
+        <div className={ui.filtre.groupe}>
+          <button onClick={() => setFilter("all")} aria-pressed={filter === "all"} className={`${ui.filtre.base} ${filter === "all" ? ui.filtre.actif : ui.filtre.inactif}`}>Tous</button>
+          <button onClick={() => setFilter("low")} aria-pressed={filter === "low"} className={`${ui.filtre.base} ${filter === "low" ? ui.filtre.actifAttention : ui.filtre.inactif}`}>Alertes</button>
+          <button onClick={() => setFilter("rupture")} aria-pressed={filter === "rupture"} className={`${ui.filtre.base} ${filter === "rupture" ? ui.filtre.actifDanger : ui.filtre.inactif}`}>Rupture</button>
+          <button onClick={() => setFilter("qualifier")} aria-pressed={filter === "qualifier"} className={`${ui.filtre.base} ${filter === "qualifier" ? ui.filtre.actif : ui.filtre.inactif}`}>À qualifier ({nombreAQualifier})</button>
         </div>
       </div>
 
+      {filter === "qualifier" && (
+        <p className={ui.alerte.info}>
+          Confirmez le nombre d&apos;unités par boîte de ces médicaments : ouvrez la fiche avec le bouton Modifier.
+        </p>
+      )}
+
       {/* Stock Table */}
-      <div className="bg-white dark:bg-[#0f172a]/80 backdrop-blur-xl border border-slate-200 dark:border-slate-800/50 rounded-[2.5rem] overflow-hidden shadow-2xl">
+      <div className={`${ui.carte} overflow-hidden p-0`}>
         <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-slate-50 dark:bg-slate-900/50 border-b border-slate-100 dark:border-slate-800/50">
-                <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Produit</th>
-                <th className="px-8 py-5 text-left text-xs font-black text-slate-400 uppercase tracking-widest">Catégorie</th>
-                <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Quantité</th>
-                <th className="px-8 py-5 text-right text-xs font-black text-slate-400 uppercase tracking-widest">Prix (GNF)</th>
-                <th className="px-8 py-5 text-center text-xs font-black text-slate-400 uppercase tracking-widest">Statut</th>
-                <th className="px-8 py-5 text-right text-xs font-black text-slate-400 uppercase tracking-widest">Actions</th>
+          <table className={`${ui.tableau} table-fixed min-w-224`}>
+            <colgroup>
+              <col className="w-[22%] 2xl:w-[20%]" />
+              <col className="hidden 2xl:table-column 2xl:w-[12%]" />
+              <col className="w-[24%] 2xl:w-[18%]" />
+              <col className="w-[11%] 2xl:w-[10%]" />
+              <col className="w-[16%] 2xl:w-[14%]" />
+              <col className="w-[9%] 2xl:w-[8%]" />
+              <col className="w-[18%]" />
+            </colgroup>
+            <thead className={ui.enteteTableau}>
+              <tr>
+                <th className={`${ui.celluleEntete}`}>Produit</th>
+                <th className={`${ui.celluleEntete} hidden 2xl:table-cell`}>Catégorie</th>
+                <th className={`${ui.celluleEntete} whitespace-nowrap`}>Quantité</th>
+                <th className={`${ui.celluleEntete} text-center`}>Péremption</th>
+                <th className={`${ui.celluleEntete} text-right`}>Prix (GNF)</th>
+                <th className={`${ui.celluleEntete} text-center`}>Statut</th>
+                <th className={`${ui.celluleEntete} ${ui.enteteActions} text-right`}>Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
+            <tbody>
               {filteredStocks.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-8 py-20 text-center">
-                    <Package className="w-12 h-12 text-slate-200 mx-auto mb-4" />
-                    <p className="text-slate-500 font-medium">Aucun médicament trouvé dans votre inventaire.</p>
+                  <td colSpan={7} className="px-3 py-12 text-center">
+                    <Package className="w-10 h-10 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
+                    <p className={ui.texte.petit}>
+                      {stockInfo.stocks.length === 0
+                        ? peutImporter
+                          ? "Votre stock est vide. Ajoutez un médicament ou importez votre fichier Excel."
+                          : "Votre stock est vide. Ajoutez un médicament."
+                        : "Aucun médicament dans ce filtre."}
+                    </p>
                   </td>
                 </tr>
               ) : (
-                filteredStocks.map((s) => (
-                  <tr key={s.id} className="group hover:bg-slate-50/50 dark:hover:bg-slate-800/20 transition-colors">
-                    <td className="px-8 py-5">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${s.quantite === 0 ? 'bg-rose-500/10 text-rose-500' : 'bg-primary-500/10 text-primary-500'}`}>
-                          <Pill className="w-5 h-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-slate-900 dark:text-white group-hover:text-primary-500 transition-colors">{s.medicament.nom}</p>
-                          <p className="text-[10px] text-slate-500 uppercase tracking-tighter">{s.medicament.nomGenerique || "Non renseigné"}</p>
-                        </div>
-                      </div>
+                filteredStocks.map((s) => {
+                  const enRupture = idsRupture.has(s.id);
+                  const stockBas = !enRupture && idsStockBas.has(s.id);
+                  const coefficient = s.coefficientBoite ?? 1;
+                  const unite = s.uniteMinimale ?? "UNITE";
+                  const nom = s.medicament.nom;
+                  const jourPeremption = s.dateExpiration ? s.dateExpiration.slice(0, 10) : null;
+                  // Le jour même reste vendable : périmé seulement après le jour de péremption.
+                  const perime = jourPeremption !== null && jourPeremption < aujourdhui;
+                  const lotsEnStock = (s.lots ?? []).filter((l) => l.quantite > 0).length;
+                  return (
+                  <tr key={s.id} className={`${ui.ligneTableau} group`}>
+                    <td className={`${ui.cellule} max-w-0`}>
+                      <p title={nom} className="truncate whitespace-nowrap text-mc-normal font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary-600 transition-colors">{nom}</p>
+                      <p title={s.medicament.nomGenerique || "Non renseigné"} className={`${ui.texte.legende} whitespace-nowrap`}>{s.medicament.nomGenerique || "Non renseigné"}</p>
                     </td>
-                    <td className="px-8 py-5">
-                      <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-black rounded-full uppercase tracking-widest border border-slate-200 dark:border-slate-700">
-                        {s.medicament.categorie}
+                    <td className={`${ui.cellule} hidden 2xl:table-cell`}>
+                      <span title={s.medicament.categorie} className={`${ui.badge.neutre} max-w-full`}>
+                        <span className="truncate whitespace-nowrap">{s.medicament.categorie}</span>
                       </span>
                     </td>
-                    <td className="px-8 py-5">
-                      <div className="flex items-center justify-center gap-3">
-                        <button 
-                          onClick={() => handleUpdateQuantite(s.id, -1)}
-                          disabled={s.quantite === 0}
-                          className="p-1 rounded-lg hover:bg-rose-500/10 text-slate-400 hover:text-rose-500 transition-colors disabled:opacity-30"
-                        >
-                          <ArrowDownRight className="w-4 h-4" />
-                        </button>
-                        <span className={`text-sm font-black w-8 text-center ${s.quantite < 10 ? 'text-amber-500' : 'text-slate-900 dark:text-white'}`}>
-                          {s.quantite}
+                    <td className={ui.cellule}>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <span className={`text-mc-normal font-medium ${enRupture ? 'text-rose-700 dark:text-rose-300' : stockBas ? 'text-amber-700 dark:text-amber-300' : 'text-slate-900 dark:text-slate-100'}`}>
+                          {formaterQuantite(s.quantite, coefficient, unite)}
                         </span>
-                        <button 
-                          onClick={() => handleUpdateQuantite(s.id, 1)}
-                          className="p-1 rounded-lg hover:bg-emerald-500/10 text-slate-400 hover:text-emerald-500 transition-colors"
-                        >
-                          <ArrowUpRight className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </td>
-                    <td className="px-8 py-5 text-right font-mono text-sm font-bold text-slate-600 dark:text-slate-400">
-                      {s.prixUnitaire?.toLocaleString() || "-"}
-                    </td>
-                    <td className="px-8 py-5 text-center">
-                      <div className="flex justify-center">
-                        {s.quantite === 0 ? (
-                          <span className="px-2.5 py-1 bg-rose-500/10 text-rose-500 text-[10px] font-black rounded-full border border-rose-500/20 uppercase tracking-widest">Rupture</span>
-                        ) : s.quantite < 10 ? (
-                          <span className="px-2.5 py-1 bg-amber-500/10 text-amber-500 text-[10px] font-black rounded-full border border-amber-500/20 uppercase tracking-widest">Faible</span>
-                        ) : (
-                          <span className="px-2.5 py-1 bg-emerald-500/10 text-emerald-500 text-[10px] font-black rounded-full border border-emerald-500/20 uppercase tracking-widest">OK</span>
+                        {s.reliquat && s.reliquat.length > 0 && (
+                          <span className={ui.texte.legende}>boîte entamée</span>
+                        )}
+                        {formaterARegulariser(s.quantiteARegulariser, coefficient, unite) !== null && (
+                          <span className="text-mc-legende text-amber-700 dark:text-amber-300">
+                            {formaterARegulariser(s.quantiteARegulariser, coefficient, unite)}
+                          </span>
                         )}
                       </div>
                     </td>
-                    <td className="px-8 py-5 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button 
+                    <td className={ui.cellule}>
+                      <div className="flex flex-col items-center gap-1">
+                        {jourPeremption === null ? (
+                          <span className={ui.texte.petit}>Sans date</span>
+                        ) : (
+                          <span className={`text-mc-normal whitespace-nowrap ${perime ? "text-rose-700 dark:text-rose-300" : "text-slate-900 dark:text-slate-100"}`}>
+                            {afficherDatePeremption(jourPeremption)}
+                            {perime && " Périmé"}
+                          </span>
+                        )}
+                        {lotsEnStock > 1 && (
+                          <span className={`${ui.texte.legende} whitespace-nowrap`}>
+                            {`+${lotsEnStock - 1} autre${lotsEnStock - 1 > 1 ? "s" : ""} lot${lotsEnStock - 1 > 1 ? "s" : ""}`}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className={`${ui.cellule} text-right tabular-nums whitespace-nowrap`}>
+                      <div>{typeof s.prixUnitaire === "number" ? formaterGNF(s.prixUnitaire) : "Non renseigné"}</div>
+                      {typeof s.prixUnite === "number" && (
+                        <div className={`${ui.texte.legende} whitespace-nowrap`} title={`${formaterGNF(s.prixUnite)} ${LIBELLES_UNITE_MINIMALE[unite].article}`}>
+                          {formaterGNF(s.prixUnite)} {LIBELLES_UNITE_MINIMALE[unite].article}
+                        </div>
+                      )}
+                    </td>
+                    <td className={`${ui.cellule} px-1 text-center`}>
+                      <div className="flex flex-col items-center gap-1 whitespace-nowrap">
+                        {enRupture ? (
+                          <span className={ui.badge.danger}>Rupture</span>
+                        ) : stockBas ? (
+                          <span className={ui.badge.attention}>Stock bas</span>
+                        ) : (
+                          <span className={ui.badge.succes}>OK</span>
+                        )}
+                        {s.qualifie === false && (
+                          <span className={ui.badge.attention}>À qualifier</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className={`${ui.cellule} ${ui.celluleActions} text-right`}>
+                      <div className="flex items-center justify-end gap-1">
+                        <button
                           onClick={() => openEditModal(s)}
                           title="Modifier"
-                          className="p-2 rounded-xl text-slate-400 hover:text-amber-500 hover:bg-amber-500/10 transition-all"
+                          aria-label={`Modifier ${nom}`}
+                          className={`${ui.bouton.iconePetit} hover:text-amber-700 dark:hover:text-amber-300`}
                         >
-                          <Edit className="w-4 h-4" />
+                          <Edit size={16} aria-hidden="true" />
                         </button>
-                        <button 
-                          onClick={() => openDeleteModal(s)}
-                          title="Retirer du stock"
-                          className="p-2 rounded-xl text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-all"
+                        <button
+                          onClick={() => setStockACorriger(s)}
+                          title="Corriger la quantité"
+                          aria-label={`Corriger la quantité de ${nom}`}
+                          className={`${ui.bouton.iconePetit} hover:text-amber-700 dark:hover:text-amber-300`}
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <SlidersHorizontal size={16} aria-hidden="true" />
+                        </button>
+                        {s.quantite > 0 && (
+                          <button
+                            onClick={() => setStockASortir(s)}
+                            title="Sortir du stock"
+                            aria-label={`Sortir ${nom} du stock`}
+                            className={`${ui.bouton.iconePetit} hover:text-amber-700 dark:hover:text-amber-300`}
+                          >
+                            <PackageMinus size={16} aria-hidden="true" />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => openDeleteModal(s)}
+                          title={`Archiver ${nom}`}
+                          aria-label={`Archiver ${nom}`}
+                          className={`${ui.bouton.iconePetit} hover:text-rose-700 dark:hover:text-rose-300`}
+                        >
+                          <Archive size={16} aria-hidden="true" />
                         </button>
                       </div>
                     </td>
                   </tr>
-                ))
+                  );
+                })
               )}
             </tbody>
           </table>
@@ -295,18 +544,21 @@ export default function StockPage() {
 
       {/* Stock Add/Edit Modal */}
       {user?.structureId && (
-        <StockModal 
+        <StockModal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
           structureId={user.structureId}
           onSuccess={fetchData}
           editItem={selectedStock}
+          fichesActives={stockInfo?.stocks}
+          onModifierFiche={setSelectedStock}
         />
       )}
 
       {/* Import Excel du stock (F1) */}
-      {user?.structureId && (
+      {user?.structureId && peutImporter && (
         <ImportStockModal
+          modesPermis={modesPermis}
           isOpen={isImportOpen}
           onClose={() => setIsImportOpen(false)}
           structureId={user.structureId}
@@ -314,15 +566,40 @@ export default function StockPage() {
         />
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Correction de la quantité avec motif (D700) */}
+      {user?.structureId && (
+        <CorrectionQuantite
+          isOpen={stockACorriger !== null}
+          stock={stockACorriger}
+          structureId={user.structureId}
+          onClose={fermerCorrection}
+          onSucces={handleCorrectionReussie}
+        />
+      )}
+
+      {/* Sortie d'un lot avec une raison */}
+      {user?.structureId && (
+        <SortieStock
+          isOpen={stockASortir !== null}
+          stock={stockASortir}
+          structureId={user.structureId}
+          onClose={fermerSortie}
+          onSucces={handleCorrectionReussie}
+        />
+      )}
+
+      {/* Archive Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleConfirmDelete}
-        title="Retirer du stock ?"
+        title="Archiver ce médicament ?"
+        confirmLabel="Archiver"
+        libelleEnCours="Archivage..."
+        icone={Archive}
         description={
           <>
-            Êtes-vous sûr de vouloir retirer <strong>{selectedStock?.medicament.nom}</strong> de votre inventaire ? Cette action est irréversible.
+            <strong>{selectedStock?.medicament.nom}</strong> disparaîtra de la liste du stock et de la vente. Son historique (ventes, mouvements) est conservé. Vous pourrez le remettre en stock en l&apos;ajoutant de nouveau.
           </>
         }
       />

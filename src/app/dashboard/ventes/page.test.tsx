@@ -5,10 +5,9 @@ import type { VenteResume, VentesDuJour } from "@/lib/api_ventes";
 import { formaterGNF } from "@/lib/format_gnf";
 import VentesDuJourPage from "./page";
 
-const { listerVentes, annulerVente, notifier, droits } = vi.hoisted(() => ({
+const { listerVentes, annulerVente, droits } = vi.hoisted(() => ({
   listerVentes: vi.fn(),
   annulerVente: vi.fn(),
-  notifier: vi.fn(),
   droits: { permissions: [] as string[] },
 }));
 
@@ -35,13 +34,9 @@ vi.mock("@/lib/api_ventes", async (importOriginal) => ({
   listerVentes,
   annulerVente,
 }));
-vi.mock("@/hooks/useToast", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/hooks/useToast")>()),
-  useToast: () => ({ notifier }),
-}));
 
 const LECTURE_ET_VENTE = ["vente:read", "vente:write"];
-const AVEC_ANNULATION = ["vente:read", "vente:write", "vente:annuler"];
+const AVEC_ANNULATION = ["vente:read", "vente:write", "vente:annuler", "caisse:utiliser"];
 
 const resume = (surcharge: Partial<VenteResume> = {}): VenteResume => ({
   id: "v1",
@@ -52,8 +47,26 @@ const resume = (surcharge: Partial<VenteResume> = {}): VenteResume => ({
   nombreArticles: 3,
   vendeur: { id: "u1", nom: "Mariama Diallo" },
   clientNom: null,
+  typePiece: "VENTE",
+  numeroTicket: 1,
+  jourMetier: "2026-10-22",
+  venteOrigine: null,
+  annulation: null,
   ...surcharge,
 });
+
+/** Pièce d'annulation rattachée à la vente T1-0000012 : total négatif, sans numéro de ticket. */
+const pieceAnnulation = (surcharge: Partial<VenteResume> = {}): VenteResume =>
+  resume({
+    id: "a1",
+    numero: "A-T1-0000012",
+    total: -4500,
+    nombreArticles: -3,
+    typePiece: "ANNULATION",
+    numeroTicket: null,
+    venteOrigine: { id: "v12", numero: "T1-0000012" },
+    ...surcharge,
+  });
 
 const journee = (surcharge: Partial<VentesDuJour> = {}): { data: VentesDuJour; message: string; success: boolean } => ({
   data: {
@@ -71,7 +84,7 @@ const journee = (surcharge: Partial<VentesDuJour> = {}): { data: VentesDuJour; m
 });
 
 const TERMES_INTERDITS =
-  /\b(ID|UUID|null|undefined|NaN|serveur|session|idempotence|localStorage|STOCK_INSUFFISANT|VENTE_DEJA_ANNULEE|ANNULATION_HORS_DELAI|VALIDEE|ANNULEE)\b/;
+  /\b(ID|UUID|null|undefined|NaN|serveur|session|idempotence|localStorage|STOCK_INSUFFISANT|VENTE_DEJA_ANNULEE|PIECE_NON_ANNULABLE|JOURNEE_CLOTUREE|VALIDEE|ANNULEE|ANNULATION|REGULARISATION)\b/;
 
 const verifierTermes = () => {
   const contenu = document.body.textContent ?? "";
@@ -109,18 +122,53 @@ describe("Ventes du jour", () => {
     expect(ligne.textContent).toContain(formaterGNF(4500));
     expect(within(ligne).getByText("Validée")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "jeudi 22 octobre 2026" })).toBeInTheDocument();
-    expect(document.body.textContent).toContain(`Total des ventes validées : ${formaterGNF(4500)}`);
+    expect(document.body.textContent).toContain(`Total du jour (annulations déduites) : ${formaterGNF(4500)}`);
     expect(screen.getByText("1 vente")).toBeInTheDocument();
     verifierTermes();
   });
 
-  it("marque une vente annulée et masque son bouton Annuler", async () => {
-    listerVentes.mockResolvedValue(journee({ ventes: [resume({ statut: "ANNULEE" })] }));
+  it("marque une vente annulée avec sa pièce d'annulation et masque son bouton Annuler", async () => {
+    listerVentes.mockResolvedValue(
+      journee({
+        ventes: [resume({ numero: "T1-0000012", statut: "ANNULEE", annulation: { id: "a1", numero: "A-T1-0000012" } })],
+      }),
+    );
     render(<VentesDuJourPage />);
 
-    const ligne = (await screen.findByText("V-2026-0001")).closest("li") as HTMLElement;
+    const ligne = (await screen.findByText("T1-0000012")).closest("li") as HTMLElement;
     expect(within(ligne).getByText("Annulée")).toBeInTheDocument();
+    expect(within(ligne).getByText("Annulée par A-T1-0000012")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Annuler la vente/ })).toBeNull();
+    verifierTermes();
+  });
+
+  it("liste une pièce d'annulation avec son total négatif, sans bouton Annuler", async () => {
+    listerVentes.mockResolvedValue(journee({ totalJour: 0, nombre: 1, ventes: [pieceAnnulation()] }));
+    render(<VentesDuJourPage />);
+
+    const ligne = (await screen.findByText("A-T1-0000012")).closest("li") as HTMLElement;
+    expect(ligne.textContent).toContain(formaterGNF(-4500));
+    expect(within(ligne).getByText("Annulation")).toBeInTheDocument();
+    expect(ligne).toHaveTextContent("3 articles");
+    expect(ligne.textContent).not.toContain("-3 articles");
+    expect(within(ligne).getByText("Annule la vente T1-0000012")).toBeInTheDocument();
+    expect(within(ligne).queryByRole("button", { name: /Annuler/ })).toBeNull();
+    expect(within(ligne).getByRole("link", { name: "Réimprimer le reçu A-T1-0000012" })).toBeInTheDocument();
+    verifierTermes();
+  });
+
+  it("liste une régularisation sans bouton Annuler", async () => {
+    listerVentes.mockResolvedValue(
+      journee({
+        ventes: [resume({ id: "r1", numero: "T2-0000009", typePiece: "REGULARISATION", numeroTicket: 9 })],
+      }),
+    );
+    render(<VentesDuJourPage />);
+
+    const ligne = (await screen.findByText("T2-0000009")).closest("li") as HTMLElement;
+    expect(within(ligne).getByText("Régularisation")).toBeInTheDocument();
+    expect(within(ligne).getByText("Vente remontée d'un poste de caisse")).toBeInTheDocument();
+    expect(within(ligne).queryByRole("button", { name: /Annuler/ })).toBeNull();
   });
 
   it("cache Annuler sans le droit d'annuler", async () => {
@@ -131,17 +179,29 @@ describe("Ventes du jour", () => {
     expect(screen.queryByRole("button", { name: /Annuler la vente/ })).toBeNull();
   });
 
-  it("recharge à la nouvelle date et n'offre plus d'annulation un autre jour", async () => {
+  it("cache Annuler sans le droit d'utiliser la caisse", async () => {
+    droits.permissions = ["vente:read", "vente:write", "vente:annuler"];
+    render(<VentesDuJourPage />);
+
+    await screen.findByText("V-2026-0001");
+    expect(screen.queryByRole("button", { name: /Annuler la vente/ })).toBeNull();
+  });
+
+  it("recharge à la nouvelle date et propose toujours l'annulation d'une vente validée d'un jour passé", async () => {
     render(<VentesDuJourPage />);
     await screen.findByText("V-2026-0001");
+    expect(screen.queryByText(/Une annulation faite aujourd'hui/)).toBeNull();
 
     listerVentes.mockResolvedValue(journee({ date: "2026-10-21" }));
     fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2026-10-21" } });
 
     await waitFor(() => expect(listerVentes).toHaveBeenLastCalledWith("p1", { date: "2026-10-21", page: 1 }));
     await screen.findByText("V-2026-0001");
-    expect(screen.queryByRole("button", { name: /Annuler la vente/ })).toBeNull();
+    expect(screen.getByRole("button", { name: "Annuler la vente V-2026-0001" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "mercredi 21 octobre 2026" })).toBeInTheDocument();
+    expect(
+      screen.getByText("Une annulation faite aujourd'hui apparaît dans la journée d'aujourd'hui, pas dans celle-ci."),
+    ).toBeInTheDocument();
   });
 
   it("refuse un motif trop court", async () => {
@@ -156,8 +216,10 @@ describe("Ventes du jour", () => {
     expect(annulerVente).not.toHaveBeenCalled();
   });
 
-  it("annule la vente avec le motif, prévient et recharge la liste", async () => {
-    annulerVente.mockResolvedValue({ data: {}, message: "Vente annulée.", success: true });
+  it("annule la vente avec le motif, affiche le message du serveur et recharge la liste", async () => {
+    const message =
+      "Vente V-2026-0001 annulée (A-V-2026-0001). Les quantités ont été remises en stock et le remboursement est enregistré dans votre caisse.";
+    annulerVente.mockResolvedValue({ data: {}, message, success: true });
     render(<VentesDuJourPage />);
     const dialogue = await ouvrirAnnulation();
 
@@ -165,7 +227,7 @@ describe("Ventes du jour", () => {
     fireEvent.click(within(dialogue).getByRole("button", { name: "Annuler la vente" }));
 
     await waitFor(() => expect(annulerVente).toHaveBeenCalledWith("p1", "v1", "Erreur de quantité"));
-    await waitFor(() => expect(notifier).toHaveBeenCalledWith("Vente annulée.", "succes"));
+    expect(await screen.findByRole("status")).toHaveTextContent(message);
     await waitFor(() => expect(listerVentes).toHaveBeenCalledTimes(2));
     expect(screen.queryByRole("dialog")).toBeNull();
   });
@@ -184,21 +246,39 @@ describe("Ventes du jour", () => {
     verifierTermes();
   });
 
-  it("explique qu'une vente ne s'annule que le jour même", async () => {
-    annulerVente.mockRejectedValue(new ApiError("Trop tard.", 409, { code: "ANNULATION_HORS_DELAI" }));
+  it("affiche le message du serveur dans le dialogue pour une pièce non annulable, sans réessai", async () => {
+    const message = "Cette pièce ne peut pas être annulée.";
+    annulerVente.mockRejectedValue(new ApiError(message, 409, { code: "PIECE_NON_ANNULABLE" }));
     render(<VentesDuJourPage />);
     const dialogue = await ouvrirAnnulation();
 
     fireEvent.change(within(dialogue).getByLabelText("Motif de l'annulation"), { target: { value: "Doublon" } });
     fireEvent.click(within(dialogue).getByRole("button", { name: "Annuler la vente" }));
 
-    expect(
-      await screen.findByText("Cette vente ne peut plus être annulée : une vente s'annule seulement le jour même."),
-    ).toBeInTheDocument();
+    expect(await within(dialogue).findByText(message)).toBeInTheDocument();
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    const confirmer = within(dialogue).getByRole("button", { name: "Annuler la vente" });
+    expect(confirmer).toBeDisabled();
+    fireEvent.click(confirmer);
+    expect(annulerVente).toHaveBeenCalledTimes(1);
+    expect(listerVentes).toHaveBeenCalledTimes(1);
     verifierTermes();
   });
 
-  it("garde le dialogue ouvert avec un message après un échec de connexion", async () => {
+  it("affiche le message du serveur pour une journée clôturée, sans réessai", async () => {
+    const message = "Cette journée est clôturée.";
+    annulerVente.mockRejectedValue(new ApiError(message, 409, { code: "JOURNEE_CLOTUREE" }));
+    render(<VentesDuJourPage />);
+    const dialogue = await ouvrirAnnulation();
+
+    fireEvent.change(within(dialogue).getByLabelText("Motif de l'annulation"), { target: { value: "Doublon" } });
+    fireEvent.click(within(dialogue).getByRole("button", { name: "Annuler la vente" }));
+
+    expect(await within(dialogue).findByText(message)).toBeInTheDocument();
+    expect(within(dialogue).getByRole("button", { name: "Annuler la vente" })).toBeDisabled();
+  });
+
+  it("demande de vérifier la liste après un échec de connexion et la recharge à la fermeture", async () => {
     annulerVente.mockRejectedValue(new ApiError("Connexion perdue.", 0));
     render(<VentesDuJourPage />);
     const dialogue = await ouvrirAnnulation();
@@ -207,9 +287,18 @@ describe("Ventes du jour", () => {
     fireEvent.click(within(dialogue).getByRole("button", { name: "Annuler la vente" }));
 
     expect(
-      await within(dialogue).findByText("L'annulation n'a pas pu être envoyée. Vérifiez votre connexion puis réessayez."),
+      await within(dialogue).findByText(
+        "L'annulation n'a peut-être pas été enregistrée. Fermez cette fenêtre et vérifiez la liste avant de recommencer.",
+      ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("dialog")).toBeInTheDocument();
+    expect(within(dialogue).getByRole("button", { name: "Annuler la vente" })).toBeDisabled();
+    expect(listerVentes).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(within(dialogue).getByRole("button", { name: "Fermer" }));
+
+    await waitFor(() => expect(listerVentes).toHaveBeenCalledTimes(2));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(annulerVente).toHaveBeenCalledTimes(1);
   });
 
   it("guide vers une nouvelle vente quand la journée est vide", async () => {

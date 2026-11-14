@@ -1,0 +1,95 @@
+{
+  "source": "back_medconnect/src/pharmacie/dto/synchro.dto.ts et dto/sessions-caisse.dto.ts, copiés à la main : clés permises, obligatoires et bornes de chaque classe. Le back rejette toute clé inconnue (forbidNonWhitelisted).",
+  "types": {
+    "SESSION_OUVERTE": "CorpsSessionOuverteDto",
+    "COMPTAGE_SAISI": "CorpsComptageSaisiDto",
+    "MOUVEMENT_CAISSE": "CorpsMouvementCaisseDto",
+    "SESSION_FERMEE": "CorpsSessionFermeeDto",
+    "VENTE": "CorpsVenteDto"
+  },
+  "enveloppe": {
+    "evenementId": { "type": "uuid", "obligatoire": true },
+    "sequence": { "type": "int", "min": 1, "max": 2147483647, "obligatoire": true },
+    "type": { "type": "enum", "valeurs": ["SESSION_OUVERTE", "COMPTAGE_SAISI", "MOUVEMENT_CAISSE", "SESSION_FERMEE", "VENTE"], "obligatoire": true },
+    "horodatageLocal": { "type": "date", "obligatoire": true },
+    "utilisateurId": { "type": "string", "longueurMin": 1, "obligatoire": true },
+    "corps": { "type": "objet", "obligatoire": true }
+  },
+  "classes": {
+    "CorpsSessionOuverteDto": {
+      "sessionId": { "type": "uuid", "obligatoire": true }
+    },
+    "LigneComptageDto": {
+      "valeurFaciale": { "type": "int", "min": 1, "max": 1000000, "obligatoire": true },
+      "nombre": { "type": "int", "min": 0, "max": 10000, "obligatoire": true }
+    },
+    "ReleveModeDto": {
+      "mode": { "type": "string", "motif": "^[A-Z0-9_]{2,40}$", "obligatoire": true },
+      "montant": { "type": "int", "min": 0, "max": 1000000000, "obligatoire": true }
+    },
+    "CorpsComptageSaisiDto": {
+      "comptageId": { "type": "uuid", "obligatoire": true },
+      "sessionId": { "type": "uuid", "obligatoire": true },
+      "moment": { "type": "enum", "valeurs": ["OUVERTURE", "FERMETURE"], "obligatoire": true },
+      "montantEspeces": { "type": "int", "min": 0, "max": 1000000000 },
+      "coupures": { "type": "tableau", "max": 20, "classe": "LigneComptageDto" },
+      "releves": { "type": "tableau", "max": 20, "classe": "ReleveModeDto" }
+    },
+    "CorpsMouvementCaisseDto": {
+      "mouvementId": { "type": "uuid", "obligatoire": true },
+      "sessionId": { "type": "uuid", "obligatoire": true },
+      "type": { "type": "enum", "valeurs": ["PRELEVEMENT", "APPORT", "REMBOURSEMENT"], "obligatoire": true },
+      "montant": { "type": "int", "min": 1, "max": 100000000, "obligatoire": true },
+      "motif": { "type": "string", "longueurMin": 3, "longueurMax": 300, "obligatoire": true },
+      "mode": { "type": "string", "motif": "^[A-Z0-9_]{2,40}$" }
+    },
+    "ComptageFermetureRejeuDto": {
+      "comptageId": { "type": "uuid", "obligatoire": true },
+      "montantEspeces": { "type": "int", "min": 0, "max": 1000000000 },
+      "coupures": { "type": "tableau", "max": 20, "classe": "LigneComptageDto" },
+      "releves": { "type": "tableau", "max": 20, "classe": "ReleveModeDto" }
+    },
+    "CorpsSessionFermeeDto": {
+      "sessionId": { "type": "uuid", "obligatoire": true },
+      "comptageFermeture": { "type": "objet", "classe": "ComptageFermetureRejeuDto" },
+      "commentaire": { "type": "string", "longueurMax": 500 }
+    },
+    "SortieManuelleRejeuDto": {
+      "lotId": { "type": "string", "longueurMin": 1, "longueurMax": 64, "obligatoire": true },
+      "motif": { "type": "string", "longueurMin": 3, "longueurMax": 300, "obligatoire": true }
+    },
+    "LigneVenteRejeuDto": {
+      "stockId": { "type": "string", "longueurMin": 1, "longueurMax": 64, "obligatoire": true },
+      "unite": { "type": "enum", "valeurs": ["BOITE", "UNITE"], "obligatoire": true },
+      "nombre": { "type": "int", "min": 1, "max": 10000, "obligatoire": true },
+      "prixUnitaire": { "type": "int", "min": 0, "max": 2147483647, "obligatoire": true },
+      "quantiteProvisoireLocale": { "type": "int", "min": 0, "max": 100000000 },
+      "ouvertureConditionnement": { "type": "boolean" },
+      "sortieManuelle": { "type": "objet", "classe": "SortieManuelleRejeuDto" }
+    },
+    "PaiementRejeuDto": {
+      "mode": { "type": "string", "motif": "^[A-Z0-9_]{2,40}$", "obligatoire": true },
+      "montant": { "type": "int", "min": 1, "max": 2147483647, "obligatoire": true },
+      "reference": { "type": "string", "longueurMax": 100 },
+      "montantRecu": { "type": "int", "min": 0, "max": 2147483647 }
+    },
+    "CorpsVenteDto": {
+      "venteId": { "type": "uuid", "obligatoire": true },
+      "sessionId": { "type": "uuid", "obligatoire": true },
+      "numeroTicket": { "type": "int", "min": 1, "max": 2147483647 },
+      "numeroSecours": { "type": "int", "min": 1, "max": 2147483647 },
+      "lignes": { "type": "tableau", "min": 1, "max": 50, "classe": "LigneVenteRejeuDto", "obligatoire": true },
+      "paiements": { "type": "tableau", "min": 1, "max": 5, "classe": "PaiementRejeuDto", "obligatoire": true },
+      "total": { "type": "int", "min": 0, "max": 2147483647, "obligatoire": true },
+      "clientNom": { "type": "string", "longueurMax": 100 },
+      "clientTelephone": { "type": "string", "longueurMax": 30 },
+      "ordonnanceVerifiee": { "type": "boolean", "obligatoire": true },
+      "telephonePrescripteur": { "type": "string", "longueurMax": 30, "motif": "^\\+?[\\d\\s-]+$" }
+    }
+  },
+  "exclusifs": {
+    "CorpsVenteDto": [["numeroTicket", "numeroSecours"]],
+    "CorpsComptageSaisiDto": [["montantEspeces", "coupures"]],
+    "ComptageFermetureRejeuDto": [["montantEspeces", "coupures"]]
+  }
+}

@@ -16,13 +16,43 @@ export interface Medicament {
   formes: string[];
 }
 
+export type UniteMinimale = "COMPRIME" | "GELULE" | "ML" | "SACHET" | "GRAMME" | "AMPOULE" | "PLAQUETTE" | "UNITE";
+
+export interface LotFiche {
+  id: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  quantite: number;
+  lotTechnique: boolean;
+  /** Unités par boîte à la réception du lot, quand le serveur la renvoie. */
+  coefficientReception?: number;
+  /** Présent seulement avec `marge:read` : tester la présence de la clé (D698). */
+  coutUnitaire?: number | null;
+}
+
 export interface StockMedicament {
   id: string;
   medicamentId: string;
   medicament: Medicament;
   structureId: string;
+  /** Unités minimales (comprimés, ml...), jamais négative (D713). */
   quantite: number;
+  /** Unités minimales vendues sans stock, à rattacher à une réception ou un inventaire (D717). Absent sur un ancien serveur. */
+  quantiteARegulariser?: number;
+  /** Prix de la boîte. */
   prixUnitaire?: number;
+  // Champs de la fiche : la recherche publique ne les renvoie pas.
+  uniteMinimale?: UniteMinimale;
+  coefficientBoite?: number;
+  prixUnite?: number | null;
+  deconditionnable?: boolean;
+  toleranceInventaire?: number | null;
+  qualifie?: boolean;
+  /** Renseigné quand la fiche est archivée (retirée du stock) : l'ajout simple ne la désarchive pas. */
+  archiveLe?: string | null;
+  reliquat?: { lotId: string; unitesRestantes: number }[];
+  quantiteVendable?: number;
+  lots?: LotFiche[];
   disponible: boolean;
   dateExpiration?: string;
   notes?: string;
@@ -43,7 +73,7 @@ export interface StockInfo {
   stocks: StockMedicament[];
   alertes: {
     stockBas: Array<{ id: string; nom: string; quantite: number }>;
-    rupture: Array<{ id: string; nom: string }>;
+    rupture: Array<{ id: string; nom: string; quantiteARegulariser?: number }>;
   };
 }
 
@@ -100,19 +130,56 @@ export async function getMyStock(structureId: string) {
 
 export const upsertStock = (structureId: string, data: {
   medicamentId: string;
-  quantite: number;
+  /** Absente : aucune écriture de stock (fiche créée si elle manque, prix et notes seulement). */
+  quantite?: number;
   prixUnitaire?: number;
   dateExpiration?: string;
   notes?: string;
+  /** Fiche sans lot et quantité positive : la date est obligatoire, sauf si ce champ est vrai (D701). */
+  sansPeremption?: boolean;
 }) => authFetch<StockMedicament>(`/pharmacie/stock/${structureId}`, {
   method: "POST",
   body: JSON.stringify(data),
 });
 
-export async function updateStockQuantite(structureId: string, stockId: string, variation: number, notes?: string) {
+/** Avertissement non bloquant renvoyé par la modification d'une fiche. */
+export interface AvertissementFiche {
+  code: "ECART_PRIX";
+  ecartPct: number;
+}
+
+/** Champs modifiables d'une fiche ; `null` efface le prix de la boîte, le prix d'une unité ou la tolérance. */
+export interface CorpsFiche {
+  prixUnitaire?: number | null;
+  prixUnite?: number | null;
+  coefficientBoite?: number;
+  uniteMinimale?: UniteMinimale;
+  deconditionnable?: boolean;
+  toleranceInventaire?: number | null;
+  qualifie?: true;
+  conversionStock?: "MULTIPLIER" | "CONSERVER";
+}
+
+/** Modifie la fiche d'un médicament du stock (prix, unité, qualification, conversion du stock). */
+export async function modifierFiche(structureId: string, stockId: string, corps: CorpsFiche) {
+  return authFetch<StockMedicament & { avertissements: AvertissementFiche[]; conversion: unknown }>(
+    `/pharmacie/${structureId}/stock/${stockId}/fiche`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(corps),
+    },
+  );
+}
+
+/** Correction de quantité : `variation` en unités minimales (entier non nul), motif de 3 à 300 caractères. Avec `id` (UUID), l'envoi se rejoue sans doublon. */
+export async function updateStockQuantite(
+  structureId: string,
+  stockId: string,
+  corps: { id?: string; variation: number; lotId?: string; motif: string },
+) {
   return authFetch<StockMedicament>(`/pharmacie/stock/${structureId}/${stockId}/quantite`, {
     method: "PATCH",
-    body: JSON.stringify({ variation, notes }),
+    body: JSON.stringify(corps),
   });
 }
 
@@ -146,6 +213,32 @@ export interface LigneImportStock {
   quantiteAvant?: number | null;
   /** Quantité en stock après l'import, selon le mode choisi ; absente sur un ancien serveur. */
   quantiteApres?: number | null;
+  /** Unités vendues sans stock qui étaient à régulariser avant l'import (rattachées par l'import) ; absente sur un ancien serveur. */
+  quantiteARegulariserAvant?: number | null;
+  /** Livraison : numéro de lot du fichier (facultatif). */
+  numeroLot?: string | null;
+  /** Livraison : coût d'achat d'une boîte ; clé absente sans le droit « marge:read » (D698), `null` si inconnu. */
+  coutAchatBoite?: number | null;
+  /** Livraison : la ligne est déclarée « sans péremption ». */
+  sansPeremption?: boolean;
+  /** Livraison : unités reçues (boîtes du fichier converties en unités). */
+  unitesRecues?: number;
+  /** Lot créé ou compté par l'import. */
+  lotId?: string;
+  /** Inventaire : unités comptées en plus d'une boîte entamée. */
+  unitesEnPlus?: number;
+  /** Inventaire : quantité comptée, en unités (jamais négative). */
+  quantiteComptee?: number;
+  /** Inventaire : quantité attendue, écrêtée à 0 (D717). */
+  quantiteTheorique?: number;
+  /** Inventaire : part à régulariser que le serveur sort de `quantiteTheorique` (D717). */
+  quantiteARegulariser?: number;
+  /** Inventaire : écart signé entre le compté et l'attendu (une différence, pas une quantité). */
+  ecart?: number;
+  /** Inventaire : l'écart reste dans la tolérance, aucun signalement. */
+  sousTolerance?: boolean;
+  /** Inventaire : le lot compté n'existait pas encore. */
+  nouveauLot?: boolean;
 }
 
 /** Colonnes du fichier telles que le serveur les a comprises. */
@@ -169,7 +262,12 @@ export interface RapportImport<L> {
   colonnes?: ColonnesLuesImport;
 }
 
-export type RapportImportStock = RapportImport<LigneImportStock>;
+/** Rapport de l'import du stock : l'un de `receptionId` (livraison) et `inventaireId` (inventaire) est renseigné après l'import. */
+export type RapportImportStock = RapportImport<LigneImportStock> & {
+  mode?: ModeImportStock;
+  receptionId?: string | null;
+  inventaireId?: string | null;
+};
 
 const corpsImport = (fichier: File, mode?: ModeImportStock) => {
   const formulaire = new FormData();
@@ -178,14 +276,28 @@ const corpsImport = (fichier: File, mode?: ModeImportStock) => {
   return formulaire;
 };
 
+export type FiltreExportStock = "tous" | "alertes" | "rupture" | "qualifier";
+
+/** Exporte le stock en Excel, au format du modèle d'import ; renvoie le contenu et le nom du fichier. */
+export async function exporterStock(structureId: string, options: { filtre?: FiltreExportStock; q?: string } = {}) {
+  const params = new URLSearchParams();
+  if (options.filtre && options.filtre !== "tous") params.set("filtre", options.filtre);
+  if (options.q?.trim()) params.set("q", options.q.trim());
+  const requete = params.toString();
+  const { blob, filename } = await authDownload(
+    `/pharmacie/stock/${encodeURIComponent(structureId)}/export${requete ? `?${requete}` : ""}`,
+  );
+  return { blob, filename: filename ?? "stock.xlsx" };
+}
+
 /** Télécharge le modèle Excel à remplir ; renvoie le contenu et le nom du fichier. */
-export async function telechargerModeleImportStock(structureId: string) {
-  const { blob, filename } = await authDownload(`/pharmacie/stock/${structureId}/import/modele`);
-  return { blob, filename: filename ?? "modele-import-stock.xlsx" };
+export async function telechargerModeleImportStock(structureId: string, mode: ModeImportStock) {
+  const { blob, filename } = await authDownload(`/pharmacie/stock/${structureId}/import/modele?mode=${mode}`);
+  return { blob, filename: filename ?? `modele-${mode}-stock.xlsx` };
 }
 
 /** Analyse le fichier sans rien enregistrer, selon le mode choisi. */
-export async function apercuImportStock(structureId: string, fichier: File, mode: ModeImportStock = "inventaire") {
+export async function apercuImportStock(structureId: string, fichier: File, mode: ModeImportStock) {
   return authFetch<RapportImportStock>(`/pharmacie/stock/${structureId}/import/apercu`, {
     method: "POST",
     body: corpsImport(fichier, mode),
@@ -193,7 +305,7 @@ export async function apercuImportStock(structureId: string, fichier: File, mode
 }
 
 /** Refait l'analyse et enregistre les lignes acceptées : la quantité remplace celle en stock (inventaire) ou s'y ajoute (livraison). */
-export async function importerStock(structureId: string, fichier: File, mode: ModeImportStock = "inventaire") {
+export async function importerStock(structureId: string, fichier: File, mode: ModeImportStock) {
   return authFetch<RapportImportStock>(`/pharmacie/stock/${structureId}/import`, {
     method: "POST",
     body: corpsImport(fichier, mode),
@@ -239,5 +351,324 @@ export async function importerCatalogue(fichier: File) {
   return authFetch<RapportImportCatalogue>("/pharmacie/catalogue/import", {
     method: "POST",
     body: corpsImport(fichier),
+  });
+}
+
+// ─── Réceptions et fournisseurs (PF07a) ─────────────────────────
+
+export interface Fournisseur {
+  id: string;
+  nom: string;
+  telephone: string | null;
+  createdAt: string;
+}
+
+/** Une ligne de la facture : exactement un de `nombreBoites` et `quantiteUnites` ; la date manque seulement avec `sansPeremption`. */
+export interface LigneReceptionDemandee {
+  stockId: string;
+  numeroLot?: string;
+  /** Jour AAAA-MM-JJ. */
+  dateExpiration?: string;
+  sansPeremption?: boolean;
+  nombreBoites?: number;
+  quantiteUnites?: number;
+  /** Coût d'une boîte en GNF (entier, 0 ou plus). */
+  coutAchatBoite?: number;
+  /** Facture fournisseur, tous les champs facultatifs. Entiers : quantités en boîtes, montants en GNF. */
+  codeArticleFournisseur?: string;
+  codeBarres?: string;
+  quantiteCommandee?: number;
+  prixPublicBoite?: number;
+  codeTva?: string;
+  /** Taux en pour mille : 180 pour 18 %, 55 pour 5,5 %. */
+  tauxTvaPourMille?: number;
+  montantHTLigne?: number;
+  colisage?: number;
+  tableau?: string;
+  bonPreparation?: string;
+}
+
+/** En-tête de la facture fournisseur, tous les champs facultatifs. */
+export interface EnteteFactureDemandee {
+  numeroFacture?: string;
+  referenceCommande?: string;
+  /** Jour AAAA-MM-JJ. */
+  dateFacture?: string;
+  nombrePages?: number;
+  montantHT?: number;
+  totalTva?: number;
+  montantTTC?: number;
+  netAPayer?: number;
+}
+
+export interface CorpsReception extends EnteteFactureDemandee {
+  /** Identifiant choisi par le client : un rejeu du même identifiant ne crée rien de plus (D688). */
+  id?: string;
+  fournisseurId?: string;
+  reference?: string;
+  /** Date ISO, jamais dans le futur. */
+  recueLe?: string;
+  lignes: LigneReceptionDemandee[];
+}
+
+export interface LotRecu {
+  id: string;
+  stockId: string;
+  nom: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  quantiteRecue: number;
+  coefficientReception: number;
+  solde: number;
+  /** Présents seulement avec `marge:read` : tester la présence de la clé, un coût nul ou absent est « inconnu » (D698). */
+  coutAchatBoite?: number | null;
+  coutUnitaire?: number | null;
+  /** Facture fournisseur : `null` si non saisi. `montantHTLigne` est un coût d'achat, absent sans `marge:read`. */
+  codeArticleFournisseur?: string | null;
+  codeBarres?: string | null;
+  quantiteCommandee?: number | null;
+  prixPublicBoite?: number | null;
+  codeTva?: string | null;
+  tauxTvaPourMille?: number | null;
+  montantHTLigne?: number | null;
+  colisage?: number | null;
+  tableau?: string | null;
+  bonPreparation?: string | null;
+}
+
+export interface AvertissementReception {
+  code: "FICHE_NON_QUALIFIEE";
+  stockId: string;
+  nom: string;
+  message: string;
+}
+
+export interface ReceptionResume {
+  id: string;
+  reference: string | null;
+  recueLe: string;
+  createdAt: string;
+  auteurId: string;
+  fournisseur: { id: string; nom: string } | null;
+  numeroFacture?: string | null;
+  dateFacture?: string | null;
+  /** Montants de facture : absents sans `marge:read`. */
+  montantTTC?: number | null;
+  netAPayer?: number | null;
+  nombreLots: number;
+  quantiteTotale: number;
+}
+
+export interface Reception {
+  id: string;
+  reference: string | null;
+  recueLe: string;
+  createdAt: string;
+  auteurId: string;
+  numeroFacture?: string | null;
+  referenceCommande?: string | null;
+  dateFacture?: string | null;
+  nombrePages?: number | null;
+  /** Montants de facture : absents sans `marge:read` (coûts d'achat). */
+  montantHT?: number | null;
+  totalTva?: number | null;
+  montantTTC?: number | null;
+  netAPayer?: number | null;
+  fournisseur: { id: string; nom: string } | null;
+  lots: LotRecu[];
+  resolutions?: unknown[];
+  /** Faux sur le rejeu d'un identifiant déjà enregistré. */
+  cree?: boolean;
+  avertissements?: AvertissementReception[];
+}
+
+export interface PageReceptions {
+  receptions: ReceptionResume[];
+  page: number;
+  parPage: number;
+  total: number;
+}
+
+export async function listerFournisseurs(structureId: string) {
+  return authFetch<Fournisseur[]>(`/pharmacie/${encodeURIComponent(structureId)}/fournisseurs`);
+}
+
+export async function creerFournisseur(structureId: string, corps: { nom: string; telephone?: string }) {
+  return authFetch<Fournisseur & { cree: boolean }>(`/pharmacie/${encodeURIComponent(structureId)}/fournisseurs`, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
+/** Enregistre une livraison ; rejouable avec le même `id` sans rien enregistrer deux fois. */
+export async function enregistrerReception(structureId: string, corps: CorpsReception) {
+  return authFetch<Reception>(`/pharmacie/${encodeURIComponent(structureId)}/receptions`, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
+export async function listerReceptions(structureId: string, page = 1) {
+  return authFetch<PageReceptions>(`/pharmacie/${encodeURIComponent(structureId)}/receptions?page=${page}`);
+}
+
+export async function getReception(structureId: string, receptionId: string) {
+  return authFetch<Reception>(
+    `/pharmacie/${encodeURIComponent(structureId)}/receptions/${encodeURIComponent(receptionId)}`,
+  );
+}
+
+// ─── Correction de date d'un lot, sorties de stock (PF07b) ──────
+
+/** Correction de la date d'un lot : une date (AAAA-MM-JJ) ou `sansPeremption`, et un motif de 3 à 300 caractères. Route non rejouable. */
+export async function corrigerDateLot(
+  structureId: string,
+  lotId: string,
+  corps: { dateExpiration?: string; sansPeremption?: true; motif: string },
+) {
+  return authFetch<unknown>(`/pharmacie/${encodeURIComponent(structureId)}/lots/${encodeURIComponent(lotId)}`, {
+    method: "PATCH",
+    body: JSON.stringify(corps),
+  });
+}
+
+/** Lot à solde positif d'une fiche, dans l'ordre de sortie. */
+export interface LotEnStock {
+  id: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  dateReception: string;
+  /** Unités minimales restant dans le lot. */
+  quantite: number;
+  reliquat: number;
+  coefficientReception: number;
+  lotTechnique: boolean;
+  perime: boolean;
+  /** Présent seulement avec `marge:read` : tester la présence de la clé (D698). */
+  coutUnitaire?: number | null;
+}
+
+export async function listerLotsFiche(structureId: string, stockId: string) {
+  return authFetch<LotEnStock[]>(
+    `/pharmacie/${encodeURIComponent(structureId)}/stock/${encodeURIComponent(stockId)}/lots`,
+  );
+}
+
+// ─── Inventaire par lot (PF07c) ─────────────────────────────────
+
+/** Une ligne comptée : lot visé par `lotId`, sinon par sa date ; boîtes (et unités en plus) comptées avec le coefficient du lot. */
+export interface LigneInventaireDemandee {
+  stockId: string;
+  lotId?: string;
+  /** Jour AAAA-MM-JJ. */
+  dateExpiration?: string;
+  sansPeremption?: boolean;
+  nombreBoites?: number;
+  unitesEnPlus?: number;
+}
+
+export interface CorpsInventaire {
+  /** Identifiant choisi par le client : un rejeu du même identifiant ne compte rien de plus (D688). */
+  id?: string;
+  commentaire?: string;
+  lignes: LigneInventaireDemandee[];
+}
+
+export interface LigneInventaireEcrite {
+  id: string;
+  stockId: string;
+  nom: string;
+  lotId: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  lotTechnique: boolean;
+  /** Unités minimales attendues (écrêtées à 0). */
+  quantiteTheorique: number;
+  /** Unités vendues sans stock comprises dans l'attendu ; absente sur un ancien serveur. */
+  quantiteARegulariser?: number;
+  /** Unités minimales comptées. */
+  quantiteComptee: number;
+  /** Écart signé en unités minimales. */
+  ecart: number;
+  sousTolerance: boolean;
+  anomalieId: string | null;
+}
+
+export interface AvertissementInventaire {
+  code: "FICHE_NON_QUALIFIEE";
+  stockId: string;
+  nom: string;
+  message: string;
+}
+
+export interface Inventaire {
+  id: string;
+  createdAt: string;
+  commentaire: string | null;
+  auteurId: string;
+  lignes: LigneInventaireEcrite[];
+  /** Faux sur le rejeu d'un identifiant déjà enregistré. */
+  cree?: boolean;
+  avertissements?: AvertissementInventaire[];
+}
+
+/** Enregistre un inventaire ; rejouable avec le même `id` sans rien compter deux fois. */
+export async function enregistrerInventaire(structureId: string, corps: CorpsInventaire) {
+  return authFetch<Inventaire>(`/pharmacie/${encodeURIComponent(structureId)}/inventaires`, {
+    method: "POST",
+    body: JSON.stringify(corps),
+  });
+}
+
+export type RaisonSortie = "PERIME" | "CASSE" | "PERDU" | "RETOUR_FOURNISSEUR" | "AUTRE";
+
+export const LIBELLES_RAISON_SORTIE: Record<RaisonSortie, string> = {
+  PERIME: "Périmé",
+  CASSE: "Cassé ou abîmé",
+  PERDU: "Perdu ou volé",
+  RETOUR_FOURNISSEUR: "Retour au fournisseur",
+  AUTRE: "Autre raison",
+};
+
+export interface CorpsSortieStock {
+  /** Identifiant choisi par le client : un rejeu du même identifiant ne sort rien de plus (D688). */
+  id?: string;
+  stockId: string;
+  lotId: string;
+  unite: "BOITE" | "UNITE";
+  quantite: number;
+  raison: RaisonSortie;
+  commentaire?: string;
+}
+
+export interface SortieStockEnregistree {
+  id: string;
+  mouvementId: string;
+  stockId: string;
+  nom: string;
+  lotId: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  perime: boolean;
+  type: string;
+  motif: string;
+  /** Unités minimales sorties. */
+  quantite: number;
+  /** Unités minimales restant dans le lot. */
+  soldeLot: number;
+  soldeProduit: number;
+  /** Unités vendues sans stock encore à régulariser sur la fiche ; absente sur un ancien serveur. */
+  quantiteARegulariser?: number;
+  auteurId: string;
+  createdAt: string;
+  /** Faux sur le rejeu d'un identifiant déjà enregistré. */
+  cree?: boolean;
+}
+
+/** Sort un lot du stock avec une raison ; rejouable avec le même `id` sans rien sortir deux fois. */
+export async function sortirDuStock(structureId: string, corps: CorpsSortieStock) {
+  return authFetch<SortieStockEnregistree>(`/pharmacie/${encodeURIComponent(structureId)}/stock/sorties`, {
+    method: "POST",
+    body: JSON.stringify(corps),
   });
 }
