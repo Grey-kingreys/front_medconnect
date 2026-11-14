@@ -194,7 +194,7 @@ describe("Page du stock", () => {
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer la correction" }));
 
     await waitFor(() =>
-      expect(updateStockQuantite).toHaveBeenCalledWith("s1", "d1", { variation: -20, motif: "Boîte abîmée retrouvée" }),
+      expect(updateStockQuantite).toHaveBeenCalledWith("s1", "d1", { id: expect.any(String), variation: -20, motif: "Boîte abîmée retrouvée" }),
     );
     await waitFor(() => expect(getMyStock).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("Quantité corrigée.")).toBeTruthy();
@@ -225,6 +225,7 @@ describe("Page du stock", () => {
 
     await waitFor(() =>
       expect(updateStockQuantite).toHaveBeenCalledWith("s1", "d1", {
+        id: expect.any(String),
         variation: -20,
         lotId: "l2",
         motif: "Erreur de comptage",

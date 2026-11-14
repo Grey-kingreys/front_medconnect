@@ -8,7 +8,7 @@ import type {
   SessionCaisseOuverte,
   TypeMouvementCaisse,
 } from "../api_caisse";
-import type { StockMedicament } from "../api_pharmacie";
+import type { CorpsSortieStock, SortieStockEnregistree, StockMedicament } from "../api_pharmacie";
 import type { CorpsCreationVente, Vente, VentesDuJour } from "../api_ventes";
 import type { EtatCaisse } from "./source";
 
@@ -116,6 +116,16 @@ export const MESSAGE_IMPRESSION_ECHOUEE =
 /** Fonctions d'un domaine pharmacie du pont (vide tant que le domaine n'a pas de fonction). Chaque fonction rend une `ReponsePont`. */
 export type PontDomaine = Record<string, (...args: never[]) => Promise<ReponsePont<unknown>>>;
 
+/** Domaine `stock` du pont : sortie de stock et correction de quantité faites sur le poste (permission `stock:write`). */
+export interface PontStock extends PontDomaine {
+  sortir(s: string, corps: CorpsSortieStock & { id: string }): Promise<ReponsePont<SortieStockEnregistree>>;
+  corriger(
+    s: string,
+    stockId: string,
+    corps: { id: string; lotId?: string; variation: number; motif: string; notes?: string },
+  ): Promise<ReponsePont<StockMedicament>>;
+}
+
 export interface PontDesktop {
   version: string;
   /** Le rendu ne pousse que le jeton : le processus principal en tire l'identité auprès du serveur (`/auth/me`). */
@@ -142,7 +152,7 @@ export interface PontDesktop {
     enregistrerAnnulationServeur(reponse: Vente): Promise<ReponsePont<null>>;
   };
   /** Domaines pharmacie à venir, prêts à recevoir leurs fonctions (absents des anciens préchargements). */
-  stock?: PontDomaine;
+  stock?: PontStock;
   reception?: PontDomaine;
   inventaire?: PontDomaine;
   credit?: PontDomaine;

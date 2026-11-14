@@ -8,9 +8,10 @@
  */
 import type { Referentiels } from "@/lib/api_caisse";
 import type { EtatPosteDesktop, ReponsePont, UtilisateurPoste } from "@/lib/caisse/contrat_desktop";
-import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeCaisse } from "@/lib/caisse/contrat_desktop_schemas";
+import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeCaisse, type NomMethodeStock } from "@/lib/caisse/contrat_desktop_schemas";
 import { permissionsRequises } from "@/lib/caisse/permissions_pont";
 import type { CoeurCaisse, ReponseAnnulation } from "./coeur";
+import { messageCorrectionEnregistree, MESSAGE_SORTIE_ENREGISTREE, MESSAGE_SORTIE_REJOUEE } from "./messages_stock";
 import { RefusCaisse } from "./refus";
 import type { EtatSynchro } from "./synchro";
 import type { Utilisateur } from "./types_caisse";
@@ -166,7 +167,8 @@ export class Passerelle {
 
     const refus = this.controler(domaine, nom, valeurs);
     if (refus !== null) return refus;
-    // Seul le domaine caisse a des fonctions pour l'instant : les autres domaines brancheront leur cœur ici.
+    if (domaine === "stock") return this.appelerStock(nom as NomMethodeStock, valeurs);
+    // Les autres domaines pharmacie brancheront leur cœur ici, une fonction à la fois.
     if (domaine !== "caisse") return echec(501, "NON_IMPLEMENTE", MESSAGE_FONCTION_ABSENTE);
     const methode = nom as NomMethodeCaisse;
 
@@ -186,6 +188,30 @@ export class Passerelle {
       }
       // Ni message ni corps : seulement le type de l'erreur.
       this.deps.journal(`échec ${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Sortie de stock et correction de quantité : écriture locale, puis cycle de synchronisation sans l'attendre. */
+  private appelerStock(methode: NomMethodeStock, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      let reponse: ReponsePont<unknown>;
+      if (methode === "sortir") {
+        const sortie = coeur.sortirStock(v[1] as never, utilisateur);
+        reponse = succes(sortie, sortie.cree === false ? MESSAGE_SORTIE_REJOUEE : MESSAGE_SORTIE_ENREGISTREE);
+      } else {
+        const r = coeur.corrigerQuantite(v[1] as string, v[2] as never, utilisateur);
+        reponse = succes(r.fiche, messageCorrectionEnregistree(r.variation, r.fiche.quantite));
+      }
+      this.deps.etatChange();
+      this.deps.apresVente();
+      return reponse;
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec stock.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
       return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
     }
   }
@@ -210,7 +236,7 @@ export class Passerelle {
     }
     if (rattachee === null) return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);
     if (
-      (methode === "chargerStock" || methode === "chargerReferentiels" || methode === "etatCaisse") &&
+      (domaine === "stock" || methode === "chargerStock" || methode === "chargerReferentiels" || methode === "etatCaisse") &&
       !this.deps.coeur.aUnCatalogue()
     ) {
       return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);

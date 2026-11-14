@@ -7,7 +7,9 @@ import { FOCUS } from "@/components/pharmacie/classes";
 import { ui } from "@/theme/ui";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
-import { updateStockQuantite, type StockMedicament } from "@/lib/api_pharmacie";
+import { nouvelleCleIdempotence } from "@/lib/api_carnet";
+import type { StockMedicament } from "@/lib/api_pharmacie";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { estErreurReseau } from "@/lib/erreurs_api";
 import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { LONGUEUR_MAX_MOTIF, motifValide } from "../ventes/affichage";
@@ -54,8 +56,9 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
   const [refusLocal, setRefusLocal] = useState(false);
   const [envoiEnCours, setEnvoiEnCours] = useState(false);
   const [erreur, setErreur] = useState<string | null>(null);
-  // Échec réseau : l'issue est inconnue, la saisie est verrouillée (la route ne se rejoue pas).
+  // Échec réseau : l'issue est inconnue, la saisie est verrouillée.
   const [issueInconnue, setIssueInconnue] = useState(false);
+  const [idCorrection] = useState(() => nouvelleCleIdempotence());
   const envoiRef = useRef(false);
 
   const fermer = () => onClose(issueInconnue);
@@ -75,13 +78,14 @@ function ContenuCorrection({ stock, structureId, onClose, onSucces }: ContenuPro
     envoiRef.current = true;
     setEnvoiEnCours(true);
     setErreur(null);
-    const corps: { variation: number; lotId?: string; motif: string } = {
+    const corps: { id: string; variation: number; lotId?: string; motif: string } = {
+      id: idCorrection,
       variation: sens === "retirer" ? -variationAbsolue : variationAbsolue,
       motif: motif.trim(),
     };
     if (lotObligatoire && lotId) corps.lotId = lotId;
     try {
-      const res = await updateStockQuantite(structureId, stock.id, corps);
+      const res = await sourcePharmacie().corrigerQuantite(structureId, stock.id, corps);
       onSucces(res.message);
       onClose(false);
     } catch (err) {

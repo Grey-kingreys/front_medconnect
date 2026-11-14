@@ -171,11 +171,11 @@ export async function modifierFiche(structureId: string, stockId: string, corps:
   );
 }
 
-/** Correction de quantité : `variation` en unités minimales (entier non nul), motif de 3 à 300 caractères. Route non rejouable. */
+/** Correction de quantité : `variation` en unités minimales (entier non nul), motif de 3 à 300 caractères. Avec `id` (UUID), l'envoi se rejoue sans doublon. */
 export async function updateStockQuantite(
   structureId: string,
   stockId: string,
-  corps: { variation: number; lotId?: string; motif: string },
+  corps: { id?: string; variation: number; lotId?: string; motif: string },
 ) {
   return authFetch<StockMedicament>(`/pharmacie/stock/${structureId}/${stockId}/quantite`, {
     method: "PATCH",

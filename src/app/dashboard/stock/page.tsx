@@ -22,7 +22,6 @@ import {
   Download
 } from "lucide-react";
 import {
-  getMyStock,
   StockMedicament,
   StockInfo,
   removeStockItem,
@@ -36,6 +35,8 @@ import { formaterGNF } from "@/lib/format_gnf";
 import { afficherDatePeremption } from "@/lib/date_peremption";
 import { estErreurReseau } from "@/lib/erreurs_api";
 import { MESSAGE_ACTION_EN_LIGNE } from "@/lib/caisse/source_desktop";
+import { horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { jourConakry } from "../ventes/affichage";
 import StockModal from "@/components/modals/StockModal";
 import ImportStockModal from "@/components/modals/ImportStockModal";
@@ -54,6 +55,14 @@ const MSG_CHARGEMENT_ECHOUE = "Le stock n'a pas pu être chargé. Vérifiez votr
 
 export default function StockPage() {
   const { user, profile } = useAuth();
+  // Hors ligne sur le poste desktop : le stock se lit, se sort et se corrige ; le reste demande une connexion.
+  const suiviPoste = useEtatPoste();
+  const horsLigne = horsLigneSurPoste(suiviPoste);
+  const exigerConnexion = (): boolean => {
+    if (!horsLigne) return false;
+    setErreurExport(MESSAGE_ACTION_EN_LIGNE);
+    return true;
+  };
   // Modes d'import permis par les droits : livraison (réception) et inventaire (D695)
   const permissions = user ? lireContexteAcces(user, profile ?? null).permissions : null;
   const modesPermis: ModeImportStock[] = [
@@ -106,8 +115,7 @@ export default function StockPage() {
     setSucces(null);
     setErreurChargement(null);
     try {
-      const res = await getMyStock(user.structureId);
-      setStockInfo(res.data);
+      setStockInfo(await sourcePharmacie().chargerStockInfo(user.structureId));
     } catch (err) {
       setErreurChargement(messageErreurPour(err, MSG_CHARGEMENT_ECHOUE));
     } finally {
@@ -123,11 +131,12 @@ export default function StockPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("importer") !== "1" || !peutImporter) return;
-    setIsImportOpen(true);
+    if (horsLigne) setErreurExport(MESSAGE_ACTION_EN_LIGNE);
+    else setIsImportOpen(true);
     params.delete("importer");
     const reste = params.toString();
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${reste ? `?${reste}` : ""}`);
-  }, [peutImporter]);
+  }, [peutImporter, horsLigne]);
 
   // Statuts lus des alertes du serveur (seuil des paramètres, quantité négative comprise)
   const idsStockBas = new Set(stockInfo?.alertes.stockBas.map((a) => a.id) ?? []);
@@ -149,6 +158,7 @@ export default function StockPage() {
   const exporter = async (seulementAffichage: boolean) => {
     if (!user?.structureId) return;
     setChoixExportOuvert(false);
+    if (exigerConnexion()) return;
     setErreurExport(null);
     setExportEnCours(true);
     try {
@@ -174,16 +184,19 @@ export default function StockPage() {
   const affichageFiltre = filter !== "all" || search.trim() !== "";
 
   const openAddModal = () => {
+    if (exigerConnexion()) return;
     setSelectedStock(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (item: StockMedicament) => {
+    if (exigerConnexion()) return;
     setSelectedStock(item);
     setIsModalOpen(true);
   };
 
   const openDeleteModal = (item: StockMedicament) => {
+    if (exigerConnexion()) return;
     setSelectedStock(item);
     setIsDeleteModalOpen(true);
   };
@@ -300,7 +313,9 @@ export default function StockPage() {
           <div className="flex flex-wrap items-center gap-3">
             {peutImporter && (
               <button
-                onClick={() => setIsImportOpen(true)}
+                onClick={() => {
+                  if (!exigerConnexion()) setIsImportOpen(true);
+                }}
                 className={ui.bouton.secondaire}
               >
                 <FileSpreadsheet size={16} className="text-primary-600 dark:text-primary-400" />

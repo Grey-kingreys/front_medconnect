@@ -105,12 +105,44 @@ export type NomMethodeCaisse = keyof typeof schemasPont;
  */
 type SchemasDomaine = Record<string, { safeParse(v: unknown): { success: boolean; data?: unknown } }>;
 
+const uuid = z.string().uuid();
+
+const corpsSortieStock = z
+  .object({
+    id: uuid,
+    stockId: identifiant,
+    lotId: identifiant,
+    unite: z.enum(["BOITE", "UNITE"]),
+    quantite: z.number().int().min(1).max(1_000_000_000),
+    raison: z.enum(["PERIME", "CASSE", "PERDU", "RETOUR_FOURNISSEUR", "AUTRE"]).optional(),
+    commentaire: z.string().max(300).optional(),
+  })
+  .strict();
+
+const corpsCorrectionQuantite = z
+  .object({
+    id: uuid,
+    lotId: identifiant.optional(),
+    variation: z.number().int().min(-1_000_000_000).max(1_000_000_000).refine((v) => v !== 0),
+    motif: z.string().max(300),
+    notes: z.string().max(500).optional(),
+  })
+  .strict();
+
+/** Fonctions du domaine `stock` : sortie de stock et correction de quantité (permission `stock:write`). */
+export const schemasStock = {
+  sortir: z.tuple([identifiant, corpsSortieStock]),
+  corriger: z.tuple([identifiant, identifiant, corpsCorrectionQuantite]),
+} as const;
+
+export type NomMethodeStock = keyof typeof schemasStock;
+
 export const DOMAINES_PONT = ["caisse", "stock", "reception", "inventaire", "credit", "anomalie"] as const;
 export type DomainePont = (typeof DOMAINES_PONT)[number];
 
 export const schemasParDomaine: Record<DomainePont, SchemasDomaine> = {
   caisse: schemasPont as unknown as SchemasDomaine,
-  stock: {},
+  stock: schemasStock as unknown as SchemasDomaine,
   reception: {},
   inventaire: {},
   credit: {},

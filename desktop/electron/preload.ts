@@ -40,7 +40,10 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
     enregistrerAnnulationServeur: (reponse: unknown) => appeler("caisse:enregistrerAnnulationServeur", reponse),
   },
   // Domaines pharmacie à venir : chacun recevra ses fonctions sur le modèle de `caisse` (canal `<domaine>:<fonction>`).
-  stock: {},
+  stock: {
+    sortir: (s: string, corps: unknown) => appeler("stock:sortir", s, corps),
+    corriger: (s: string, stockId: string, corps: unknown) => appeler("stock:corriger", s, stockId, corps),
+  },
   reception: {},
   inventaire: {},
   credit: {},
