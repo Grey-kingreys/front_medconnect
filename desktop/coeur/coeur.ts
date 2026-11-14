@@ -16,6 +16,14 @@ import { fichesLocales } from "./fiche_locale";
 import { CLE_ANOMALIES_PHOTOGRAPHIE_LE, listerAnomaliesLocales, traiterAnomalieLocale, type OptionsListeAnomaliesLocale } from "./anomalies_locales";
 import type { Anomalie, PageAnomalies } from "@/lib/api_pilotage";
 import { preparerExportStock, type ExportStockPret } from "./export_stock";
+import {
+  creerFournisseurLocal,
+  enregistrerReceptionLocale,
+  listerFournisseursLocaux,
+  listerReceptionsLocales,
+  lireReceptionLocale,
+} from "./reception_locale";
+import type { CorpsReception, Fournisseur, PageReceptions, Reception } from "@/lib/api_pharmacie";
 import { corrigerQuantite, sortirStock, type CorpsCorrectionLocale, type CorpsSortieLocale } from "./stock_operations";
 import { plageRestante } from "./plages_locales";
 import { enregistrerReglages, lireReglages } from "./reglages";
@@ -179,6 +187,20 @@ export class CoeurCaisse {
         });
       }
 
+      // Un serveur plus ancien n'envoie ni fournisseurs ni réceptions : les tables ne sont pas touchées.
+      if (photo.fournisseurs !== undefined) {
+        s.executer("DELETE FROM fournisseurs_photo");
+        photo.fournisseurs.forEach((f, rang) => {
+          s.executer("INSERT INTO fournisseurs_photo (id, rang, document) VALUES (?, ?, ?)", [f.id, rang, JSON.stringify(f)]);
+        });
+      }
+      if (photo.receptions !== undefined) {
+        s.executer("DELETE FROM receptions_photo");
+        photo.receptions.forEach((r, rang) => {
+          s.executer("INSERT INTO receptions_photo (id, rang, document) VALUES (?, ?, ?)", [r.id, rang, JSON.stringify(r)]);
+        });
+      }
+
       s.executer("DELETE FROM fiches");
       for (const fiche of photo.fiches) {
         s.executer("INSERT INTO fiches (stockId, document, nom) VALUES (?, ?, ?)", [
@@ -282,6 +304,32 @@ export class CoeurCaisse {
   /** Classeur .xlsx du stock local, sans coût, avec son nom de fichier. */
   preparerExportStock(options: { filtre?: "tous" | "alertes" | "rupture" | "qualifier"; q?: string }): ExportStockPret {
     return preparerExportStock(this.ctx, options);
+  }
+
+  // ------------------------------------------------------------------ réception hors ligne
+
+  /** Fournisseurs de la photographie et ceux créés sur ce poste. */
+  listerFournisseurs(): Fournisseur[] {
+    return listerFournisseursLocaux(this.ctx);
+  }
+
+  /** Crée un fournisseur (ou rend celui du même nom) : écriture locale et événement `FOURNISSEUR_CREE`. */
+  creerFournisseur(corps: { nom: string; telephone?: string }, u: Utilisateur): Fournisseur & { cree: boolean } {
+    return creerFournisseurLocal(this.ctx, corps, u);
+  }
+
+  /** Réception : lots locaux, mouvements positifs et événement `RECEPTION_ENREGISTREE` en une transaction. */
+  enregistrerReception(corps: CorpsReception, u: Utilisateur): Reception {
+    return enregistrerReceptionLocale(this.ctx, corps, u);
+  }
+
+  /** Réceptions des 30 derniers jours (photographie plus celles faites ici), sans aucun montant. */
+  listerReceptions(page = 1): PageReceptions {
+    return listerReceptionsLocales(this.ctx, page);
+  }
+
+  lireReception(id: string): Reception {
+    return lireReceptionLocale(this.ctx, id);
   }
 
   // ------------------------------------------------------------------ anomalies hors ligne

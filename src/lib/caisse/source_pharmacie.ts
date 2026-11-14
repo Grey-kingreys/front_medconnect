@@ -1,7 +1,11 @@
 import type { ApiResponse } from "../api_auth";
 import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
 import type {
+  CorpsReception,
   CorpsSortieStock,
+  Fournisseur,
+  PageReceptions,
+  Reception,
   LotEnStock,
   SortieStockEnregistree,
   StockInfo,
@@ -50,6 +54,16 @@ export interface SourcePharmacie {
   listerAnomalies(structureId: string, options: OptionsListeAnomalies): Promise<ApiResponse<PageAnomalies>>;
   /** Marque une anomalie traitée, une seule fois. Sur le desktop : écriture locale et événement `ANOMALIE_TRAITEE`. */
   traiterAnomalie(structureId: string, anomalieId: string, commentaire: string): Promise<ApiResponse<Anomalie>>;
+  /** Fournisseurs de la pharmacie. Sur le desktop : photographie plus ceux créés sur ce poste. */
+  listerFournisseurs(structureId: string): Promise<ApiResponse<Fournisseur[]>>;
+  /** Crée un fournisseur ; un nom déjà pris rend le fournisseur existant sur le desktop (`cree` faux). */
+  creerFournisseur(structureId: string, corps: { nom: string; telephone?: string }): Promise<ApiResponse<Fournisseur & { cree: boolean }>>;
+  /** Enregistre une livraison ; rejouable avec le même `id`. Sur le desktop : écriture locale et événement `RECEPTION_ENREGISTREE`. */
+  enregistrerReception(structureId: string, corps: CorpsReception): Promise<ApiResponse<Reception>>;
+  /** Réceptions, les plus récentes d'abord. Sur le desktop : 30 derniers jours, sans aucun montant. */
+  listerReceptions(structureId: string, page: number): Promise<ApiResponse<PageReceptions>>;
+  /** Détail d'une réception. Sur le desktop : sans coût ni montant de facture (ils ne descendent pas sur le poste). */
+  lireReception(structureId: string, receptionId: string): Promise<ApiResponse<Reception>>;
   /** Exporte le stock en .xlsx. Sur le desktop : fichier fait sur le poste (sans coût), enregistré par « Enregistrer sous ». */
   exporterStock(structureId: string, options: OptionsExportStock): Promise<ResultatExport>;
 }

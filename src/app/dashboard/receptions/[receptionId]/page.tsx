@@ -7,7 +7,8 @@ import { ArrowLeft, Loader2 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { ApiError } from "@/lib/api_auth";
-import { getMyStock, getReception, type LotRecu, type Reception, type UniteMinimale } from "@/lib/api_pharmacie";
+import type { LotRecu, Reception, UniteMinimale } from "@/lib/api_pharmacie";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { afficherDatePeremption } from "@/lib/date_peremption";
 import { formaterTauxTva } from "@/lib/facture_fournisseur";
@@ -25,6 +26,8 @@ import { ui } from "@/theme/ui";
 import { CorrectionDateLot } from "./CorrectionDateLot";
 
 const NON_RENSEIGNE = "Non renseigné";
+const MSG_MONTANTS_EN_LIGNE = "Les montants de la facture s'affichent avec internet.";
+const MSG_ACTION_EN_LIGNE = "Cette action demande une connexion.";
 const MSG_ERREUR = "Impossible d'afficher cette réception. Vérifiez votre connexion puis réessayez.";
 
 type Etat =
@@ -58,7 +61,8 @@ export default function DetailReceptionPage() {
   useEffect(() => {
     if (!structureId) return;
     let actif = true;
-    getReception(structureId, receptionId)
+    sourcePharmacie()
+      .lireReception(structureId, receptionId)
       .then((res) => {
         if (actif) setEtat({ statut: "pret", reception: res.data });
       })
@@ -79,11 +83,12 @@ export default function DetailReceptionPage() {
   useEffect(() => {
     if (!structureId) return;
     let actif = true;
-    getMyStock(structureId)
-      .then((res) => {
+    sourcePharmacie()
+      .chargerStock(structureId)
+      .then((stocks) => {
         if (!actif) return;
         const lues: Record<string, UniteMinimale> = {};
-        for (const s of res.data.stocks) if (s.uniteMinimale) lues[s.id] = s.uniteMinimale;
+        for (const s of stocks) if (s.uniteMinimale) lues[s.id] = s.uniteMinimale;
         setUnites(lues);
       })
       .catch(() => {});
@@ -167,6 +172,8 @@ export default function DetailReceptionPage() {
   }
 
   const { reception } = etat;
+  // Sur le poste hors internet, les coûts et les montants de facture ne sont pas descendus : la correction de date demande aussi une connexion.
+  const horsLigne = !sourcePharmacie().enLigneSeulement;
   // La colonne du coût n'existe que si le serveur a transmis la clé : sans `marge:read`, elle est absente (D698).
   const avecCout = reception.lots.some((l) => "coutAchatBoite" in l);
   const entetesFacture: [string, string | null][] = [
@@ -218,6 +225,12 @@ export default function DetailReceptionPage() {
         </div>
       )}
 
+      {horsLigne && (
+        <p role="status" className={ALERTE_INFO}>
+          {MSG_MONTANTS_EN_LIGNE}
+        </p>
+      )}
+
       {aDesResolutions && (
         <p role="status" className={ALERTE_INFO}>
           Des ventes faites en attente de stock ont été rattachées à ces lots.
@@ -262,14 +275,18 @@ export default function DetailReceptionPage() {
                     </td>
                   )}
                   <td className={`${ui.cellule} py-3 text-right`}>
-                    <button
-                      type="button"
-                      onClick={() => setLotACorriger(lot)}
-                      aria-label={`Corriger la date du lot ${lot.numeroLot ?? lot.nom}`}
-                      className={`${ui.bouton.secondaire} h-mc-controle-petit`}
-                    >
-                      Corriger la date
-                    </button>
+                    {horsLigne ? (
+                      <span className={ui.texte.petit}>{MSG_ACTION_EN_LIGNE}</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setLotACorriger(lot)}
+                        aria-label={`Corriger la date du lot ${lot.numeroLot ?? lot.nom}`}
+                        className={`${ui.bouton.secondaire} h-mc-controle-petit`}
+                      >
+                        Corriger la date
+                      </button>
+                    )}
                   </td>
                 </tr>
               );

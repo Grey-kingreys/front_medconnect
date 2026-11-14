@@ -32,7 +32,7 @@ export default function ActionEnLigne() {
         Cette action demande une connexion.
       </h1>
       <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-        Réception, inventaire, clôture, rapports, fiches et prix se font avec internet. Les ventes et la caisse continuent sur ce poste.
+        Inventaire, clôture, rapports, fiches et prix se font avec internet. Les ventes et la caisse continuent sur ce poste.
       </p>
       <Link
         href="/dashboard/vente"

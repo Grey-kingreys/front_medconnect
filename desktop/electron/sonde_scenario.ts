@@ -526,9 +526,9 @@ export async function jouerScenario(opts: OptionsScenario): Promise<void> {
       }
 
       // Étape 5 : page réservée au réseau
-      await aller("/dashboard/receptions");
+      await aller("/dashboard/credits");
       const reservee = await attendre(() => contient("Cette action demande une connexion."), 20_000);
-      noter("5 page Réception réservée", reservee && (await contient("Aller à la vente")));
+      noter("5 page réservée au réseau", reservee && (await contient("Aller à la vente")));
       await defauts("page réservée");
 
       // Étape 6 : fermeture de la caisse, comptage, écart, commentaire

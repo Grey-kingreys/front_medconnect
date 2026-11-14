@@ -1,4 +1,4 @@
-import { exporterStock, getMyStock, listerLotsFiche, sortirDuStock, updateStockQuantite } from "../api_pharmacie";
+import { creerFournisseur, enregistrerReception, exporterStock, getReception, listerFournisseurs, listerReceptions, getMyStock, listerLotsFiche, sortirDuStock, updateStockQuantite } from "../api_pharmacie";
 import { listerAnomalies, traiterAnomalie } from "../api_pilotage";
 import type { SourcePharmacie } from "./source_pharmacie";
 
@@ -19,6 +19,11 @@ export const sourcePharmacieEnLigne: SourcePharmacie = {
   corrigerQuantite: (structureId, stockId, corps) => updateStockQuantite(structureId, stockId, corps),
   listerAnomalies: (structureId, options) => listerAnomalies(structureId, options),
   traiterAnomalie: (structureId, anomalieId, commentaire) => traiterAnomalie(structureId, anomalieId, commentaire),
+  listerFournisseurs: (structureId) => listerFournisseurs(structureId),
+  creerFournisseur: (structureId, corps) => creerFournisseur(structureId, corps),
+  enregistrerReception: (structureId, corps) => enregistrerReception(structureId, corps),
+  listerReceptions: (structureId, page) => listerReceptions(structureId, page),
+  lireReception: (structureId, receptionId) => getReception(structureId, receptionId),
   async exporterStock(structureId, options) {
     const { blob, filename } = await exporterStock(structureId, options);
     const url = URL.createObjectURL(blob);

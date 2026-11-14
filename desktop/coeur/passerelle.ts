@@ -8,11 +8,12 @@
  */
 import type { Referentiels } from "@/lib/api_caisse";
 import type { EtatPosteDesktop, ReponsePont, UtilisateurPoste } from "@/lib/caisse/contrat_desktop";
-import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeAnomalie, type NomMethodeCaisse, type NomMethodeStock } from "@/lib/caisse/contrat_desktop_schemas";
+import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeAnomalie, type NomMethodeCaisse, type NomMethodeFournisseur, type NomMethodeReception, type NomMethodeStock } from "@/lib/caisse/contrat_desktop_schemas";
 import { permissionsRequises } from "@/lib/caisse/permissions_pont";
 import type { CoeurCaisse, ReponseAnnulation } from "./coeur";
 import { messageCorrectionEnregistree, MESSAGE_SORTIE_ENREGISTREE, MESSAGE_SORTIE_REJOUEE } from "./messages_stock";
 import { MESSAGE_ANOMALIE_TRAITEE } from "./anomalies_locales";
+import { messageReceptionEnregistree, MESSAGE_FOURNISSEUR_ENREGISTRE, MESSAGE_RECEPTION_REJOUEE } from "./reception_locale";
 import { RefusCaisse } from "./refus";
 import type { EtatSynchro } from "./synchro";
 import type { Utilisateur } from "./types_caisse";
@@ -174,6 +175,8 @@ export class Passerelle {
     const refus = this.controler(domaine, nom, valeurs);
     if (refus !== null) return refus;
     if (domaine === "stock" && nom === "exporter") return this.exporterStock(valeurs);
+    if (domaine === "reception") return this.appelerReception(nom as NomMethodeReception, valeurs);
+    if (domaine === "fournisseur") return this.appelerFournisseur(nom as NomMethodeFournisseur, valeurs);
     if (domaine === "anomalie") return this.appelerAnomalie(nom as NomMethodeAnomalie, valeurs);
     if (domaine === "stock") return this.appelerStock(nom as NomMethodeStock, valeurs);
     // Les autres domaines pharmacie brancheront leur cœur ici, une fonction à la fois.
@@ -220,6 +223,45 @@ export class Passerelle {
     } catch (e) {
       if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
       this.deps.journal(`échec stock.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Réception : lecture de l'historique récent, ou écriture locale puis cycle de synchronisation sans l'attendre. */
+  private appelerReception(methode: NomMethodeReception, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      if (methode === "lister") return succes(coeur.listerReceptions((v[1] as { page?: number }).page), "Réceptions du poste.");
+      if (methode === "lire") return succes(coeur.lireReception(v[1] as string), "Réception trouvée.");
+      const r = coeur.enregistrerReception(v[1] as never, utilisateur);
+      this.deps.etatChange();
+      this.deps.apresVente();
+      return succes(r, r.cree === false ? MESSAGE_RECEPTION_REJOUEE : messageReceptionEnregistree(r.lots.length));
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec reception.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Fournisseurs : liste locale, ou création (écriture locale puis cycle de synchronisation). */
+  private appelerFournisseur(methode: NomMethodeFournisseur, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      if (methode === "lister") return succes(coeur.listerFournisseurs(), "Fournisseurs du poste.");
+      const f = coeur.creerFournisseur(v[1] as never, utilisateur);
+      if (f.cree) {
+        this.deps.etatChange();
+        this.deps.apresVente();
+      }
+      return succes(f, MESSAGE_FOURNISSEUR_ENREGISTRE);
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec fournisseur.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
       return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
     }
   }
@@ -277,7 +319,7 @@ export class Passerelle {
     }
     if (rattachee === null) return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);
     if (
-      (domaine === "stock" || domaine === "anomalie" || methode === "chargerStock" || methode === "chargerReferentiels" || methode === "etatCaisse") &&
+      (domaine === "stock" || domaine === "anomalie" || domaine === "reception" || domaine === "fournisseur" || methode === "chargerStock" || methode === "chargerReferentiels" || methode === "etatCaisse") &&
       !this.deps.coeur.aUnCatalogue()
     ) {
       return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);

@@ -85,6 +85,48 @@ export interface AnomalieSynchro {
   rattachement: { etat: string; quantiteInitiale: number; quantiteEnAttente: number; message: string } | null;
 }
 
+export interface FournisseurSynchro {
+  id: string;
+  nom: string;
+  telephone: string | null;
+}
+
+/** Lot d'une réception récente : aucun coût ni montant de facture n'arrive sur le poste. */
+export interface LotReceptionSynchro {
+  id: string;
+  stockId: string;
+  nom: string;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  quantiteRecue: number;
+  coefficientReception: number;
+  solde: number;
+  codeArticleFournisseur: string | null;
+  codeBarres: string | null;
+  quantiteCommandee: number | null;
+  prixPublicBoite: number | null;
+  codeTva: string | null;
+  tauxTvaPourMille: number | null;
+  colisage: number | null;
+  tableau: string | null;
+  bonPreparation: string | null;
+}
+
+/** Réception des 30 derniers jours, telle que la photographie la donne. */
+export interface ReceptionSynchro {
+  id: string;
+  reference: string | null;
+  recueLe: string;
+  createdAt: string;
+  auteurId: string;
+  numeroFacture: string | null;
+  referenceCommande: string | null;
+  dateFacture: string | null;
+  nombrePages: number | null;
+  fournisseur: { id: string; nom: string } | null;
+  lots: LotReceptionSynchro[];
+}
+
 export interface Photographie {
   pharmacie: {
     id: string;
@@ -109,6 +151,9 @@ export interface Photographie {
   fiches: FicheSynchro[];
   /** Anomalies ouvertes (absent d'un serveur plus ancien). */
   anomalies?: AnomalieSynchro[];
+  /** Fournisseurs et réceptions des 30 derniers jours, sans coût (absents d'un serveur plus ancien). */
+  fournisseurs?: FournisseurSynchro[];
+  receptions?: ReceptionSynchro[];
 }
 
 /** Ligne du journal local prête à partir : `corps` est le texte stocké, jamais retransformé. */

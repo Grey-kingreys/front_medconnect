@@ -22,7 +22,8 @@ const PERMISSIONS_CAISSE: Record<string, readonly string[]> = Object.fromEntries
 export const PERMISSIONS_PAR_FONCTION: Record<DomainePont, Record<string, readonly string[]>> = {
   caisse: PERMISSIONS_CAISSE,
   stock: { sortir: ["stock:write"], corriger: ["stock:write"], exporter: ["stock:read"] },
-  reception: {},
+  reception: { enregistrer: ["reception:write"], lister: ["reception:write"], lire: ["reception:write"] },
+  fournisseur: { lister: ["reception:write"], creer: ["reception:write"] },
   inventaire: {},
   credit: {},
   anomalie: { lister: ["anomalie:gerer"], traiter: ["anomalie:gerer"] },

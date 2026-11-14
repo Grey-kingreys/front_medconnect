@@ -187,6 +187,33 @@ const ETAPES: string[] = [
     traiteeParNom TEXT NOT NULL
   );
   `,
+  // Version 7 (réception hors ligne) : fournisseurs et réceptions récentes de la dernière photographie (lecture, sans
+  // coût), fournisseurs créés et réceptions faites sur le poste pas encore appliqués par le serveur (même règle de séquence).
+  `
+  CREATE TABLE fournisseurs_photo (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE receptions_photo (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE fournisseurs_locaux (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    nom TEXT NOT NULL,
+    telephone TEXT,
+    creeLe TEXT NOT NULL
+  );
+  CREATE TABLE receptions_locales (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    recueLe TEXT NOT NULL,
+    document TEXT NOT NULL
+  );
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

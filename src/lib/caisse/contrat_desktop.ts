@@ -9,7 +9,15 @@ import type {
   TypeMouvementCaisse,
 } from "../api_caisse";
 import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
-import type { CorpsSortieStock, SortieStockEnregistree, StockMedicament } from "../api_pharmacie";
+import type {
+  CorpsReception,
+  CorpsSortieStock,
+  Fournisseur,
+  PageReceptions,
+  Reception,
+  SortieStockEnregistree,
+  StockMedicament,
+} from "../api_pharmacie";
 import type { CorpsCreationVente, Vente, VentesDuJour } from "../api_ventes";
 import type { EtatCaisse } from "./source";
 
@@ -136,6 +144,19 @@ export interface ResultatExportStock {
   nomFichier: string;
 }
 
+/** Domaine `reception` du pont : livraison avec facture, liste et détail des réceptions récentes (permission `reception:write`). */
+export interface PontReception extends PontDomaine {
+  enregistrer(s: string, corps: CorpsReception & { id: string }): Promise<ReponsePont<Reception>>;
+  lister(s: string, options: { page?: number }): Promise<ReponsePont<PageReceptions>>;
+  lire(s: string, receptionId: string): Promise<ReponsePont<Reception>>;
+}
+
+/** Domaine `fournisseur` du pont : liste et création (permission `reception:write`). */
+export interface PontFournisseur extends PontDomaine {
+  lister(s: string): Promise<ReponsePont<Fournisseur[]>>;
+  creer(s: string, corps: { nom: string; telephone?: string }): Promise<ReponsePont<Fournisseur & { cree: boolean }>>;
+}
+
 /** Domaine `anomalie` du pont : file des anomalies ouvertes et traitement sur le poste (permission `anomalie:gerer`). */
 export interface PontAnomalie extends PontDomaine {
   lister(s: string, options: OptionsListeAnomalies): Promise<ReponsePont<PageAnomalies>>;
@@ -169,7 +190,8 @@ export interface PontDesktop {
   };
   /** Domaines pharmacie à venir, prêts à recevoir leurs fonctions (absents des anciens préchargements). */
   stock?: PontStock;
-  reception?: PontDomaine;
+  reception?: PontReception;
+  fournisseur?: PontFournisseur;
   inventaire?: PontDomaine;
   credit?: PontDomaine;
   anomalie?: PontAnomalie;

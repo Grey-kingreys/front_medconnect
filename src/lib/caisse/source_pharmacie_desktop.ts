@@ -1,5 +1,5 @@
 import type { LotEnStock, StockInfo, StockMedicament } from "../api_pharmacie";
-import type { PontAnomalie, PontDesktop, PontStock } from "./contrat_desktop";
+import type { PontAnomalie, PontDesktop, PontFournisseur, PontReception, PontStock } from "./contrat_desktop";
 import type { SourcePharmacie } from "./source_pharmacie";
 import { lire } from "./source_desktop";
 
@@ -46,6 +46,14 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     if (pont.anomalie === undefined || typeof pont.anomalie.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
     return pont.anomalie;
   };
+  const reception = (): PontReception => {
+    if (pont.reception === undefined || typeof pont.reception.enregistrer !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.reception;
+  };
+  const fournisseur = (): PontFournisseur => {
+    if (pont.fournisseur === undefined || typeof pont.fournisseur.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.fournisseur;
+  };
   const chargerStock = async (structureId: string) => lire(await pont.caisse.chargerStock(structureId)).data;
 
   return {
@@ -71,6 +79,21 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     },
     async traiterAnomalie(structureId, anomalieId, commentaire) {
       return lire(await anomalie().traiter(structureId, anomalieId, { commentaire }));
+    },
+    async listerFournisseurs(structureId) {
+      return lire(await fournisseur().lister(structureId));
+    },
+    async creerFournisseur(structureId, corps) {
+      return lire(await fournisseur().creer(structureId, corps));
+    },
+    async enregistrerReception(structureId, corps) {
+      return lire(await reception().enregistrer(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async listerReceptions(structureId, page) {
+      return lire(await reception().lister(structureId, { page }));
+    },
+    async lireReception(structureId, receptionId) {
+      return lire(await reception().lire(structureId, receptionId));
     },
     async exporterStock(structureId, options) {
       const s = stock();

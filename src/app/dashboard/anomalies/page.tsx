@@ -42,6 +42,7 @@ const FILTRES_TYPE: { type: TypeAnomalie; libelle: string }[] = [
   { type: "PRODUIT_ARCHIVE", libelle: "Médicament archivé vendu" },
   { type: "EVENEMENT_REJETE", libelle: "Opération de caisse rejetée" },
   { type: "SEQUENCE_MANQUANTE", libelle: "Opération de caisse manquante" },
+  { type: "RECEPTION_COEFFICIENT_DIFFERENT", libelle: "Réception hors ligne : unités par boîte différentes" },
 ];
 
 const MESSAGE_RESEAU = "Le traitement n'a peut-être pas été enregistré. Fermez cette fenêtre et vérifiez la liste.";

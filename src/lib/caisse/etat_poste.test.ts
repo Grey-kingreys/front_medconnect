@@ -43,10 +43,10 @@ describe("hors ligne sur le poste", () => {
 
 describe("pages permises hors ligne", () => {
   it("garde la vente, la caisse, les ventes, le stock et leurs sous-pages, le poste et le profil", () => {
-    for (const chemin of ["/dashboard/vente", "/dashboard/caisse", "/dashboard/ventes/abc/recu", "/dashboard/stock", "/dashboard/anomalies", "/dashboard/poste", "/dashboard/profil"]) {
+    for (const chemin of ["/dashboard/vente", "/dashboard/caisse", "/dashboard/ventes/abc/recu", "/dashboard/stock", "/dashboard/anomalies", "/dashboard/receptions", "/dashboard/receptions/nouvelle", "/dashboard/receptions/r1", "/dashboard/poste", "/dashboard/profil"]) {
       expect(routeHorsLigneAutorisee(chemin)).toBe(true);
     }
-    for (const chemin of ["/dashboard", "/dashboard/stockx", "/dashboard/receptions", "/dashboard/ventesx", "/dashboard/credits", "/dashboard/credits/c1"]) {
+    for (const chemin of ["/dashboard", "/dashboard/stockx", "/dashboard/inventaires", "/dashboard/ventesx", "/dashboard/credits", "/dashboard/credits/c1"]) {
       expect(routeHorsLigneAutorisee(chemin)).toBe(false);
     }
   });

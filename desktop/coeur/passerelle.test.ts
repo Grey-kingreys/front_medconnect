@@ -389,10 +389,14 @@ describe("domaines du pont et permission propre à chaque fonction (A3, A5)", ()
     expect(permissionsRequises("caisse", "creerVente")).toEqual(["caisse:utiliser"]);
     expect(permissionsRequises("caisse", "chargerStock")).toEqual(["caisse:utiliser"]);
     expect(permissionsRequises("caisse", "toString")).toBeNull();
-    for (const d of ["reception", "inventaire", "credit"] as const) {
+    for (const d of ["inventaire", "credit"] as const) {
       expect(Object.keys(schemasParDomaine[d])).toEqual([]);
       expect(Object.keys(PERMISSIONS_PAR_FONCTION[d])).toEqual([]);
     }
+    expect(Object.keys(schemasParDomaine.reception)).toEqual(["enregistrer", "lister", "lire"]);
+    expect(Object.keys(schemasParDomaine.fournisseur)).toEqual(["lister", "creer"]);
+    expect(permissionsRequises("reception", "enregistrer")).toEqual(["reception:write"]);
+    expect(permissionsRequises("fournisseur", "creer")).toEqual(["reception:write"]);
     // Le domaine stock a deux fonctions, chacune avec stock:write.
     expect(Object.keys(schemasParDomaine.stock)).toEqual(["sortir", "corriger", "exporter"]);
     expect(Object.keys(PERMISSIONS_PAR_FONCTION.anomalie)).toEqual(["lister", "traiter"]);
@@ -411,28 +415,28 @@ describe("domaines du pont et permission propre à chaque fonction (A3, A5)", ()
 
   it("une fonction d'un domaine exige sa propre permission, pas seulement caisse:utiliser", async () => {
     const { p } = monter();
-    schemasParDomaine.reception.essai = z.tuple([z.string()]);
-    PERMISSIONS_PAR_FONCTION.reception.essai = ["stock:write"];
+    schemasParDomaine.inventaire.essai = z.tuple([z.string()]);
+    PERMISSIONS_PAR_FONCTION.inventaire.essai = ["stock:write"];
     try {
       p.confirmerIdentite(UTILISATEUR);
-      expect(await p.appeler("essai", ["ph1"], "reception")).toMatchObject({ ok: false, status: 403, code: "PERMISSION_REFUSEE" });
+      expect(await p.appeler("essai", ["ph1"], "inventaire")).toMatchObject({ ok: false, status: 403, code: "PERMISSION_REFUSEE" });
       p.confirmerIdentite({ ...UTILISATEUR, permissions: ["caisse:utiliser", "stock:write"] });
       // Permission suffisante : la fonction n'est pas encore branchée sur le cœur.
-      expect(await p.appeler("essai", ["ph1"], "reception")).toMatchObject({ ok: false, status: 501, code: "NON_IMPLEMENTE" });
+      expect(await p.appeler("essai", ["ph1"], "inventaire")).toMatchObject({ ok: false, status: 501, code: "NON_IMPLEMENTE" });
     } finally {
-      delete schemasParDomaine.reception.essai;
-      delete PERMISSIONS_PAR_FONCTION.reception.essai;
+      delete schemasParDomaine.inventaire.essai;
+      delete PERMISSIONS_PAR_FONCTION.inventaire.essai;
     }
   });
 
   it("une fonction présente dans un schéma mais absente de la table des permissions est refusée", async () => {
     const { p } = monter();
     p.confirmerIdentite({ ...UTILISATEUR, permissions: ["caisse:utiliser", "stock:write"] });
-    schemasParDomaine.reception.sansDroit = z.tuple([z.string()]);
+    schemasParDomaine.inventaire.sansDroit = z.tuple([z.string()]);
     try {
-      expect(await p.appeler("sansDroit", ["ph1"], "reception")).toMatchObject({ ok: false, status: 403, code: "PERMISSION_REFUSEE" });
+      expect(await p.appeler("sansDroit", ["ph1"], "inventaire")).toMatchObject({ ok: false, status: 403, code: "PERMISSION_REFUSEE" });
     } finally {
-      delete schemasParDomaine.reception.sansDroit;
+      delete schemasParDomaine.inventaire.sansDroit;
     }
   });
 });

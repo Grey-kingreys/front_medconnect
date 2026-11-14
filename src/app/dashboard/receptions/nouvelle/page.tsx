@@ -7,10 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
 import {
-  creerFournisseur,
-  enregistrerReception,
-  getMyStock,
-  listerFournisseurs,
   type CorpsReception,
   type EnteteFactureDemandee,
   type Fournisseur,
@@ -19,6 +15,7 @@ import {
   type StockMedicament,
 } from "@/lib/api_pharmacie";
 import { ApiError } from "@/lib/api_auth";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { LIBELLES_UNITE_MINIMALE, deOuD } from "@/lib/caisse/regles/quantites";
 import { controlerLigne, controlerSomme, lireMontant, lireTauxTva } from "@/lib/facture_fournisseur";
 import { formaterGNF } from "@/lib/format_gnf";
@@ -363,10 +360,10 @@ export default function NouvelleReceptionPage() {
   useEffect(() => {
     if (!structureId) return;
     let actif = true;
-    Promise.all([getMyStock(structureId), listerFournisseurs(structureId)])
+    Promise.all([sourcePharmacie().chargerStockInfo(structureId), sourcePharmacie().listerFournisseurs(structureId)])
       .then(([s, f]) => {
         if (!actif) return;
-        const fiches = s.data.stocks.filter((x) => !x.archiveLe);
+        const fiches = s.stocks.filter((x) => !x.archiveLe);
         setStock(fiches);
         setFournisseurs(f.data);
         setErreurChargement(null);
@@ -493,7 +490,8 @@ export default function NouvelleReceptionPage() {
     const telephone = telFournisseur.trim();
     setFournisseurEnCours(true);
     setErreurFournisseur(null);
-    creerFournisseur(structureId, { nom, ...(telephone !== "" ? { telephone } : {}) })
+    sourcePharmacie()
+      .creerFournisseur(structureId, { nom, ...(telephone !== "" ? { telephone } : {}) })
       .then((res) => {
         setFournisseurEnCours(false);
         const fournisseur: Fournisseur = {
@@ -586,7 +584,8 @@ export default function NouvelleReceptionPage() {
     setBandeauLignes(false);
     setReessayable(false);
     setConfirmationModif(false);
-    enregistrerReception(structureId, corps)
+    sourcePharmacie()
+      .enregistrerReception(structureId, corps)
       .then((res) => {
         envoiEnCours.current = false;
         setEnvoi(false);

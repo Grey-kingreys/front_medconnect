@@ -149,6 +149,63 @@ export const schemasStock = {
 
 export type NomMethodeStock = keyof typeof schemasStock;
 
+const ligneReception = z
+  .object({
+    stockId: identifiant,
+    numeroLot: z.string().max(64).optional(),
+    dateExpiration: z.string().max(10).optional(),
+    sansPeremption: z.boolean().optional(),
+    nombreBoites: z.number().int().min(1).max(1_000_000).optional(),
+    quantiteUnites: z.number().int().min(1).max(1_000_000_000).optional(),
+    coutAchatBoite: z.number().int().min(0).max(2_147_483_647).optional(),
+    codeArticleFournisseur: z.string().max(64).optional(),
+    codeBarres: z.string().max(64).optional(),
+    quantiteCommandee: z.number().int().min(0).max(1_000_000).optional(),
+    prixPublicBoite: montant.optional(),
+    codeTva: z.string().max(10).optional(),
+    tauxTvaPourMille: z.number().int().min(0).max(1000).optional(),
+    montantHTLigne: montant.optional(),
+    colisage: z.number().int().min(0).max(1_000_000).optional(),
+    tableau: z.string().max(20).optional(),
+    bonPreparation: z.string().max(64).optional(),
+  })
+  .strict();
+
+const corpsReception = z
+  .object({
+    id: uuid,
+    fournisseurId: identifiant.optional(),
+    reference: z.string().max(100).optional(),
+    recueLe: z.string().max(40).optional(),
+    numeroFacture: z.string().max(64).optional(),
+    referenceCommande: z.string().max(64).optional(),
+    dateFacture: z.string().max(10).optional(),
+    nombrePages: z.number().int().min(0).max(1000).optional(),
+    montantHT: montant.optional(),
+    totalTva: montant.optional(),
+    montantTTC: montant.optional(),
+    netAPayer: montant.optional(),
+    lignes: z.array(ligneReception).min(1).max(200),
+  })
+  .strict();
+
+/** Fonctions du domaine `reception` : enregistrer une livraison, lister et lire (permission `reception:write`). */
+export const schemasReception = {
+  enregistrer: z.tuple([identifiant, corpsReception]),
+  lister: z.tuple([identifiant, z.object({ page: z.number().int().min(1).max(100_000).optional() }).strict()]),
+  lire: z.tuple([identifiant, identifiant]),
+} as const;
+
+export type NomMethodeReception = keyof typeof schemasReception;
+
+/** Fonctions du domaine `fournisseur` : lister et créer (permission `reception:write`). */
+export const schemasFournisseur = {
+  lister: z.tuple([identifiant]),
+  creer: z.tuple([identifiant, z.object({ nom: z.string().max(100), telephone: z.string().max(30).optional() }).strict()]),
+} as const;
+
+export type NomMethodeFournisseur = keyof typeof schemasFournisseur;
+
 const TYPES_ANOMALIE = [
   "STOCK_NEGATIF",
   "ECART_INVENTAIRE",
@@ -163,6 +220,7 @@ const TYPES_ANOMALIE = [
   "PRODUIT_ARCHIVE",
   "EVENEMENT_REJETE",
   "SEQUENCE_MANQUANTE",
+  "RECEPTION_COEFFICIENT_DIFFERENT",
 ] as const;
 
 /** Fonctions du domaine `anomalie` : lecture de la file et traitement (permission `anomalie:gerer`). */
@@ -182,13 +240,14 @@ export const schemasAnomalie = {
 
 export type NomMethodeAnomalie = keyof typeof schemasAnomalie;
 
-export const DOMAINES_PONT = ["caisse", "stock", "reception", "inventaire", "credit", "anomalie"] as const;
+export const DOMAINES_PONT = ["caisse", "stock", "reception", "fournisseur", "inventaire", "credit", "anomalie"] as const;
 export type DomainePont = (typeof DOMAINES_PONT)[number];
 
 export const schemasParDomaine: Record<DomainePont, SchemasDomaine> = {
   caisse: schemasPont as unknown as SchemasDomaine,
   stock: schemasStock as unknown as SchemasDomaine,
-  reception: {},
+  reception: schemasReception as unknown as SchemasDomaine,
+  fournisseur: schemasFournisseur as unknown as SchemasDomaine,
   inventaire: {},
   credit: {},
   anomalie: schemasAnomalie as unknown as SchemasDomaine,
