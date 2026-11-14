@@ -8,6 +8,7 @@ import type {
   SessionCaisseOuverte,
   TypeMouvementCaisse,
 } from "../api_caisse";
+import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
 import type { CorpsSortieStock, SortieStockEnregistree, StockMedicament } from "../api_pharmacie";
 import type { CorpsCreationVente, Vente, VentesDuJour } from "../api_ventes";
 import type { EtatCaisse } from "./source";
@@ -56,12 +57,13 @@ export interface EtatPosteDesktop {
 export interface CorpsOuverture {
   id: string;
   posteId?: string;
-  comptage?: { coupures: LigneComptage[] };
+  comptage?: { montantEspeces?: number; coupures?: LigneComptage[] };
 }
 export interface CorpsComptage {
   id: string;
   moment: "OUVERTURE" | "FERMETURE";
-  coupures: LigneComptage[];
+  montantEspeces?: number;
+  coupures?: LigneComptage[];
   releves?: { mode: string; montant: number }[];
 }
 export interface CorpsMouvement {
@@ -72,7 +74,7 @@ export interface CorpsMouvement {
   mode?: string;
 }
 export interface CorpsFermeture {
-  comptageFermeture?: { id: string; coupures: LigneComptage[]; releves?: { mode: string; montant: number }[] };
+  comptageFermeture?: { id: string; montantEspeces?: number; coupures?: LigneComptage[]; releves?: { mode: string; montant: number }[] };
   commentaire?: string;
 }
 
@@ -124,6 +126,20 @@ export interface PontStock extends PontDomaine {
     stockId: string,
     corps: { id: string; lotId?: string; variation: number; motif: string; notes?: string },
   ): Promise<ReponsePont<StockMedicament>>;
+  /** Génère le .xlsx du stock local (sans coût) et l'enregistre par une boîte « Enregistrer sous ». */
+  exporter(s: string, options: { filtre?: "tous" | "alertes" | "rupture" | "qualifier"; q?: string }): Promise<ReponsePont<ResultatExportStock>>;
+}
+
+/** Résultat de l'export du stock sur le poste : `enregistre` est faux si la personne a fermé la boîte sans enregistrer. */
+export interface ResultatExportStock {
+  enregistre: boolean;
+  nomFichier: string;
+}
+
+/** Domaine `anomalie` du pont : file des anomalies ouvertes et traitement sur le poste (permission `anomalie:gerer`). */
+export interface PontAnomalie extends PontDomaine {
+  lister(s: string, options: OptionsListeAnomalies): Promise<ReponsePont<PageAnomalies>>;
+  traiter(s: string, anomalieId: string, corps: { commentaire: string }): Promise<ReponsePont<Anomalie>>;
 }
 
 export interface PontDesktop {
@@ -156,7 +172,7 @@ export interface PontDesktop {
   reception?: PontDomaine;
   inventaire?: PontDomaine;
   credit?: PontDomaine;
-  anomalie?: PontDomaine;
+  anomalie?: PontAnomalie;
   maj: {
     /** Installe la mise à jour prête et relance l'application ; refusé si une caisse est ouverte ou si des ventes attendent. */
     installer(): Promise<ReponsePont<null>>;

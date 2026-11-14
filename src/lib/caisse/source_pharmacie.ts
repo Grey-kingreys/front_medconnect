@@ -1,4 +1,5 @@
 import type { ApiResponse } from "../api_auth";
+import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
 import type {
   CorpsSortieStock,
   LotEnStock,
@@ -13,6 +14,18 @@ export interface CorpsCorrectionQuantite {
   variation: number;
   lotId?: string;
   motif: string;
+}
+
+/** Options de l'export du stock : mêmes filtres que la route du serveur. */
+export interface OptionsExportStock {
+  filtre?: "tous" | "alertes" | "rupture" | "qualifier";
+  q?: string;
+}
+
+/** Résultat d'un export : `enregistre` est faux si la personne a fermé la boîte « Enregistrer sous » sans enregistrer. */
+export interface ResultatExport {
+  enregistre: boolean;
+  nomFichier: string;
 }
 
 /**
@@ -33,4 +46,10 @@ export interface SourcePharmacie {
   sortirDuStock(structureId: string, corps: CorpsSortieStock): Promise<ApiResponse<SortieStockEnregistree>>;
   /** Corrige la quantité d'un lot (variation signée en unités minimales) ; rejouable avec le même `id`. */
   corrigerQuantite(structureId: string, stockId: string, corps: CorpsCorrectionQuantite): Promise<ApiResponse<StockMedicament>>;
+  /** File des anomalies (à traiter ou traitées). Sur le desktop : anomalies ouvertes de la photographie, moins celles traitées ici. */
+  listerAnomalies(structureId: string, options: OptionsListeAnomalies): Promise<ApiResponse<PageAnomalies>>;
+  /** Marque une anomalie traitée, une seule fois. Sur le desktop : écriture locale et événement `ANOMALIE_TRAITEE`. */
+  traiterAnomalie(structureId: string, anomalieId: string, commentaire: string): Promise<ApiResponse<Anomalie>>;
+  /** Exporte le stock en .xlsx. Sur le desktop : fichier fait sur le poste (sans coût), enregistré par « Enregistrer sous ». */
+  exporterStock(structureId: string, options: OptionsExportStock): Promise<ResultatExport>;
 }

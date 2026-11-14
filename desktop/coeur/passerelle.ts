@@ -8,10 +8,11 @@
  */
 import type { Referentiels } from "@/lib/api_caisse";
 import type { EtatPosteDesktop, ReponsePont, UtilisateurPoste } from "@/lib/caisse/contrat_desktop";
-import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeCaisse, type NomMethodeStock } from "@/lib/caisse/contrat_desktop_schemas";
+import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeAnomalie, type NomMethodeCaisse, type NomMethodeStock } from "@/lib/caisse/contrat_desktop_schemas";
 import { permissionsRequises } from "@/lib/caisse/permissions_pont";
 import type { CoeurCaisse, ReponseAnnulation } from "./coeur";
 import { messageCorrectionEnregistree, MESSAGE_SORTIE_ENREGISTREE, MESSAGE_SORTIE_REJOUEE } from "./messages_stock";
+import { MESSAGE_ANOMALIE_TRAITEE } from "./anomalies_locales";
 import { RefusCaisse } from "./refus";
 import type { EtatSynchro } from "./synchro";
 import type { Utilisateur } from "./types_caisse";
@@ -84,6 +85,11 @@ export interface DepsPasserelle {
   apresRattachement(): void;
   /** L'état du poste a changé : le rendu doit le relire. */
   etatChange(): void;
+  /**
+   * Enregistre un fichier généré par le poste (boîte « Enregistrer sous » du processus principal). Rend faux si la
+   * personne a fermé la boîte sans enregistrer. Absent : l'export du stock n'est pas disponible.
+   */
+  enregistrerFichier?(nomFichier: string, contenu: Buffer): Promise<boolean>;
   /** Journal sans corps, sans jeton, sans donnée de vente. */
   journal(message: string): void;
 }
@@ -167,6 +173,8 @@ export class Passerelle {
 
     const refus = this.controler(domaine, nom, valeurs);
     if (refus !== null) return refus;
+    if (domaine === "stock" && nom === "exporter") return this.exporterStock(valeurs);
+    if (domaine === "anomalie") return this.appelerAnomalie(nom as NomMethodeAnomalie, valeurs);
     if (domaine === "stock") return this.appelerStock(nom as NomMethodeStock, valeurs);
     // Les autres domaines pharmacie brancheront leur cœur ici, une fonction à la fois.
     if (domaine !== "caisse") return echec(501, "NON_IMPLEMENTE", MESSAGE_FONCTION_ABSENTE);
@@ -216,6 +224,39 @@ export class Passerelle {
     }
   }
 
+  /** Export du stock local en .xlsx, sans coût, enregistré par le processus principal. */
+  private async exporterStock(v: unknown[]): Promise<ReponsePont<unknown>> {
+    const enregistrer = this.deps.enregistrerFichier;
+    if (enregistrer === undefined) return echec(501, "NON_IMPLEMENTE", MESSAGE_FONCTION_ABSENTE);
+    try {
+      const { nomFichier, contenu } = this.deps.coeur.preparerExportStock(v[1] as never);
+      const enregistre = await enregistrer(nomFichier, contenu);
+      return succes({ enregistre, nomFichier }, enregistre ? "Stock exporté." : "Export annulé.");
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec stock.exporter : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_EXPORT", "Le stock n'a pas pu être exporté. Réessayez.");
+    }
+  }
+
+  /** Lecture de la file d'anomalies et traitement : écriture locale, puis cycle de synchronisation sans l'attendre. */
+  private appelerAnomalie(methode: NomMethodeAnomalie, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      if (methode === "lister") return succes(coeur.listerAnomalies(v[1] as never), "Anomalies du poste.");
+      const anomalie = coeur.traiterAnomalie(v[1] as string, (v[2] as { commentaire: string }).commentaire, utilisateur);
+      this.deps.etatChange();
+      this.deps.apresVente();
+      return succes(anomalie, MESSAGE_ANOMALIE_TRAITEE);
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec anomalie.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
   /** Utilisateur connecté, pharmacie du poste, droit de la fonction, catalogue : dans cet ordre. */
   private controler(domaine: DomainePont, methode: string, valeurs: unknown[]): ReponsePont<never> | null {
     const u = this.utilisateur;
@@ -236,7 +277,7 @@ export class Passerelle {
     }
     if (rattachee === null) return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);
     if (
-      (domaine === "stock" || methode === "chargerStock" || methode === "chargerReferentiels" || methode === "etatCaisse") &&
+      (domaine === "stock" || domaine === "anomalie" || methode === "chargerStock" || methode === "chargerReferentiels" || methode === "etatCaisse") &&
       !this.deps.coeur.aUnCatalogue()
     ) {
       return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);

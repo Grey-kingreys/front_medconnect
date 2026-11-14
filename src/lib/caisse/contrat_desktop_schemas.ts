@@ -7,18 +7,20 @@ import { z } from "zod";
 
 const identifiant = z.string().min(1).max(100);
 const montant = z.number().int().min(0).max(2_147_483_647);
+const montantGrand = z.number().int().min(0).max(1_000_000_000);
 const coupure = z.object({ valeurFaciale: z.number().int().positive().max(1_000_000), nombre: z.number().int().min(0).max(100_000) }).strict();
 const releve = z.object({ mode: identifiant, montant }).strict();
 
 const corpsOuverture = z
-  .object({ id: identifiant, posteId: identifiant.optional(), comptage: z.object({ coupures: z.array(coupure).max(50) }).strict().optional() })
+  .object({ id: identifiant, posteId: identifiant.optional(), comptage: z.object({ montantEspeces: montantGrand.optional(), coupures: z.array(coupure).max(50).optional() }).strict().optional() })
   .strict();
 
 const corpsComptage = z
   .object({
     id: identifiant,
     moment: z.enum(["OUVERTURE", "FERMETURE"]),
-    coupures: z.array(coupure).max(50),
+    montantEspeces: montantGrand.optional(),
+    coupures: z.array(coupure).max(50).optional(),
     releves: z.array(releve).max(20).optional(),
   })
   .strict();
@@ -36,7 +38,7 @@ const corpsMouvement = z
 const corpsFermeture = z
   .object({
     comptageFermeture: z
-      .object({ id: identifiant, coupures: z.array(coupure).max(50), releves: z.array(releve).max(20).optional() })
+      .object({ id: identifiant, montantEspeces: montantGrand.optional(), coupures: z.array(coupure).max(50).optional(), releves: z.array(releve).max(20).optional() })
       .strict()
       .optional(),
     commentaire: z.string().max(500).optional(),
@@ -133,9 +135,52 @@ const corpsCorrectionQuantite = z
 export const schemasStock = {
   sortir: z.tuple([identifiant, corpsSortieStock]),
   corriger: z.tuple([identifiant, identifiant, corpsCorrectionQuantite]),
+  /** Export du stock en .xlsx sur le poste : filtre et recherche, comme la route du serveur (permission `stock:read`). */
+  exporter: z.tuple([
+    identifiant,
+    z
+      .object({
+        filtre: z.enum(["tous", "alertes", "rupture", "qualifier"]).optional(),
+        q: z.string().max(200).optional(),
+      })
+      .strict(),
+  ]),
 } as const;
 
 export type NomMethodeStock = keyof typeof schemasStock;
+
+const TYPES_ANOMALIE = [
+  "STOCK_NEGATIF",
+  "ECART_INVENTAIRE",
+  "CONDITIONNEMENT_CONCURRENT",
+  "REMONTEE_APRES_CLOTURE",
+  "ECART_CAISSE",
+  "FOND_NON_COMPTE",
+  "PLAGE_EPUISEE",
+  "PRIX_DIVERGENT",
+  "ORDONNANCE_NON_CONFIRMEE",
+  "VENTE_UNITE_INTERDITE",
+  "PRODUIT_ARCHIVE",
+  "EVENEMENT_REJETE",
+  "SEQUENCE_MANQUANTE",
+] as const;
+
+/** Fonctions du domaine `anomalie` : lecture de la file et traitement (permission `anomalie:gerer`). */
+export const schemasAnomalie = {
+  lister: z.tuple([
+    identifiant,
+    z
+      .object({
+        statut: z.enum(["OUVERTE", "TRAITEE"]).optional(),
+        type: z.enum(TYPES_ANOMALIE).optional(),
+        page: z.number().int().min(1).max(100_000).optional(),
+      })
+      .strict(),
+  ]),
+  traiter: z.tuple([identifiant, identifiant, z.object({ commentaire: z.string().max(500) }).strict()]),
+} as const;
+
+export type NomMethodeAnomalie = keyof typeof schemasAnomalie;
 
 export const DOMAINES_PONT = ["caisse", "stock", "reception", "inventaire", "credit", "anomalie"] as const;
 export type DomainePont = (typeof DOMAINES_PONT)[number];
@@ -146,7 +191,7 @@ export const schemasParDomaine: Record<DomainePont, SchemasDomaine> = {
   reception: {},
   inventaire: {},
   credit: {},
-  anomalie: {},
+  anomalie: schemasAnomalie as unknown as SchemasDomaine,
 };
 
 export function estDomainePont(nom: string): nom is DomainePont {

@@ -130,7 +130,7 @@ describe("migration du schéma vers la version 5", () => {
     s.executer("INSERT INTO sorties_stock (venteId, sequence, stockId, lotId, quantiteUm) VALUES ('v1', 3, 's1', 'l1', 7)");
     s.executer("INSERT INTO sorties_stock (venteId, sequence, stockId, lotId, quantiteUm) VALUES ('v1', 3, 's1', NULL, 2)");
     migrer(s);
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(5);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(6);
     expect(s.lire("SELECT sequence, stockId, lotId, quantiteUm, type, reference FROM mouvements_locaux ORDER BY id")).toEqual([
       { sequence: 3, stockId: "s1", lotId: "l1", quantiteUm: -7, type: "VENTE", reference: "v1" },
       { sequence: 3, stockId: "s1", lotId: null, quantiteUm: -2, type: "VENTE", reference: "v1" },
@@ -143,8 +143,8 @@ describe("migration du schéma vers la version 5", () => {
 describe("schéma et stockage", () => {
   it("base neuve à la dernière version, migration rejouée sans erreur", () => {
     const s = base();
-    expect(VERSION_SCHEMA).toBe(5);
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(5);
+    expect(VERSION_SCHEMA).toBe(6);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(6);
     expect(() => migrer(s)).not.toThrow();
     expect(s.lire("SELECT id FROM etat_poste")).toHaveLength(1);
   });
@@ -163,7 +163,7 @@ describe("schéma et stockage", () => {
 
     migrer(s);
 
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(5);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(6);
     expect(s.lireUn("SELECT id, statut, adoptee, ouverteAutomatiquement, bilanFige FROM sessions")).toEqual({
       id: "s-ancienne",
       statut: "OUVERTE",

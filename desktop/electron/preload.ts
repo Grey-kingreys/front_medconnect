@@ -43,11 +43,15 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
   stock: {
     sortir: (s: string, corps: unknown) => appeler("stock:sortir", s, corps),
     corriger: (s: string, stockId: string, corps: unknown) => appeler("stock:corriger", s, stockId, corps),
+    exporter: (s: string, options: unknown) => appeler("stock:exporter", s, options),
   },
   reception: {},
   inventaire: {},
   credit: {},
-  anomalie: {},
+  anomalie: {
+    lister: (s: string, options: unknown) => appeler("anomalie:lister", s, options),
+    traiter: (s: string, anomalieId: string, corps: unknown) => appeler("anomalie:traiter", s, anomalieId, corps),
+  },
   maj: { installer: () => appeler("maj:installer") },
   impression: {
     listerImprimantes: () => appeler("impression:listerImprimantes"),

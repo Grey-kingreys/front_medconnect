@@ -119,52 +119,70 @@ afterEach(() => {
 });
 
 describe("Ma caisse", () => {
-  it("ouvre la caisse avec le fond compté, seules les coupures non nulles partent", async () => {
+  it("ouvre la caisse avec le fond saisi en un seul montant, sans coupures", async () => {
     await afficher(null);
-    fireEvent.change(champs()[0], { target: { value: "2" } });
-    fireEvent.change(champs()[2], { target: { value: "3" } });
+    expect(screen.queryByLabelText(/Nombre de billets/)).toBeNull();
+    fireEvent.change(screen.getByLabelText(/Monnaie dans le tiroir/), { target: { value: "51 500" } });
     fireEvent.click(screen.getByRole("button", { name: "Ouvrir la caisse avec ce fond" }));
     await waitFor(() => expect(ouvrirSession).toHaveBeenCalledTimes(1));
     const [structureId, corps] = ouvrirSession.mock.calls[0];
     expect(structureId).toBe("p1");
     expect(corps.posteId).toBe("po1");
     expect(corps.id).toMatch(UUID);
-    expect(corps.comptage).toEqual({
-      coupures: [
-        { valeurFaciale: 20000, nombre: 2 },
-        { valeurFaciale: 500, nombre: 3 },
-      ],
-    });
+    expect(corps.comptage).toEqual({ montantEspeces: 51500 });
   });
 
-  it("ouvre sans compter : aucun comptage dans le corps", async () => {
+  it("ouvre avec un fond de 0 : le comptage part avec 0", async () => {
     await afficher(null);
-    fireEvent.click(screen.getByRole("button", { name: "Ouvrir sans compter" }));
+    fireEvent.change(screen.getByLabelText(/Monnaie dans le tiroir/), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ouvrir la caisse avec ce fond" }));
     await waitFor(() => expect(ouvrirSession).toHaveBeenCalledTimes(1));
     const corps = ouvrirSession.mock.calls[0][1];
-    expect(corps.comptage).toBeUndefined();
+    expect(corps.comptage).toEqual({ montantEspeces: 0 });
     expect(corps.posteId).toBe("po1");
+  });
+
+  it("refuse un fond vide : aucun appel, message lié au champ, focus, effacé à la frappe", async () => {
+    await afficher(null);
+    fireEvent.click(screen.getByRole("button", { name: "Ouvrir la caisse avec ce fond" }));
+    const message = await screen.findByText("Indiquez la monnaie du tiroir (0 si le tiroir est vide).");
+    const champ = screen.getByLabelText(/Monnaie dans le tiroir/) as HTMLInputElement;
+    expect(ouvrirSession).not.toHaveBeenCalled();
+    expect(champ.getAttribute("aria-invalid")).toBe("true");
+    expect(champ.getAttribute("aria-describedby")).toContain(message.id);
+    expect(document.activeElement).toBe(champ);
+    fireEvent.change(champ, { target: { value: "5" } });
+    expect(screen.queryByText("Indiquez la monnaie du tiroir (0 si le tiroir est vide).")).toBeNull();
+  });
+
+  it("refuse un fond vide pour une caisse ouverte sans fond", async () => {
+    await afficher(SESSION);
+    fireEvent.click(screen.getByRole("button", { name: "Enregistrer le fond" }));
+    expect(await screen.findByText("Indiquez la monnaie du tiroir (0 si le tiroir est vide).")).toBeTruthy();
+    expect(saisirComptage).not.toHaveBeenCalled();
   });
 
   it("affiche tel quel le message d'ouverture pour le lendemain", async () => {
     const message = "Caisse ouverte. La journée d'aujourd'hui est déjà clôturée : cette caisse compte pour le 04/11/2026.";
     ouvrirSession.mockResolvedValue({ data: { ...SESSION, cree: true, ouverteMaintenant: true }, message, success: true });
     await afficher(null);
-    fireEvent.click(screen.getByRole("button", { name: "Ouvrir sans compter" }));
+    fireEvent.change(screen.getByLabelText(/Monnaie dans le tiroir/), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ouvrir la caisse avec ce fond" }));
     expect(await screen.findByText(message)).toBeTruthy();
   });
 
   it("propose de compter le fond d'une caisse ouverte sans fond", async () => {
     await afficher(SESSION);
     expect(screen.getByText("Fond de caisse : pas encore compté")).toBeTruthy();
-    fireEvent.change(champs()[1], { target: { value: "4" } });
+    fireEvent.change(screen.getByLabelText(/Monnaie dans le tiroir/), { target: { value: "40000" } });
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer le fond" }));
     await waitFor(() => expect(saisirComptage).toHaveBeenCalledTimes(1));
     const [structureId, sessionId, corps] = saisirComptage.mock.calls[0];
     expect(structureId).toBe("p1");
     expect(sessionId).toBe("sc1");
     expect(corps.moment).toBe("OUVERTURE");
-    expect(corps.coupures).toEqual([{ valeurFaciale: 10000, nombre: 4 }]);
+    expect(corps.montantEspeces).toBe(40000);
+    expect(corps.coupures).toBeUndefined();
   });
 
   it("n'affiche ni montant ni bouton pour la caisse d'un autre vendeur", async () => {
@@ -177,7 +195,8 @@ describe("Ma caisse", () => {
   it("rejoue avec le même identifiant après un échec réseau", async () => {
     ouvrirSession.mockRejectedValueOnce(new ApiError("Réseau", 0));
     await afficher(null);
-    fireEvent.click(screen.getByRole("button", { name: "Ouvrir sans compter" }));
+    fireEvent.change(screen.getByLabelText(/Monnaie dans le tiroir/), { target: { value: "0" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ouvrir la caisse avec ce fond" }));
     const reessayer = await screen.findByRole("button", { name: "Réessayer" });
     expect(screen.getByText(/ne sera pas comptée deux fois/)).toBeTruthy();
     expect(champs().every((c) => c.matches(":disabled"))).toBe(true);
@@ -190,6 +209,7 @@ describe("Ma caisse", () => {
     const message = "Le fond de cette caisse a déjà été compté.";
     saisirComptage.mockRejectedValueOnce(new ApiError(message, 409, { code: "COMPTAGE_DEJA_SAISI" }));
     await afficher(SESSION);
+    fireEvent.change(screen.getByLabelText(/Monnaie dans le tiroir/), { target: { value: "0" } });
     fireEvent.click(screen.getByRole("button", { name: "Enregistrer le fond" }));
     expect(await screen.findByText(message)).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Réessayer" })).toBeNull();
@@ -234,7 +254,7 @@ describe("Ma caisse", () => {
     fireEvent.click(bouton);
     expect(await screen.findByText("Comptez l'argent de votre caisse.")).toBeTruthy();
     expect(screen.getByText("Les ventes de cette caisse sont comptées pour le dimanche 1 novembre 2026.")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText(/Nombre de billets de 20/), { target: { value: "3" } });
+    fireEvent.change(screen.getByLabelText("Espèces dans le tiroir (GNF)"), { target: { value: "60000" } });
     fireEvent.click(screen.getByRole("button", { name: "Fermer ma caisse" }));
     fireEvent.click(await screen.findByRole("button", { name: "Confirmer la fermeture" }));
     await waitFor(() => expect(fermerSession).toHaveBeenCalledTimes(1));

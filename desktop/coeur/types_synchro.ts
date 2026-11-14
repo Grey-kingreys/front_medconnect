@@ -27,6 +27,9 @@ export interface FicheSynchro {
   coefficientBoite: number;
   uniteMinimale: string;
   deconditionnable: boolean;
+  /** Faux : la fiche reste à qualifier. Absent d'un serveur plus ancien. */
+  qualifie?: boolean;
+  notes?: string | null;
   /** Jamais négative (D719) : le poste affiche 0 et `quantiteARegulariser`. */
   quantite: number;
   quantiteARegulariser: number;
@@ -65,6 +68,23 @@ export interface CoupureSynchro {
   ordre: number;
 }
 
+/** Anomalie ouverte de la pharmacie, telle que la photographie la donne (détails lisibles, aucun coût). */
+export interface AnomalieSynchro {
+  id: string;
+  type: string;
+  libelle: string;
+  statut: "OUVERTE" | "TRAITEE";
+  creeLe: string;
+  pieceType: string;
+  pieceId: string | null;
+  details: Record<string, unknown> | null;
+  attribueeA: { id: string; nom: string } | null;
+  traiteeLe: string | null;
+  traiteePar: { id: string; nom: string } | null;
+  commentaireTraitement: string | null;
+  rattachement: { etat: string; quantiteInitiale: number; quantiteEnAttente: number; message: string } | null;
+}
+
 export interface Photographie {
   pharmacie: {
     id: string;
@@ -87,6 +107,8 @@ export interface Photographie {
   modesPaiement: ModePaiementSynchro[];
   coupures: CoupureSynchro[];
   fiches: FicheSynchro[];
+  /** Anomalies ouvertes (absent d'un serveur plus ancien). */
+  anomalies?: AnomalieSynchro[];
 }
 
 /** Ligne du journal local prête à partir : `corps` est le texte stocké, jamais retransformé. */

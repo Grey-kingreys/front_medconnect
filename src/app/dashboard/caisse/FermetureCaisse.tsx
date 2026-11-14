@@ -8,7 +8,7 @@ import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
 import { sourceCaisse } from "@/lib/caisse/source_active";
-import { fermerSession, type BilanCaisse, type Coupure, type LigneComptage, type ModePaiement } from "@/lib/api_caisse";
+import { fermerSession, type BilanCaisse, type ModePaiement } from "@/lib/api_caisse";
 import { codeErreur, estErreurReseau } from "@/lib/erreurs_api";
 import { formaterGNF } from "@/lib/format_gnf";
 import {
@@ -22,8 +22,8 @@ import {
   POLICE_TITRE,
 } from "@/components/pharmacie/classes";
 import { formaterJour } from "../ventes/affichage";
-import { ComptageCoupures } from "./ComptageCoupures";
-import { lignesAEnvoyer, lignesDepuisReferentiel, totalComptage } from "./comptage";
+import { ChampEspeces } from "./ChampEspeces";
+import { montantDepuisChiffres } from "./comptage";
 
 const CODE_ESPECES = "ESPECES";
 const COMMENTAIRE_MAX = 500;
@@ -56,7 +56,6 @@ interface FermetureCaisseProps {
   /** Bilan chargé avant la fermeture : fournit l'attendu et le seuil d'écart. */
   bilan: BilanCaisse;
   modes: ModePaiement[];
-  coupures: Coupure[];
   /** Jour AAAA-MM-JJ de la caisse quand elle date d'un jour précédent, sinon null. */
   jourPasse: string | null;
   /** Appelé avec le bilan figé quand la caisse est fermée. */
@@ -66,9 +65,9 @@ interface FermetureCaisseProps {
 }
 
 /** Bloc de fermeture : comptage, relevés facultatifs, aperçu des écarts, commentaire, confirmation. Tout se fait au clavier. */
-export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures, jourPasse, onFermee, onRefus }: FermetureCaisseProps) {
+export function FermetureCaisse({ structureId, sessionId, bilan, modes, jourPasse, onFermee, onRefus }: FermetureCaisseProps) {
   const modesSansComptage = [...modes].filter((m) => !m.comptagePhysique).sort((a, b) => a.ordre - b.ordre);
-  const [lignes, setLignes] = useState<LigneComptage[]>(() => lignesDepuisReferentiel(coupures));
+  const [especes, setEspeces] = useState("");
   const [releves, setReleves] = useState<Record<string, string>>({});
   const [commentaire, setCommentaire] = useState("");
   const [idComptage, setIdComptage] = useState(nouvelleCleIdempotence);
@@ -88,9 +87,9 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
   }, [demandeFocusCommentaire]);
 
   const theorique = (code: string) => bilan.theorique.find((t) => t.mode === code)?.montant ?? 0;
-  const compte = totalComptage(lignes);
-  const ecartEspeces = compte - theorique(CODE_ESPECES);
-  const commentaireRequis = Math.abs(ecartEspeces) > bilan.seuilEcartCaisse;
+  const compte = montantDepuisChiffres(especes);
+  const ecartEspeces = compte === null ? null : compte - theorique(CODE_ESPECES);
+  const commentaireRequis = ecartEspeces !== null && Math.abs(ecartEspeces) > bilan.seuilEcartCaisse;
   const commentaireManquant = commentaireRequis && commentaire.trim().length < COMMENTAIRE_MIN;
   const verrouille = envoi || corpsARejouer !== null;
 
@@ -100,7 +99,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
     else boutonFermer.current?.focus();
   };
 
-  const apresBillets = () => {
+  const apresEspeces = () => {
     if (champsReleves.current[0]) champsReleves.current[0].focus();
     else apresSaisie();
   };
@@ -126,6 +125,11 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
       champsReleves.current[indexTrop]?.focus();
       return;
     }
+    if (compte === null) {
+      setErreur("Indiquez les espèces comptées dans le tiroir (0 si le tiroir est vide).");
+      document.getElementById("especes-fermeture")?.focus();
+      return;
+    }
     if (commentaireManquant) {
       setErreur(
         `Un commentaire est obligatoire : l'écart d'espèces dépasse ${formaterGNF(bilan.seuilEcartCaisse)}. Expliquez-le en quelques mots.`,
@@ -145,7 +149,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
     return {
       comptageFermeture: {
         id: idComptage,
-        coupures: lignesAEnvoyer(lignes),
+        montantEspeces: compte ?? 0,
         ...(relevesEnvoyes.length > 0 ? { releves: relevesEnvoyes } : {}),
       },
       ...(texte !== "" ? { commentaire: texte } : {}),
@@ -207,13 +211,15 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
         )}
         <p className="text-mc-normal text-slate-700 dark:text-slate-300">Comptez l&apos;argent de votre caisse.</p>
 
-        <ComptageCoupures
-          coupures={coupures}
-          valeur={lignes}
-          onChange={setLignes}
-          onTermine={apresBillets}
+        <ChampEspeces
+          id="especes-fermeture"
+          legende="Espèces dans le tiroir (GNF)"
+          valeur={especes}
+          onChange={setEspeces}
+          onTermine={apresEspeces}
           desactive={verrouille}
-          legende="Espèces dans le tiroir"
+          autoFocus
+          aide="Le total de l'argent liquide que vous avez dans le tiroir."
         />
 
         {modesSansComptage.length > 0 && (
@@ -247,7 +253,11 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
         )}
 
         <div aria-live="polite" className="space-y-1 text-mc-normal font-medium">
-          <p className={classeEcart(ecartEspeces)}>Écart espèces : {texteEcart(ecartEspeces)}</p>
+          {ecartEspeces === null ? (
+            <p className="text-slate-700 dark:text-slate-300">Écart espèces : saisissez le montant du tiroir</p>
+          ) : (
+            <p className={classeEcart(ecartEspeces)}>Écart espèces : {texteEcart(ecartEspeces)}</p>
+          )}
           {modesSansComptage.map((m) => {
             const saisi = releves[m.code] ?? "";
             if (saisi === "") {
@@ -318,7 +328,7 @@ export function FermetureCaisse({ structureId, sessionId, bilan, modes, coupures
         )}
       </div>
 
-      <ConfirmationFermeture isOpen={confirmation} especes={compte} onClose={() => setConfirmation(false)} onConfirmer={confirmer} />
+      <ConfirmationFermeture isOpen={confirmation} especes={compte ?? 0} onClose={() => setConfirmation(false)} onConfirmer={confirmer} />
     </>
   );
 }

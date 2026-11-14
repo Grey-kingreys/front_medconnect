@@ -1,5 +1,5 @@
 import type { LotEnStock, StockInfo, StockMedicament } from "../api_pharmacie";
-import type { PontDesktop, PontStock } from "./contrat_desktop";
+import type { PontAnomalie, PontDesktop, PontStock } from "./contrat_desktop";
 import type { SourcePharmacie } from "./source_pharmacie";
 import { lire } from "./source_desktop";
 
@@ -42,6 +42,10 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     if (pont.stock === undefined || typeof pont.stock.sortir !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
     return pont.stock;
   };
+  const anomalie = (): PontAnomalie => {
+    if (pont.anomalie === undefined || typeof pont.anomalie.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.anomalie;
+  };
   const chargerStock = async (structureId: string) => lire(await pont.caisse.chargerStock(structureId)).data;
 
   return {
@@ -61,6 +65,17 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     },
     async corrigerQuantite(structureId, stockId, corps) {
       return lire(await stock().corriger(structureId, stockId, corps));
+    },
+    async listerAnomalies(structureId, options) {
+      return lire(await anomalie().lister(structureId, options));
+    },
+    async traiterAnomalie(structureId, anomalieId, commentaire) {
+      return lire(await anomalie().traiter(structureId, anomalieId, { commentaire }));
+    },
+    async exporterStock(structureId, options) {
+      const s = stock();
+      if (typeof s.exporter !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+      return lire(await s.exporter(structureId, options)).data;
     },
   };
 }

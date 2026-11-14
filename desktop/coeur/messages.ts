@@ -16,7 +16,7 @@ export const MESSAGE_SESSION_AUTRE_VENDEUR =
   "Cette caisse appartient à un autre vendeur : seul un responsable peut la consulter ou la modifier.";
 export const MESSAGE_SESSION_FERMEE = "Cette caisse est déjà fermée : ouvrez une nouvelle caisse pour continuer.";
 export const MESSAGE_IDENTIFIANT_DEJA_UTILISE = "Cet identifiant est déjà utilisé par un autre enregistrement de caisse.";
-export const MESSAGE_COMPTAGE_FERMETURE_REQUIS = "Comptez les billets du tiroir avant de fermer la caisse.";
+export const MESSAGE_COMPTAGE_FERMETURE_REQUIS = "Comptez l'argent du tiroir avant de fermer la caisse.";
 export const MESSAGE_MOTIF_MOUVEMENT_REQUIS = "Indiquez le motif de ce mouvement de caisse (3 caractères au moins).";
 
 export function messageSessionAutreUtilisateur(nom: string): string {

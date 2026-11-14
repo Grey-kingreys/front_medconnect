@@ -48,6 +48,7 @@ import { SortieStock } from "./SortieStock";
 
 type Filtre = "all" | "low" | "rupture" | "qualifier";
 
+const MESSAGE_EXPORT_LOCAL = "Stock exporté depuis ce poste. Les prix d'achat ne sont pas dans le fichier (ils ne sont pas gardés sur le poste).";
 const MSG_EXPORT_ECHOUE = "Le stock n'a pas pu être exporté. Vérifiez votre connexion puis réessayez.";
 const FILTRE_VERS_API: Record<Filtre, FiltreExportStock> = { all: "tous", low: "alertes", rupture: "rupture", qualifier: "qualifier" };
 
@@ -158,10 +159,18 @@ export default function StockPage() {
   const exporter = async (seulementAffichage: boolean) => {
     if (!user?.structureId) return;
     setChoixExportOuvert(false);
-    if (exigerConnexion()) return;
     setErreurExport(null);
     setExportEnCours(true);
     try {
+      // Hors ligne sur le poste : le fichier est fait sur le poste, sans coût, et enregistré par « Enregistrer sous ».
+      if (horsLigne) {
+        const resultat = await sourcePharmacie().exporterStock(
+          user.structureId,
+          seulementAffichage ? { filtre: FILTRE_VERS_API[filter], q: search.trim() } : {},
+        );
+        if (resultat.enregistre) setSucces(MESSAGE_EXPORT_LOCAL);
+        return;
+      }
       const { blob, filename } = await exporterStock(
         user.structureId,
         seulementAffichage ? { filtre: FILTRE_VERS_API[filter], q: search.trim() } : {},

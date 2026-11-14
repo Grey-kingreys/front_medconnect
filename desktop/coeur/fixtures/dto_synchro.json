@@ -31,7 +31,8 @@
       "comptageId": { "type": "uuid", "obligatoire": true },
       "sessionId": { "type": "uuid", "obligatoire": true },
       "moment": { "type": "enum", "valeurs": ["OUVERTURE", "FERMETURE"], "obligatoire": true },
-      "coupures": { "type": "tableau", "max": 20, "classe": "LigneComptageDto", "obligatoire": true },
+      "montantEspeces": { "type": "int", "min": 0, "max": 1000000000 },
+      "coupures": { "type": "tableau", "max": 20, "classe": "LigneComptageDto" },
       "releves": { "type": "tableau", "max": 20, "classe": "ReleveModeDto" }
     },
     "CorpsMouvementCaisseDto": {
@@ -44,7 +45,8 @@
     },
     "ComptageFermetureRejeuDto": {
       "comptageId": { "type": "uuid", "obligatoire": true },
-      "coupures": { "type": "tableau", "max": 20, "classe": "LigneComptageDto", "obligatoire": true },
+      "montantEspeces": { "type": "int", "min": 0, "max": 1000000000 },
+      "coupures": { "type": "tableau", "max": 20, "classe": "LigneComptageDto" },
       "releves": { "type": "tableau", "max": 20, "classe": "ReleveModeDto" }
     },
     "CorpsSessionFermeeDto": {
@@ -86,6 +88,8 @@
     }
   },
   "exclusifs": {
-    "CorpsVenteDto": [["numeroTicket", "numeroSecours"]]
+    "CorpsVenteDto": [["numeroTicket", "numeroSecours"]],
+    "CorpsComptageSaisiDto": [["montantEspeces", "coupures"]],
+    "ComptageFermetureRejeuDto": [["montantEspeces", "coupures"]]
   }
 }

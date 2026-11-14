@@ -385,7 +385,7 @@ describe("caisse (CA15, CA18)", () => {
     // CA18 : fermeture sans comptage refusée.
     expect(refus(() => c.fermerSession(uuid(1), {}, VENDEUR))).toMatchObject({
       code: "COMPTAGE_FERMETURE_REQUIS",
-      message: "Comptez les billets du tiroir avant de fermer la caisse.",
+      message: "Comptez l'argent du tiroir avant de fermer la caisse.",
     });
     // Écart au-delà du seuil sans commentaire : refusée, rien d'écrit.
     const comptage = { id: uuid(3), coupures: coupures(24, 1) };
@@ -417,6 +417,36 @@ describe("caisse (CA15, CA18)", () => {
     const suivante = c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }] }, cle(2), VENDEUR);
     expect(suivante.session.id).not.toBe(uuid(1));
     expect(suivante.session.ouverteAutomatiquement).toBe(true);
+  });
+
+  it("comptage par montant total : fond, écart, événements au nouveau format ; les coupures restent acceptées", () => {
+    const { s, c } = coeurPret([fiche(1, { prixUnitaire: 100000 })]);
+    const ouverte = c.ouvrirSession({ id: uuid(1), comptage: { montantEspeces: 200000 } }, VENDEUR);
+    expect(ouverte).toMatchObject({ fondCaisse: 200000, fondCompte: true });
+    expect(evenements(s)[1].corps).toMatchObject({ moment: "OUVERTURE", montantEspeces: 200000 });
+    expect(evenements(s)[1].corps).not.toHaveProperty("coupures");
+
+    c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 4 }] }, cle(1), VENDEUR);
+    // Théorique 600 000, compté 590 000 : écart de -10 000, commentaire exigé.
+    const comptage = { id: uuid(3), montantEspeces: 590000 };
+    expect(refus(() => c.fermerSession(uuid(1), { comptageFermeture: comptage }, VENDEUR))).toMatchObject({
+      status: 400,
+      code: "COMMENTAIRE_ECART_REQUIS",
+    });
+    const figee = c.fermerSession(uuid(1), { comptageFermeture: comptage, commentaire: "Erreur de rendu de monnaie" }, VENDEUR);
+    expect(figee).toMatchObject({ fige: true, ecartEspeces: -10000 });
+    expect(figee.compte.find((e) => e.mode === "ESPECES")?.montant).toBe(590000);
+    expect(evenements(s).at(-1)?.corps).toMatchObject({ comptageFermeture: { comptageId: uuid(3), montantEspeces: 590000 } });
+    expect(evenements(s).at(-1)?.corps.comptageFermeture).not.toHaveProperty("coupures");
+
+    // Les deux formats ensemble, aucun, ou un montant invalide : refusés.
+    const autre = coeurPret([fiche(1)]);
+    autre.c.ouvrirSession({ id: uuid(1) }, VENDEUR);
+    for (const corps of [{ montantEspeces: 10, coupures: coupures(1) }, {}, { montantEspeces: -5 }, { montantEspeces: 1.5 }]) {
+      expect(refus(() => autre.c.saisirComptage(uuid(1), { id: uuid(5), moment: "FERMETURE", ...corps }, VENDEUR)).status).toBe(400);
+    }
+    // Ancien format par coupures : toujours accepté, total inchangé.
+    expect(autre.c.saisirComptage(uuid(1), { id: uuid(6), moment: "FERMETURE", coupures: coupures(3) }, VENDEUR)).toMatchObject({ totalEspeces: 60000 });
   });
 
   it("comptages : coupures du référentiel, doublons, bornes, ouverture sans relevé, comptage déjà saisi", () => {

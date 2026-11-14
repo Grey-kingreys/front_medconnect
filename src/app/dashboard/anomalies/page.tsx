@@ -9,7 +9,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
-import { listerAnomalies, traiterAnomalie, type Anomalie, type PageAnomalies, type TypeAnomalie } from "@/lib/api_pilotage";
+import type { Anomalie, PageAnomalies, TypeAnomalie } from "@/lib/api_pilotage";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { codeErreur, estErreurReseau } from "@/lib/erreurs_api";
 import { formaterGNF } from "@/lib/format_gnf";
 import {
@@ -214,7 +215,8 @@ function AnomaliesContenu() {
   useEffect(() => {
     if (!structureId || !peutGerer) return;
     let actif = true;
-    listerAnomalies(structureId, { statut: onglet, ...(type !== "" ? { type } : {}), page })
+    sourcePharmacie()
+      .listerAnomalies(structureId, { statut: onglet, ...(type !== "" ? { type } : {}), page })
       .then((res) => {
         if (!actif) return;
         setOuvertes(res.data.ouvertes);
@@ -292,7 +294,8 @@ function AnomaliesContenu() {
     envoiEnCours.current = true;
     setEnvoi(true);
     setErreurDialogue(null);
-    traiterAnomalie(structureId, cible.id, commentaire)
+    sourcePharmacie()
+      .traiterAnomalie(structureId, cible.id, commentaire)
       .then((res) => {
         envoiEnCours.current = false;
         setEnvoi(false);

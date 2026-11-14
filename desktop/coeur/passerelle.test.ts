@@ -389,12 +389,15 @@ describe("domaines du pont et permission propre à chaque fonction (A3, A5)", ()
     expect(permissionsRequises("caisse", "creerVente")).toEqual(["caisse:utiliser"]);
     expect(permissionsRequises("caisse", "chargerStock")).toEqual(["caisse:utiliser"]);
     expect(permissionsRequises("caisse", "toString")).toBeNull();
-    for (const d of ["reception", "inventaire", "credit", "anomalie"] as const) {
+    for (const d of ["reception", "inventaire", "credit"] as const) {
       expect(Object.keys(schemasParDomaine[d])).toEqual([]);
       expect(Object.keys(PERMISSIONS_PAR_FONCTION[d])).toEqual([]);
     }
     // Le domaine stock a deux fonctions, chacune avec stock:write.
-    expect(Object.keys(schemasParDomaine.stock)).toEqual(["sortir", "corriger"]);
+    expect(Object.keys(schemasParDomaine.stock)).toEqual(["sortir", "corriger", "exporter"]);
+    expect(Object.keys(PERMISSIONS_PAR_FONCTION.anomalie)).toEqual(["lister", "traiter"]);
+    expect(permissionsRequises("anomalie", "traiter")).toEqual(["anomalie:gerer"]);
+    expect(permissionsRequises("stock", "exporter")).toEqual(["stock:read"]);
     expect(permissionsRequises("stock", "sortir")).toEqual(["stock:write"]);
     expect(permissionsRequises("stock", "corriger")).toEqual(["stock:write"]);
   });

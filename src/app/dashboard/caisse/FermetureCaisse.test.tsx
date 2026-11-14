@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "@/lib/api_auth";
-import type { BilanCaisse, Coupure, ModePaiement, SessionCaisse } from "@/lib/api_caisse";
+import type { BilanCaisse, ModePaiement, SessionCaisse } from "@/lib/api_caisse";
 import { formaterGNF } from "@/lib/format_gnf";
 import { CaisseFermee, FermetureCaisse } from "./FermetureCaisse";
 
@@ -10,11 +10,6 @@ vi.mock("@/lib/api_caisse", () => ({ fermerSession }));
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
-const COUPURES: Coupure[] = [
-  { devise: "GNF", valeurFaciale: 20000, type: "BILLET", ordre: 1 },
-  { devise: "GNF", valeurFaciale: 10000, type: "BILLET", ordre: 2 },
-  { devise: "GNF", valeurFaciale: 500, type: "BILLET", ordre: 3 },
-];
 const MODES: ModePaiement[] = [
   { code: "ESPECES", libelle: "Espèces", comptagePhysique: true, referenceAutorisee: false, ordre: 1 },
   { code: "ORANGE_MONEY", libelle: "Orange Money", comptagePhysique: false, referenceAutorisee: true, ordre: 2 },
@@ -60,7 +55,6 @@ const afficher = (b: BilanCaisse) =>
       sessionId="sc1"
       bilan={b}
       modes={MODES}
-      coupures={COUPURES}
       jourPasse={null}
       onFermee={onFermee}
       onRefus={onRefus}
@@ -68,7 +62,7 @@ const afficher = (b: BilanCaisse) =>
   );
 // Le testeur normalise les espaces insécables du texte affiché : on fait de même pour les attendus.
 const gnf = (montant: number) => formaterGNF(montant).replace(/\s/g, " ");
-const billet = (valeurFaciale: number) => screen.getByLabelText(`Nombre de billets de ${gnf(valeurFaciale)}`);
+const especes = () => screen.getByLabelText("Espèces dans le tiroir (GNF)") as HTMLInputElement;
 const actif = () => document.activeElement as HTMLElement;
 const entree = () => fireEvent.keyDown(actif(), { key: "Enter" });
 const saisir = (valeur: string) => fireEvent.change(actif(), { target: { value: valeur } });
@@ -79,16 +73,11 @@ afterEach(() => {
 });
 
 describe("Fermeture de la caisse", () => {
-  it("se fait au clavier seul, de la saisie des billets à la confirmation", async () => {
+  it("se fait au clavier seul, de la saisie des espèces à la confirmation", async () => {
     fermerSession.mockResolvedValue({ data: { ...bilan(50000), fige: true }, message: "ok", success: true });
     afficher(bilan(50000));
-    expect(actif()).toBe(billet(20000));
-    saisir("2");
-    entree();
-    expect(actif()).toBe(billet(10000));
-    saisir("1");
-    entree();
-    expect(actif()).toBe(billet(500));
+    expect(actif()).toBe(especes());
+    saisir("50 000");
     entree();
     expect(actif()).toBe(screen.getByLabelText("Relevé Orange Money (facultatif)"));
     saisir("87000");
@@ -103,10 +92,8 @@ describe("Fermeture de la caisse", () => {
     expect(structureId).toBe("p1");
     expect(sessionId).toBe("sc1");
     expect(corps.comptageFermeture.id).toMatch(UUID);
-    expect(corps.comptageFermeture.coupures).toEqual([
-      { valeurFaciale: 20000, nombre: 2 },
-      { valeurFaciale: 10000, nombre: 1 },
-    ]);
+    expect(corps.comptageFermeture.montantEspeces).toBe(50000);
+    expect(corps.comptageFermeture.coupures).toBeUndefined();
     expect(corps.comptageFermeture.releves).toEqual([{ mode: "ORANGE_MONEY", montant: 87000 }]);
     expect(corps.commentaire).toBeUndefined();
     await waitFor(() => expect(onFermee).toHaveBeenCalledTimes(1));
@@ -114,6 +101,7 @@ describe("Fermeture de la caisse", () => {
 
   it("une touche Entrée maintenue n'ouvre pas la confirmation et ne confirme pas", async () => {
     afficher(bilan(0));
+    fireEvent.change(especes(), { target: { value: "0" } });
     const fermer = screen.getByRole("button", { name: "Fermer ma caisse" });
     fireEvent.keyDown(fermer, { key: "Enter", repeat: true });
     expect(screen.queryByRole("dialog")).toBeNull();
@@ -126,10 +114,22 @@ describe("Fermeture de la caisse", () => {
 
   it("montre l'écart des espèces par simple soustraction de l'attendu", () => {
     afficher(bilan(500000, 20000));
-    fireEvent.change(billet(20000), { target: { value: "24" } });
-    fireEvent.change(billet(10000), { target: { value: "1" } });
+    expect(screen.queryByLabelText(/Nombre de billets/)).toBeNull();
+    expect(screen.getByText("Écart espèces : saisissez le montant du tiroir")).toBeTruthy();
+    fireEvent.change(especes(), { target: { value: "490 000" } });
     expect(screen.getByText(`Écart espèces : ${gnf(-10000)}`)).toBeTruthy();
     expect(gnf(-10000)).toBe("-10 000 GNF");
+  });
+
+  it("bloque les lettres, accepte les séparateurs de milliers et refuse un champ vide", () => {
+    afficher(bilan(0));
+    fireEvent.change(especes(), { target: { value: "12ab3,4 5" } });
+    expect(especes().value).toBe("12 345");
+    fireEvent.click(screen.getByRole("button", { name: "Fermer ma caisse" }));
+    fireEvent.change(especes(), { target: { value: "" } });
+    fireEvent.click(screen.getByRole("button", { name: "Fermer ma caisse" }));
+    expect(screen.getByRole("alert").textContent).toMatch(/Indiquez les espèces comptées/);
+    expect(fermerSession).not.toHaveBeenCalled();
   });
 
   it("n'affiche aucun écart pour un mode sans relevé", () => {
@@ -142,6 +142,7 @@ describe("Fermeture de la caisse", () => {
 
   it("exige un commentaire au-delà du seuil et refuse la fermeture sans lui", () => {
     afficher(bilan(50000, 5000));
+    fireEvent.change(especes(), { target: { value: "0" } });
     expect(screen.getByLabelText(`Commentaire (obligatoire : écart supérieur à ${gnf(5000)})`)).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Fermer ma caisse" }));
     expect(screen.queryByRole("button", { name: "Confirmer la fermeture" })).toBeNull();
@@ -153,7 +154,8 @@ describe("Fermeture de la caisse", () => {
   it("affiche le message du serveur et place le focus sur le commentaire", async () => {
     const message = "L'écart d'espèces est de 50 000 GNF, au-delà du seuil : ajoutez un commentaire pour fermer la caisse.";
     fermerSession.mockRejectedValueOnce(new ApiError(message, 400, { code: "COMMENTAIRE_ECART_REQUIS" }));
-    afficher(bilan(0));
+    afficher(bilan(50000));
+    fireEvent.change(especes(), { target: { value: "50000" } });
     fireEvent.click(screen.getByRole("button", { name: "Fermer ma caisse" }));
     fireEvent.click(await screen.findByRole("button", { name: "Confirmer la fermeture" }));
     expect(await screen.findByText(message)).toBeTruthy();
@@ -163,6 +165,7 @@ describe("Fermeture de la caisse", () => {
 
   it("refuse localement un relevé au-delà du plafond", () => {
     afficher(bilan(0));
+    fireEvent.change(especes(), { target: { value: "0" } });
     fireEvent.change(screen.getByLabelText("Relevé Orange Money (facultatif)"), { target: { value: "1000000001" } });
     fireEvent.click(screen.getByRole("button", { name: "Fermer ma caisse" }));
     expect(screen.getByRole("alert").textContent).toBe(`Le relevé Orange Money ne peut pas dépasser ${formaterGNF(1000000000)}.`);
@@ -174,11 +177,12 @@ describe("Fermeture de la caisse", () => {
     fermerSession.mockRejectedValueOnce(new ApiError("Réseau", 0));
     fermerSession.mockResolvedValueOnce({ data: { ...bilan(0), fige: true }, message: "ok", success: true });
     afficher(bilan(0));
+    fireEvent.change(especes(), { target: { value: "0" } });
     fireEvent.click(screen.getByRole("button", { name: "Fermer ma caisse" }));
     fireEvent.click(await screen.findByRole("button", { name: "Confirmer la fermeture" }));
     const reessayer = await screen.findByRole("button", { name: "Réessayer" });
     expect(screen.getByText(/ne sera pas faite deux fois/)).toBeTruthy();
-    expect(billet(20000).matches(":disabled")).toBe(true);
+    expect(especes().matches(":disabled")).toBe(true);
     fireEvent.click(reessayer);
     await waitFor(() => expect(fermerSession).toHaveBeenCalledTimes(2));
     expect(fermerSession.mock.calls[1][2]).toEqual(fermerSession.mock.calls[0][2]);

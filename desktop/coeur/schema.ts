@@ -170,6 +170,23 @@ const ETAPES: string[] = [
     SELECT sequence, stockId, lotId, -quantiteUm, 'VENTE', venteId FROM sorties_stock ORDER BY rowid;
   DROP TABLE sorties_stock;
   `,
+  // Version 6 (anomalies hors ligne) : anomalies ouvertes de la dernière photographie (lecture) et anomalies
+  // marquées « traitées » sur le poste, pas encore appliquées par le serveur (même règle de séquence que les mouvements).
+  `
+  CREATE TABLE anomalies_locales (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE anomalies_traitees_locales (
+    anomalieId TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    commentaire TEXT NOT NULL,
+    traiteeLe TEXT NOT NULL,
+    traiteeParId TEXT NOT NULL,
+    traiteeParNom TEXT NOT NULL
+  );
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

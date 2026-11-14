@@ -26,8 +26,8 @@ describe("réglages du poste", () => {
     s.executer("UPDATE etat_poste SET structureId = 'ph1' WHERE id = 1");
     expect(s.lire("SELECT name FROM sqlite_master WHERE name = 'reglages'")).toHaveLength(0);
     migrer(s);
-    expect(VERSION_SCHEMA).toBe(5);
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(5);
+    expect(VERSION_SCHEMA).toBe(6);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(6);
     expect(s.lire("SELECT name FROM sqlite_master WHERE name = 'reglages'")).toHaveLength(1);
     expect(s.lireUn<{ structureId: string }>("SELECT structureId FROM etat_poste")?.structureId).toBe("ph1");
   });

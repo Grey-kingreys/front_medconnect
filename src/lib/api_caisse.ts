@@ -119,7 +119,7 @@ export function getSessionCourante(structureId: string, posteId: string) {
 /** Ouvre la caisse du poste, avec ou sans comptage du fond. Rejouable avec le même `id` (D688). */
 export function ouvrirSession(
   structureId: string,
-  corps: { id: string; posteId: string; comptage?: { coupures: LigneComptage[] } },
+  corps: { id: string; posteId: string; comptage?: { montantEspeces?: number; coupures?: LigneComptage[] } },
 ) {
   return authFetch<SessionCaisseOuverte>(`/pharmacie/${encodeURIComponent(structureId)}/caisse/sessions`, {
     method: "POST",
@@ -127,14 +127,16 @@ export function ouvrirSession(
   });
 }
 
-/** Enregistre un comptage par coupure (fond à l'ouverture, caisse à la fermeture). */
+/** Enregistre un comptage des espèces (montant total, ou par coupure) (fond à l'ouverture, caisse à la fermeture). */
 export function saisirComptage(
   structureId: string,
   sessionId: string,
   corps: {
     id: string;
     moment: "OUVERTURE" | "FERMETURE";
-    coupures: LigneComptage[];
+    /** Total des espèces du tiroir (saisie simplifiée) ; sinon `coupures`. */
+    montantEspeces?: number;
+    coupures?: LigneComptage[];
     releves?: { mode: string; montant: number }[];
   },
 ) {
@@ -273,7 +275,7 @@ export function fermerSession(
   structureId: string,
   sessionId: string,
   corps: {
-    comptageFermeture: { id: string; coupures: LigneComptage[]; releves?: { mode: string; montant: number }[] };
+    comptageFermeture: { id: string; montantEspeces?: number; coupures?: LigneComptage[]; releves?: { mode: string; montant: number }[] };
     commentaire?: string;
   },
 ) {

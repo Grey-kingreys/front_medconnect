@@ -1,34 +1,30 @@
 import { describe, expect, it } from "vitest";
-import type { Coupure } from "@/lib/api_caisse";
-import { lignesAEnvoyer, lignesDepuisReferentiel, totalComptage } from "./comptage";
+import { afficherSaisie, chiffresDepuisSaisie, MONTANT_ESPECES_MAX, montantDepuisChiffres } from "./comptage";
 
-const coupure = (valeurFaciale: number, ordre: number): Coupure => ({ devise: "GNF", valeurFaciale, type: "BILLET", ordre });
-
-describe("comptage", () => {
-  it("additionne la valeur de chaque coupure", () => {
-    const lignes = [
-      { valeurFaciale: 20000, nombre: 2 },
-      { valeurFaciale: 5000, nombre: 3 },
-      { valeurFaciale: 500, nombre: 1 },
-    ];
-    expect(totalComptage(lignes)).toBe(55500);
+describe("saisie des espèces", () => {
+  it("retire les lettres et accepte les séparateurs de milliers", () => {
+    expect(chiffresDepuisSaisie("350 000")).toBe("350000");
+    expect(chiffresDepuisSaisie("350 000")).toBe("350000");
+    expect(chiffresDepuisSaisie("1,250.000")).toBe("1250000");
+    expect(chiffresDepuisSaisie("abc12x3")).toBe("123");
+    expect(chiffresDepuisSaisie("-5")).toBe("5");
+    expect(chiffresDepuisSaisie("")).toBe("");
   });
 
-  it("range les coupures par ordre, à zéro", () => {
-    const lignes = lignesDepuisReferentiel([coupure(500, 6), coupure(20000, 1), coupure(10000, 2)]);
-    expect(lignes).toEqual([
-      { valeurFaciale: 20000, nombre: 0 },
-      { valeurFaciale: 10000, nombre: 0 },
-      { valeurFaciale: 500, nombre: 0 },
-    ]);
+  it("retire les zéros de tête et plafonne au maximum du serveur", () => {
+    expect(chiffresDepuisSaisie("00045")).toBe("45");
+    expect(chiffresDepuisSaisie("0")).toBe("0");
+    expect(chiffresDepuisSaisie("99999999999")).toBe(String(MONTANT_ESPECES_MAX));
   });
 
-  it("retire les lignes à zéro avant l'envoi", () => {
-    const lignes = [
-      { valeurFaciale: 20000, nombre: 0 },
-      { valeurFaciale: 10000, nombre: 4 },
-    ];
-    expect(lignesAEnvoyer(lignes)).toEqual([{ valeurFaciale: 10000, nombre: 4 }]);
-    expect(lignesAEnvoyer([{ valeurFaciale: 500, nombre: 0 }])).toEqual([]);
+  it("donne null pour un champ vide, sinon le montant entier", () => {
+    expect(montantDepuisChiffres("")).toBeNull();
+    expect(montantDepuisChiffres("0")).toBe(0);
+    expect(montantDepuisChiffres("490000")).toBe(490000);
+  });
+
+  it("affiche les milliers séparés", () => {
+    expect(afficherSaisie("1250000")).toBe("1 250 000");
+    expect(afficherSaisie("500")).toBe("500");
   });
 });
