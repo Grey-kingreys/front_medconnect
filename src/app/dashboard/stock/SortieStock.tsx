@@ -11,8 +11,6 @@ import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
 import {
   LIBELLES_RAISON_SORTIE,
-  listerLotsFiche,
-  sortirDuStock,
   type CorpsSortieStock,
   type LotEnStock,
   type RaisonSortie,
@@ -20,6 +18,7 @@ import {
   type UniteMinimale,
 } from "@/lib/api_pharmacie";
 import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { estErreurReseau } from "@/lib/erreurs_api";
 
 interface SortieStockProps {
@@ -83,11 +82,12 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
 
   useEffect(() => {
     let actif = true;
-    listerLotsFiche(structureId, stock.id)
-      .then((res) => {
+    sourcePharmacie()
+      .listerLots(structureId, stock.id)
+      .then((lotsEnStock) => {
         if (!actif) return;
         // Les périmés en tête, sans changer l'ordre de sortie à l'intérieur de chaque groupe.
-        const lots = [...res.data.filter((l) => l.perime), ...res.data.filter((l) => !l.perime)];
+        const lots = [...lotsEnStock.filter((l) => l.perime), ...lotsEnStock.filter((l) => !l.perime)];
         setEtatLots({ statut: "pret", lots });
       })
       .catch((err: unknown) => {
@@ -123,7 +123,7 @@ function ContenuSortie({ stock, structureId, onClose, onSucces }: ContenuProps) 
     setEnvoiEnCours(true);
     setErreur(null);
     try {
-      const res = await sortirDuStock(structureId, corps);
+      const res = await sourcePharmacie().sortirDuStock(structureId, corps);
       const reste = formaterQuantite(res.data.soldeLot, Math.max(1, coefficientLot), unite);
       const aRegulariser = formaterARegulariser(res.data.quantiteARegulariser, coefficientFiche, unite);
       onSucces(

@@ -40,6 +40,8 @@ export interface PanierVente {
   clientNom: string;
   clientTelephone: string;
   ordonnanceVue: boolean;
+  /** Téléphone du prescripteur lu sur l'ordonnance papier (facultatif) ; seulement pour une vente sur ordonnance. */
+  telephonePrescripteur: string;
 }
 export const PANIER_VIDE: PanierVente = {
   cleIdempotence: null,
@@ -47,6 +49,7 @@ export const PANIER_VIDE: PanierVente = {
   clientNom: "",
   clientTelephone: "",
   ordonnanceVue: false,
+  telephonePrescripteur: "",
 };
 
 /** Changement imposé au panier : apres = 0 veut dire ligne retirée. */
@@ -198,7 +201,7 @@ export function rechercherDansStock(stocks: StockMedicament[], texte: string): S
 /** Un panier sans ligne n'a plus de clé d'envoi ni d'ordonnance vue ; le client est conservé. */
 function sansLigneSiVide(panier: PanierVente): PanierVente {
   if (panier.lignes.length > 0) return panier;
-  return { ...panier, cleIdempotence: null, ordonnanceVue: false };
+  return { ...panier, cleIdempotence: null, ordonnanceVue: false, telephonePrescripteur: "" };
 }
 
 export function ajouterAuPanier(
@@ -330,6 +333,20 @@ export function medicamentsSurOrdonnance(panier: PanierVente, stocks: StockMedic
   return noms;
 }
 
+/** Retire d'une saisie tout ce qui n'est pas chiffre, espace, + ou tiret (les lettres sont bloquées). */
+export function filtrerTelephonePrescripteur(saisie: string): string {
+  return saisie.replace(/[^\d\s+-]/g, "");
+}
+
+/** Facultatif : vide, ou chiffres/espaces/tirets avec un + possible en tête, 6 à 20 chiffres (comme le serveur). */
+export function telephonePrescripteurValide(telephone: string): boolean {
+  const propre = telephone.trim();
+  if (propre === "") return true;
+  if (!/^\+?[\d\s-]+$/.test(propre)) return false;
+  const chiffres = propre.replace(/\D/g, "").length;
+  return chiffres >= 6 && chiffres <= 20;
+}
+
 export function telephoneClientValide(telephone: string): boolean {
   const propre = telephone.trim();
   return propre === "" || FORMAT_TELEPHONE_CLIENT.test(propre);
@@ -355,6 +372,8 @@ export function corpsVente(
   if (nom !== "") corps.clientNom = nom;
   if (telephone !== "") corps.clientTelephone = telephone;
   if (surOrdonnance && panier.ordonnanceVue) corps.ordonnanceVerifiee = true;
+  const prescripteur = panier.telephonePrescripteur.trim();
+  if (surOrdonnance && prescripteur !== "") corps.telephonePrescripteur = prescripteur;
   return corps;
 }
 
@@ -402,6 +421,7 @@ export function lirePanierStocke(cle: string): PanierVente {
       clientNom: typeof valeur.clientNom === "string" ? valeur.clientNom : "",
       clientTelephone: typeof valeur.clientTelephone === "string" ? valeur.clientTelephone : "",
       ordonnanceVue: typeof valeur.ordonnanceVue === "boolean" ? valeur.ordonnanceVue : false,
+      telephonePrescripteur: typeof valeur.telephonePrescripteur === "string" ? valeur.telephonePrescripteur : "",
     };
   } catch {
     return PANIER_VIDE;

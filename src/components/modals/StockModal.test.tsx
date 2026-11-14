@@ -262,13 +262,10 @@ describe("StockModal", () => {
 
     fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "20" } });
     // Le choix de conversion apparaît bien que la quantité soit 0.
-    expect(screen.getByLabelText(/^des boîtes : les convertir en unités/)).toBeTruthy();
-    expect(screen.getByText(/Le stock actuel de 0 boîte, avec 1 boîte à régulariser, compte/)).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
-    expect(await screen.findByText("Indiquez si le stock actuel compte des boîtes ou des unités.")).toBeTruthy();
-    expect(modifierFiche).not.toHaveBeenCalled();
+    expect(screen.getByLabelText(/^0 boîte : le stock devient 0 comprimé/)).toBeTruthy();
+    expect(screen.getByText(/Le stock actuel compte 0 boîte ou 0 comprimé \? \(avec 1 boîte à régulariser\)/)).toBeTruthy();
 
-    fireEvent.click(screen.getByLabelText("déjà des unités : ne rien changer"));
+    fireEvent.click(screen.getByLabelText(/^0 comprimé : le stock devient/));
     fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(modifierFiche).toHaveBeenCalledWith("s1", "d1", {
@@ -281,25 +278,30 @@ describe("StockModal", () => {
   it("fiche à stock 0 sans part à régulariser : aucun choix de conversion", () => {
     ouvrirModification({ ...ficheNonQualifiee, quantite: 0 });
     fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "20" } });
-    expect(screen.queryByLabelText(/^des boîtes : les convertir en unités/)).toBeNull();
+    expect(screen.queryByLabelText(/le stock devient/)).toBeNull();
   });
 
-  it("exige le choix de conversion d'une fiche non confirmée puis envoie MULTIPLIER", async () => {
+  it("230 boîtes passées à 10 par boîte : question avec les vrais chiffres, boîtes choisies par défaut, récapitulatif, envoie MULTIPLIER", async () => {
     vi.mocked(modifierFiche).mockResolvedValue(reponse({ avertissements: [], conversion: null }) as never);
-    const { onClose } = ouvrirModification(ficheNonQualifiee);
+    const { onClose } = ouvrirModification({ ...ficheNonQualifiee, quantite: 230 });
     expect(screen.getByText(/pas encore confirmé/)).toBeTruthy();
 
-    fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "20" } });
-    fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
-    expect(await screen.findByText("Indiquez si le stock actuel compte des boîtes ou des unités.")).toBeTruthy();
-    expect(modifierFiche).not.toHaveBeenCalled();
+    fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "10" } });
+    expect(screen.getByText("Le stock actuel compte 230 boîtes ou 230 comprimés ?")).toBeTruthy();
+    const boites = screen.getByLabelText("230 boîtes : le stock devient 2 300 comprimés (230 boîtes de 10)") as HTMLInputElement;
+    const unites = screen.getByLabelText("230 comprimés : le stock devient 23 boîtes de 10") as HTMLInputElement;
+    expect(boites.checked).toBe(true);
+    expect(unites.checked).toBe(false);
+    expect(screen.getByRole("status").textContent).toBe("Après l'enregistrement, le stock affichera 230 boîtes.");
 
-    fireEvent.click(screen.getByLabelText(/^des boîtes : les convertir en unités/));
+    fireEvent.click(unites);
+    expect(screen.getByRole("status").textContent).toBe("Après l'enregistrement, le stock affichera 23 boîtes.");
+    fireEvent.click(boites);
     fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(modifierFiche).toHaveBeenCalledWith("s1", "d1", {
-      coefficientBoite: 20,
+      coefficientBoite: 10,
       conversionStock: "MULTIPLIER",
       qualifie: true,
     });
@@ -347,7 +349,6 @@ describe("StockModal", () => {
     );
     const { onClose, onSuccess } = ouvrirModification(ficheNonQualifiee);
     fireEvent.change(screen.getByLabelText("Nombre de comprimés par boîte"), { target: { value: "20" } });
-    fireEvent.click(screen.getByLabelText(/^des boîtes : les convertir en unités/));
     fireEvent.click(screen.getByRole("button", { name: "Mettre à jour" }));
 
     expect(
@@ -739,7 +740,7 @@ describe("StockModal", () => {
       // Le choix de conversion apparaît dès que le nombre change, et l'aide disparaît.
       fireEvent.change(screen.getByLabelText("Nombre de plaquettes par boîte"), { target: { value: "10" } });
       expect(screen.queryByText(AIDE_NOMBRE)).toBeNull();
-      expect(screen.getByLabelText(/^des boîtes : les convertir en unités \(12 boîtes deviennent 120 plaquettes\)/)).toBeTruthy();
+      expect(screen.getByLabelText(/^12 boîtes : le stock devient 120 plaquettes \(12 boîtes de 10\)/)).toBeTruthy();
       fireEvent.change(screen.getByLabelText("Nombre de plaquettes par boîte"), { target: { value: "1" } });
       expect(screen.getByText(AIDE_NOMBRE)).toBeTruthy();
 

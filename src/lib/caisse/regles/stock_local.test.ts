@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calculerStockLocal, type LotPhoto, type SortieLocale } from "./stock_local";
+import { calculerStockLocal, type LotPhoto, type MouvementLocal } from "./stock_local";
 
 const JOUR = "2026-11-01";
 
@@ -16,8 +16,8 @@ function lot(id: string, solde: number, champs: Partial<LotPhoto> = {}): LotPhot
   };
 }
 
-const lotSortie = (lotId: string, quantiteUm: number): SortieLocale => ({ lotId, quantiteUm });
-const provisoire = (quantiteUm: number): SortieLocale => ({ lotId: null, quantiteUm });
+const lotSortie = (lotId: string, quantiteUm: number): MouvementLocal => ({ lotId, quantiteUm: -quantiteUm });
+const provisoire = (quantiteUm: number): MouvementLocal => ({ lotId: null, quantiteUm: -quantiteUm });
 
 describe("calculerStockLocal (D738)", () => {
   it("40 en L1, aucune sortie : 40, 0, 40", () => {
@@ -109,5 +109,57 @@ describe("calculerStockLocal (D738)", () => {
       JOUR,
     );
     expect(r.dateExpiration).toBeNull();
+  });
+});
+
+describe("calculerStockLocal : mouvements signés et lots locaux", () => {
+  it("une entrée sur un lot de la photographie s'ajoute à son solde et au total", () => {
+    const r = calculerStockLocal(
+      { quantite: 10, quantiteARegulariser: 0, lots: [lot("L1", 10)] },
+      [{ lotId: "L1", quantiteUm: 5 }],
+      JOUR,
+    );
+    expect([r.quantite, r.quantiteVendable]).toEqual([15, 15]);
+    expect(r.lots.map((l) => [l.id, l.solde])).toEqual([["L1", 15]]);
+  });
+
+  it("un lot local reçoit ses entrées, apparaît en FEFO et compte dans le total", () => {
+    const local = lot("LOC", 0, { dateExpiration: "2026-12-31" });
+    const r = calculerStockLocal(
+      { quantite: 10, quantiteARegulariser: 0, lots: [lot("L1", 10)] },
+      [
+        { lotId: "LOC", quantiteUm: 20 },
+        { lotId: "LOC", quantiteUm: -4 },
+      ],
+      JOUR,
+      [local],
+    );
+    expect(r.quantite).toBe(26);
+    expect(r.lots.map((l) => [l.id, l.solde])).toEqual([
+      ["LOC", 16],
+      ["L1", 10],
+    ]);
+    expect(r.dateExpiration).toBe("2026-12-31");
+  });
+
+  it("un lot local sans mouvement (solde nul) n'apparaît pas", () => {
+    const r = calculerStockLocal({ quantite: 0, quantiteARegulariser: 0, lots: [] }, [], JOUR, [lot("LOC", 0)]);
+    expect(r.lots).toEqual([]);
+  });
+
+  it("un lot local déjà dans la photographie n'est pas compté deux fois", () => {
+    const r = calculerStockLocal(
+      { quantite: 12, quantiteARegulariser: 0, lots: [lot("LOC", 12)] },
+      [],
+      JOUR,
+      [lot("LOC", 0)],
+    );
+    expect(r.quantite).toBe(12);
+    expect(r.lots).toHaveLength(1);
+  });
+
+  it("une entrée sans lot s'ajoute au total", () => {
+    const r = calculerStockLocal({ quantite: 0, quantiteARegulariser: 0, lots: [] }, [{ lotId: null, quantiteUm: 5 }], JOUR);
+    expect(r.quantite).toBe(5);
   });
 });

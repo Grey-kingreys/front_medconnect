@@ -39,12 +39,26 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
     getVente: (s: string, venteId: string) => appeler("caisse:getVente", s, venteId),
     enregistrerAnnulationServeur: (reponse: unknown) => appeler("caisse:enregistrerAnnulationServeur", reponse),
   },
+  // Domaines pharmacie à venir : chacun recevra ses fonctions sur le modèle de `caisse` (canal `<domaine>:<fonction>`).
+  stock: {
+    sortir: (s: string, corps: unknown) => appeler("stock:sortir", s, corps),
+    corriger: (s: string, stockId: string, corps: unknown) => appeler("stock:corriger", s, stockId, corps),
+    exporter: (s: string, options: unknown) => appeler("stock:exporter", s, options),
+  },
+  reception: {},
+  inventaire: {},
+  credit: {},
+  anomalie: {
+    lister: (s: string, options: unknown) => appeler("anomalie:lister", s, options),
+    traiter: (s: string, anomalieId: string, corps: unknown) => appeler("anomalie:traiter", s, anomalieId, corps),
+  },
   maj: { installer: () => appeler("maj:installer") },
   impression: {
     listerImprimantes: () => appeler("impression:listerImprimantes"),
     lireReglages: () => appeler("impression:lireReglages"),
     enregistrerReglages: (modif: unknown) => appeler("impression:enregistrerReglages", modif),
     lireInfosPoste: () => appeler("impression:lireInfosPoste"),
+    ouvrirDossierDonnees: () => appeler("impression:ouvrirDossierDonnees"),
     imprimerVente: (venteId: string) => appeler("impression:imprimerVente", venteId),
     signalerPret: () => appeler("impression:signalerPret"),
   },

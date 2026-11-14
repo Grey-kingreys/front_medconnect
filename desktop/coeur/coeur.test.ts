@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { CoeurCaisse, type Outils } from "./coeur";
 import { migrer, VERSION_SCHEMA } from "./schema";
+import { ajouterLotLocal, ajouterMouvementLocal, lireSurcouche } from "./stock_surcouche";
 import type { Stockage } from "./stockage";
 import { controlerBase, exigerWal, ouvrirStockage } from "./stockage_sqlite";
 import type { FicheSynchro, Photographie } from "./types_synchro";
@@ -92,20 +93,58 @@ function photo(fiches: FicheSynchro[], champs: Partial<Photographie["poste"]> = 
 }
 
 function sortie(s: Stockage, venteId: string, sequence: number, stockId: string, lotId: string | null, quantiteUm: number) {
-  s.executer("INSERT INTO sorties_stock (venteId, sequence, stockId, lotId, quantiteUm) VALUES (?, ?, ?, ?, ?)", [
-    venteId,
-    sequence,
-    stockId,
-    lotId,
-    quantiteUm,
-  ]);
+  ajouterMouvementLocal(s, { sequence, stockId, lotId, quantiteUm: -quantiteUm, type: "VENTE", reference: venteId });
 }
+
+describe("migration du schéma vers la version 5", () => {
+  it("un poste en v4 avec des ventes non envoyées affiche exactement le même stock avant et après la migration", () => {
+    const s = ouvrirStockage(":memory:");
+    OUVERTS.push(s);
+    migrer(s, 4);
+    const c = new CoeurCaisse(s, outils());
+    c.rattacher({ structureId: "ph1" });
+    c.appliquerPhotographie(photo([fiche(1), fiche(2)], { sequenceAppliquee: 4, sequenceMaxRecue: 7 }), null, null);
+    // Anciennes sorties : la séquence 4 est déjà appliquée par le serveur, 5 à 7 non.
+    const ancienne = (v: string, seq: number, stock: string, lot: string | null, q: number) =>
+      s.executer("INSERT INTO sorties_stock (venteId, sequence, stockId, lotId, quantiteUm) VALUES (?, ?, ?, ?, ?)", [v, seq, stock, lot, q]);
+    ancienne("v4", 4, "s1", "l1", 9);
+    ancienne("v5", 5, "s1", "l1", 7);
+    ancienne("v6", 6, "s1", null, 2);
+    ancienne("v7", 7, "s2", "l2", 3);
+    // Attendu avec l'ancienne règle (photographie moins les sorties de séquence supérieure à 4) :
+    // s1 : 40 - 9 = 31 au total, lot l1 : 33, donc 2 à régulariser ; s2 : 37 au total et en lot.
+    migrer(s);
+    const apres = c.lireStock();
+    const s1 = apres.find((f) => f.id === "s1");
+    const s2 = apres.find((f) => f.id === "s2");
+    expect(s1).toMatchObject({ quantite: 31, quantiteARegulariser: 2 });
+    expect(s1?.lots?.map((l) => [l.id, l.quantite])).toEqual([["l1", 33]]);
+    expect(s2).toMatchObject({ quantite: 37, quantiteARegulariser: 0 });
+    expect(s2?.lots?.map((l) => [l.id, l.quantite])).toEqual([["l2", 37]]);
+  });
+
+  it("copie les anciennes sorties en mouvements négatifs de type VENTE et supprime sorties_stock", () => {
+    const s = ouvrirStockage(":memory:");
+    OUVERTS.push(s);
+    migrer(s, 4);
+    s.executer("INSERT INTO sorties_stock (venteId, sequence, stockId, lotId, quantiteUm) VALUES ('v1', 3, 's1', 'l1', 7)");
+    s.executer("INSERT INTO sorties_stock (venteId, sequence, stockId, lotId, quantiteUm) VALUES ('v1', 3, 's1', NULL, 2)");
+    migrer(s);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(6);
+    expect(s.lire("SELECT sequence, stockId, lotId, quantiteUm, type, reference FROM mouvements_locaux ORDER BY id")).toEqual([
+      { sequence: 3, stockId: "s1", lotId: "l1", quantiteUm: -7, type: "VENTE", reference: "v1" },
+      { sequence: 3, stockId: "s1", lotId: null, quantiteUm: -2, type: "VENTE", reference: "v1" },
+    ]);
+    expect(s.lire("SELECT name FROM sqlite_master WHERE name = 'sorties_stock'")).toEqual([]);
+    expect(s.lire("SELECT name FROM sqlite_master WHERE name = 'lots_locaux'")).toHaveLength(1);
+  });
+});
 
 describe("schéma et stockage", () => {
   it("base neuve à la dernière version, migration rejouée sans erreur", () => {
     const s = base();
-    expect(VERSION_SCHEMA).toBe(4);
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(4);
+    expect(VERSION_SCHEMA).toBe(6);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(6);
     expect(() => migrer(s)).not.toThrow();
     expect(s.lire("SELECT id FROM etat_poste")).toHaveLength(1);
   });
@@ -124,7 +163,7 @@ describe("schéma et stockage", () => {
 
     migrer(s);
 
-    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(4);
+    expect(s.lireUn<{ user_version: number }>("PRAGMA user_version")?.user_version).toBe(6);
     expect(s.lireUn("SELECT id, statut, adoptee, ouverteAutomatiquement, bilanFige FROM sessions")).toEqual({
       id: "s-ancienne",
       statut: "OUVERTE",
@@ -292,6 +331,55 @@ describe("CoeurCaisse", () => {
     sortie(s, "v1", 1, "s1", "l1", 5);
     sortie(s, "v2", 2, "s1", null, 2);
     expect(c.lireStock()[0]).toMatchObject({ quantite: 0, quantiteARegulariser: 2, quantiteVendable: 0, disponible: false });
+  });
+
+  it("entrée locale sur un lot local : visible, puis disparue à la photographie qui avance sequenceAppliquee", () => {
+    const s = base();
+    const c = coeurRattache(s);
+    c.appliquerPhotographie(photo([fiche(1)], { sequenceAppliquee: 0 }), null, null);
+    ajouterLotLocal(s, {
+      lotId: "lot-local-1",
+      stockId: "s1",
+      sequence: 1,
+      numeroLot: "LOC-1",
+      dateExpiration: "2027-01-31",
+      dateReception: "2026-11-04T10:00:00.000Z",
+      coefficientReception: 1,
+    });
+    ajouterMouvementLocal(s, { sequence: 1, stockId: "s1", lotId: "lot-local-1", quantiteUm: 12, type: "RECEPTION", reference: "r1" });
+    ajouterMouvementLocal(s, { sequence: 2, stockId: "s1", lotId: "lot-local-1", quantiteUm: -2, type: "SORTIE", reference: "x1" });
+    const avant = c.lireStock()[0];
+    expect(avant.quantite).toBe(50);
+    expect(avant.lots?.find((l) => l.id === "lot-local-1")?.quantite).toBe(10);
+
+    // Le serveur a appliqué la séquence 1 : seule la sortie 2 reste en surcouche, le lot local (séquence 1) a disparu.
+    c.appliquerPhotographie(photo([fiche(1)], { sequenceAppliquee: 1, sequenceMaxRecue: 2 }), null, null);
+    const milieu = c.lireStock()[0];
+    expect(milieu.lots?.find((l) => l.id === "lot-local-1")).toBeUndefined();
+    expect(milieu.quantite).toBe(38);
+
+    // Tout est appliqué ou rejeté : retour à la vérité du serveur.
+    c.appliquerPhotographie(photo([fiche(1)], { sequenceAppliquee: 2, sequenceMaxRecue: 2 }), null, null);
+    expect(c.lireStock()[0].quantite).toBe(40);
+  });
+
+  it("lireSurcouche ne rend que les lignes de séquence supérieure, par fiche", () => {
+    const s = base();
+    ajouterMouvementLocal(s, { sequence: 1, stockId: "a", lotId: null, quantiteUm: -1, type: "VENTE" });
+    ajouterMouvementLocal(s, { sequence: 3, stockId: "a", lotId: "l", quantiteUm: 4, type: "RECEPTION" });
+    ajouterMouvementLocal(s, { sequence: 4, stockId: "b", lotId: "l2", quantiteUm: -2, type: "SORTIE" });
+    const tout = lireSurcouche(s, 1);
+    expect(tout.mouvements.get("a")).toEqual([{ lotId: "l", quantiteUm: 4 }]);
+    expect(tout.mouvements.get("b")).toEqual([{ lotId: "l2", quantiteUm: -2 }]);
+    expect(lireSurcouche(s, 0, "b").mouvements.has("a")).toBe(false);
+  });
+
+  it("un lot local créé deux fois sous le même identifiant n'existe qu'une fois", () => {
+    const s = base();
+    const lot = { lotId: "L", stockId: "a", sequence: 1, numeroLot: null, dateExpiration: null, dateReception: "2026-11-04T10:00:00.000Z", coefficientReception: 1 };
+    ajouterLotLocal(s, lot);
+    ajouterLotLocal(s, lot);
+    expect(s.lire("SELECT lotId FROM lots_locaux")).toHaveLength(1);
   });
 
   it("seconde photographie : dernierUtilise et plage entamée conservés, nouvelle plage ajoutée", () => {

@@ -127,7 +127,7 @@ export function creerSession(c: Contexte, id: string, u: Utilisateur, automatiqu
 
 export function ouvrirSession(
   c: Contexte,
-  entree: { id: string; comptage?: { coupures: LigneComptage[] } },
+  entree: { id: string; comptage?: { montantEspeces?: number; coupures?: LigneComptage[] } },
   u: Utilisateur,
 ): SessionCaisseOuverte {
   return c.stockage.transaction(() => {
@@ -155,13 +155,29 @@ export function ouvrirSession(
     const creee = s === undefined;
     if (s === undefined) s = creerSession(c, entree.id, u, false);
     if (entree.comptage && !lireComptages(c, s.id).some((x) => x.moment === "OUVERTURE")) {
-      ecrireComptage(c, s, "OUVERTURE", { id: c.outils.genererId(), coupures: entree.comptage.coupures }, u, true);
+      ecrireComptage(c, s, "OUVERTURE", { id: c.outils.genererId(), montantEspeces: entree.comptage.montantEspeces, coupures: entree.comptage.coupures }, u, true);
     }
     return { ...versSession(c, s), cree: creee, ouverteMaintenant: creee };
   });
 }
 
 // ----------------------------------------------------------------------------- comptage
+
+/** Un comptage porte soit le total des espèces, soit les coupures (jamais les deux, jamais aucun). */
+function validerMontantOuCoupures(c: Contexte, entree: Pick<ComptageEntree, "montantEspeces" | "coupures">): void {
+  const aMontant = entree.montantEspeces !== undefined;
+  const aCoupures = entree.coupures !== undefined;
+  if (aMontant === aCoupures) {
+    throw refusValidation(
+      aMontant ? "Indiquez le montant des espèces ou les coupures, pas les deux." : "Indiquez le montant des espèces du tiroir.",
+    );
+  }
+  if (aMontant) {
+    if (!entier(entree.montantEspeces, 0, 1_000_000_000)) throw refusValidation("Le montant des espèces est invalide.");
+  } else {
+    validerCoupures(c, entree.coupures as LigneComptage[]);
+  }
+}
 
 function validerCoupures(c: Contexte, coupures: LigneComptage[]): void {
   if (!Array.isArray(coupures) || coupures.length > 20) {
@@ -210,7 +226,7 @@ function ecrireComptage(
   c: Contexte,
   s: LigneSession,
   moment: "OUVERTURE" | "FERMETURE",
-  entree: Pick<ComptageEntree, "id" | "coupures" | "releves">,
+  entree: Pick<ComptageEntree, "id" | "montantEspeces" | "coupures" | "releves">,
   u: Utilisateur,
   emettre: boolean,
 ): { comptage: ComptageCaisse; cree: boolean } {
@@ -222,13 +238,14 @@ function ecrireComptage(
   if (c.stockage.lireUn("SELECT id FROM comptages WHERE id = ?", [entree.id])) {
     throw new RefusCaisse(409, "IDENTIFIANT_DEJA_UTILISE", MESSAGE_IDENTIFIANT_DEJA_UTILISE);
   }
-  validerCoupures(c, entree.coupures);
+  validerMontantOuCoupures(c, entree);
   const releves = validerReleves(c, moment, entree.releves ?? []);
-  const coupures = entree.coupures.map((l) => ({ valeurFaciale: l.valeurFaciale, nombre: l.nombre }));
+  const parMontant = entree.montantEspeces !== undefined;
+  const coupures = (entree.coupures ?? []).map((l) => ({ valeurFaciale: l.valeurFaciale, nombre: l.nombre }));
   const comptage: ComptageCaisse = {
     id: entree.id,
     moment,
-    totalEspeces: totalComptage(coupures),
+    totalEspeces: parMontant ? (entree.montantEspeces as number) : totalComptage(coupures),
     coupures,
     releves,
     auteurId: u.id,
@@ -243,7 +260,7 @@ function ecrireComptage(
       comptageId: comptage.id,
       sessionId: s.id,
       moment,
-      coupures,
+      ...(parMontant ? { montantEspeces: entree.montantEspeces } : { coupures }),
       ...(releves.length > 0 ? { releves: releves.map((r) => ({ mode: r.mode, montant: r.montant })) } : {}),
     });
   }
@@ -457,7 +474,9 @@ export function fermerSession(c: Contexte, sessionId: string, entree: FermetureE
         ? {
             comptageFermeture: {
               comptageId: integre.id,
-              coupures: integre.coupures,
+              ...(donne?.montantEspeces !== undefined
+                ? { montantEspeces: integre.totalEspeces }
+                : { coupures: integre.coupures }),
               ...(integre.releves.length > 0
                 ? { releves: integre.releves.map((r) => ({ mode: r.mode, montant: r.montant })) }
                 : {}),

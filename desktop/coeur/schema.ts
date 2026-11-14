@@ -140,6 +140,53 @@ const ETAPES: string[] = [
     valeur TEXT NOT NULL
   );
   `,
+  // Version 5 (hors ligne général) : mouvements de stock locaux signés (remplacent sorties_stock) et lots créés
+  // sur le poste. Les anciennes sorties deviennent des mouvements négatifs de type VENTE, avec la même séquence.
+  `
+  CREATE TABLE mouvements_locaux (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence INTEGER NOT NULL,
+    stockId TEXT NOT NULL,
+    lotId TEXT,
+    quantiteUm INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    reference TEXT
+  );
+  CREATE INDEX mouvements_locaux_fiche ON mouvements_locaux (stockId, sequence);
+
+  CREATE TABLE lots_locaux (
+    lotId TEXT PRIMARY KEY,
+    stockId TEXT NOT NULL,
+    sequence INTEGER NOT NULL,
+    numeroLot TEXT,
+    dateExpiration TEXT,
+    dateReception TEXT NOT NULL,
+    coefficientReception INTEGER NOT NULL,
+    lotTechnique INTEGER NOT NULL DEFAULT 0
+  );
+  CREATE INDEX lots_locaux_fiche ON lots_locaux (stockId, sequence);
+
+  INSERT INTO mouvements_locaux (sequence, stockId, lotId, quantiteUm, type, reference)
+    SELECT sequence, stockId, lotId, -quantiteUm, 'VENTE', venteId FROM sorties_stock ORDER BY rowid;
+  DROP TABLE sorties_stock;
+  `,
+  // Version 6 (anomalies hors ligne) : anomalies ouvertes de la dernière photographie (lecture) et anomalies
+  // marquées « traitées » sur le poste, pas encore appliquées par le serveur (même règle de séquence que les mouvements).
+  `
+  CREATE TABLE anomalies_locales (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE anomalies_traitees_locales (
+    anomalieId TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    commentaire TEXT NOT NULL,
+    traiteeLe TEXT NOT NULL,
+    traiteeParId TEXT NOT NULL,
+    traiteeParNom TEXT NOT NULL
+  );
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

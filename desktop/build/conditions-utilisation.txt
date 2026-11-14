@@ -1,0 +1,61 @@
+﻿CONDITIONS D'UTILISATION DE MEDCONNECTE CAISSE
+
+Version du document : 1 (premier jet). À faire relire par un juriste avant toute diffusion.
+
+Veuillez lire attentivement ces conditions. En cliquant sur « J'accepte », vous reconnaissez les avoir lues et vous les acceptez. Si vous ne les acceptez pas, cliquez sur « Annuler » : le logiciel ne sera pas installé.
+
+1. Qui fournit le logiciel
+
+MedConnecte Caisse (le « Logiciel ») est le logiciel de caisse du comptoir de pharmacie de la plateforme MedConnecte. Il est fourni par [À COMPLÉTER : raison sociale], [À COMPLÉTER : adresse à Conakry, Guinée], contact : [À COMPLÉTER : courriel et téléphone] (« MedConnecte »).
+
+2. Qui peut l'utiliser
+
+Le Logiciel est destiné à l'usage professionnel d'une officine (pharmacie) disposant d'un compte MedConnecte. Il est réservé aux personnes autorisées par la pharmacie. La pharmacie reste responsable de l'usage qu'en font ses employés.
+
+3. Licence d'utilisation
+
+MedConnecte vous accorde un droit personnel, non exclusif et non transférable d'installer et d'utiliser le Logiciel sur les ordinateurs de votre officine, pour les besoins de son activité. Vous ne pouvez pas le copier pour le donner à d'autres, le revendre, le modifier, ni chercher à en extraire le code.
+
+4. Données stockées sur le poste
+
+Pour continuer à vendre quand internet s'arrête, le Logiciel garde sur l'ordinateur : le catalogue et le stock de la pharmacie, les ventes et les mouvements de caisse, les réglages du poste (imprimante, format du ticket), un fichier d'identification du poste (appareil.json) et un journal technique (journal.log). Ces données se trouvent dans le dossier des données du Logiciel, en général « %APPDATA%\MedConnecte Caisse » (la page « Ce poste » du Logiciel affiche ce dossier et permet de l'ouvrir).
+
+5. Synchronisation avec le serveur MedConnecte
+
+Dès que internet est disponible, les ventes et les mouvements de caisse enregistrés sur le poste sont envoyés au serveur MedConnecte, et le catalogue et le stock sont mis à jour depuis ce serveur. Ces échanges sont nécessaires au fonctionnement du Logiciel. Les ventes ne sont pas perdues tant qu'elles restent sur le poste ; il faut donc les laisser partir avant de désinstaller le Logiciel ou de formater l'ordinateur.
+
+6. Responsabilité de la pharmacie sur le poste et les sauvegardes
+
+La pharmacie est responsable de son ordinateur : accès protégé, antivirus, mises à jour de Windows, alimentation électrique, et sauvegardes régulières du dossier des données du Logiciel. En cas de panne, de vol, de formatage ou de suppression du dossier, les ventes qui n'ont pas encore été envoyées au serveur peuvent être perdues définitivement. MedConnecte ne peut pas les reconstituer.
+
+7. Désinstallation
+
+Si vous désinstallez le Logiciel, les données du poste (base de ventes et de stock, appareil.json, journal.log) sont CONSERVÉES sur l'ordinateur, afin de ne pas perdre de ventes. Elles ne sont jamais supprimées par le désinstalleur. Si vous voulez les effacer, supprimez vous-même le dossier des données, mais seulement après vous être assuré qu'il ne reste aucune vente à envoyer.
+
+8. Le Logiciel n'est pas un avis médical
+
+Le Logiciel est un outil de gestion de caisse et de stock. Il ne donne ni diagnostic, ni conseil, ni avis médical. Le pharmacien reste seul responsable de la dispensation des médicaments et de ses décisions professionnelles.
+
+9. Disponibilité et responsabilité
+
+Le Logiciel est fourni « en l'état ». MedConnecte s'efforce d'en assurer le bon fonctionnement, mais ne garantit pas l'absence d'erreur ni d'interruption (panne du poste, d'internet ou du serveur). Dans la mesure permise par la loi, MedConnecte n'est pas responsable des pertes indirectes (perte de ventes, perte de clientèle, perte de données non sauvegardées) liées à l'usage du Logiciel. [À COMPLÉTER : plafond de responsabilité éventuel.]
+
+10. Données personnelles
+
+Les données traitées par le Logiciel (par exemple les noms des vendeurs et les informations de vente) sont traitées selon la politique de confidentialité de MedConnecte, disponible sur le site de MedConnecte. La pharmacie veille à n'enregistrer que les informations nécessaires à son activité.
+
+11. Mises à jour
+
+MedConnecte peut proposer des mises à jour du Logiciel. Elles peuvent demander de fermer la caisse et d'attendre l'envoi des ventes en attente.
+
+12. Fin de la licence
+
+MedConnecte peut mettre fin à la licence en cas de non-respect de ces conditions. Vous pouvez y mettre fin à tout moment en désinstallant le Logiciel.
+
+13. Droit applicable
+
+Ces conditions sont soumises au droit de la République de Guinée. [À COMPLÉTER : tribunal compétent.]
+
+14. Contact
+
+Pour toute question : [À COMPLÉTER : raison sociale], [À COMPLÉTER : adresse à Conakry], [À COMPLÉTER : courriel et téléphone].

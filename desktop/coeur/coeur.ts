@@ -1,5 +1,4 @@
-import type { LotFiche, StockMedicament, UniteMinimale } from "@/lib/api_pharmacie";
-import { calculerStockLocal, type SortieLocale } from "@/lib/caisse/regles/stock_local";
+import type { SortieStockEnregistree, StockMedicament } from "@/lib/api_pharmacie";
 import type { BilanCaisse, ComptageCaisse, MouvementCaisse, SessionCaisse, SessionCaisseOuverte } from "@/lib/api_caisse";
 import type { CorpsCreationVente, Vente, VentesDuJour } from "@/lib/api_ventes";
 import {
@@ -13,6 +12,11 @@ import {
 } from "./caisse_session";
 import type { InfosPoste, ReglagesPoste } from "@/lib/caisse/contrat_desktop";
 import { Contexte, type Outils, type Referentiels } from "./contexte";
+import { fichesLocales } from "./fiche_locale";
+import { CLE_ANOMALIES_PHOTOGRAPHIE_LE, listerAnomaliesLocales, traiterAnomalieLocale, type OptionsListeAnomaliesLocale } from "./anomalies_locales";
+import type { Anomalie, PageAnomalies } from "@/lib/api_pilotage";
+import { preparerExportStock, type ExportStockPret } from "./export_stock";
+import { corrigerQuantite, sortirStock, type CorpsCorrectionLocale, type CorpsSortieLocale } from "./stock_operations";
 import { plageRestante } from "./plages_locales";
 import { enregistrerReglages, lireReglages } from "./reglages";
 import type { Stockage } from "./stockage";
@@ -20,7 +24,6 @@ import type { ComptageEntree, EtatLocal, FermetureEntree, MouvementEntree, Utili
 import type {
   EtatPourSynchro,
   EvenementAEnvoyer,
-  FicheSynchro,
   PlageLue,
   Photographie,
   ResultatLocal,
@@ -39,12 +42,6 @@ export type { Outils, Referentiels } from "./contexte";
 
 /** Fiche au format que l'écran de vente lit déjà. */
 export type FicheLocale = StockMedicament;
-
-const UNITES: readonly UniteMinimale[] = ["COMPRIME", "GELULE", "ML", "SACHET", "GRAMME", "AMPOULE", "PLAQUETTE", "UNITE"];
-
-function uniteConnue(valeur: string): UniteMinimale {
-  return (UNITES as readonly string[]).includes(valeur) ? (valeur as UniteMinimale) : "UNITE";
-}
 
 /**
  * Cœur de la caisse locale : indépendant d'Electron, de Next et de React.
@@ -173,6 +170,15 @@ export class CoeurCaisse {
         s.executer(`INSERT OR REPLACE INTO ${table} (id, document) VALUES (1, ?)`, [JSON.stringify(document)]);
       }
 
+      // Un serveur plus ancien n'envoie pas les anomalies : la table (vide) n'est pas touchée.
+      if (photo.anomalies !== undefined) {
+        s.executer("DELETE FROM anomalies_locales");
+        s.executer("INSERT OR REPLACE INTO reglages (cle, valeur) VALUES (?, ?)", [CLE_ANOMALIES_PHOTOGRAPHIE_LE, maintenant.toISOString()]);
+        photo.anomalies.forEach((a, rang) => {
+          s.executer("INSERT INTO anomalies_locales (id, rang, document) VALUES (?, ?, ?)", [a.id, rang, JSON.stringify(a)]);
+        });
+      }
+
       s.executer("DELETE FROM fiches");
       for (const fiche of photo.fiches) {
         s.executer("INSERT INTO fiches (stockId, document, nom) VALUES (?, ?, ?)", [
@@ -251,66 +257,43 @@ export class CoeurCaisse {
     return this.ctx.jour();
   }
 
-  /** Fiches avec leur stock local : photographie moins les sorties de séquence supérieure à `sequenceAppliquee`. */
+  /** Fiches avec leur stock local : photographie plus les mouvements et lots locaux de séquence supérieure à `sequenceAppliquee`. */
   lireStock(): FicheLocale[] {
-    const etat = this.etat();
-    const structureId = etat.structureId ?? "";
-    const jour = this.jour();
-
-    const sortiesParFiche = new Map<string, SortieLocale[]>();
-    for (const s of this.stockage.lire<{ stockId: string; lotId: string | null; quantiteUm: number }>(
-      "SELECT stockId, lotId, quantiteUm FROM sorties_stock WHERE sequence > ?",
-      [etat.sequenceAppliquee],
-    )) {
-      const liste = sortiesParFiche.get(s.stockId) ?? [];
-      liste.push({ lotId: s.lotId, quantiteUm: s.quantiteUm });
-      sortiesParFiche.set(s.stockId, liste);
-    }
-
-    return this.stockage
-      .lire<{ document: string }>("SELECT document FROM fiches ORDER BY rowid")
-      .map(({ document }) => {
-        const f = JSON.parse(document) as FicheSynchro;
-        const stock = calculerStockLocal(f, sortiesParFiche.get(f.stockId) ?? [], jour);
-        const lots: LotFiche[] = stock.lots.map((l) => ({
-          id: l.id,
-          numeroLot: l.numeroLot,
-          dateExpiration: l.dateExpiration,
-          quantite: l.solde,
-          lotTechnique: l.lotTechnique,
-          coefficientReception: l.coefficientReception,
-        }));
-        return {
-          id: f.stockId,
-          medicamentId: f.medicamentId,
-          medicament: {
-            id: f.medicamentId,
-            nom: f.nom,
-            nomGenerique: f.nomGenerique ?? undefined,
-            categorie: f.categorie,
-            formes: f.formes,
-            ordonnanceRequise: f.ordonnanceRequise,
-          },
-          structureId,
-          quantite: stock.quantite,
-          quantiteARegulariser: stock.quantiteARegulariser,
-          prixUnitaire: f.prixUnitaire ?? 0,
-          prixUnite: f.prixUnite,
-          coefficientBoite: f.coefficientBoite,
-          uniteMinimale: uniteConnue(f.uniteMinimale),
-          deconditionnable: f.deconditionnable,
-          disponible: stock.quantite > 0,
-          reliquat: stock.reliquat,
-          quantiteVendable: stock.quantiteVendable,
-          lots,
-          dateExpiration: stock.dateExpiration ?? undefined,
-        };
-      });
+    return fichesLocales(this.ctx).map((f) => f.fiche);
   }
 
   /** Référentiels de la dernière photographie, ou null sans catalogue. */
   lireReferentiels(): Referentiels | null {
     return this.ctx.referentiels();
+  }
+
+  // ------------------------------------------------------------------ stock hors ligne
+
+  /** Sortie de stock : mouvement local et événement `SORTIE_STOCK` en une transaction. */
+  sortirStock(corps: CorpsSortieLocale, u: Utilisateur): SortieStockEnregistree {
+    return sortirStock(this.ctx, corps, u);
+  }
+
+  /** Correction de quantité d'un lot : mouvement local et événement `CORRECTION_QUANTITE` en une transaction. */
+  corrigerQuantite(stockId: string, corps: CorpsCorrectionLocale, u: Utilisateur): { fiche: StockMedicament; variation: number } {
+    return corrigerQuantite(this.ctx, stockId, corps, u);
+  }
+
+  /** Classeur .xlsx du stock local, sans coût, avec son nom de fichier. */
+  preparerExportStock(options: { filtre?: "tous" | "alertes" | "rupture" | "qualifier"; q?: string }): ExportStockPret {
+    return preparerExportStock(this.ctx, options);
+  }
+
+  // ------------------------------------------------------------------ anomalies hors ligne
+
+  /** Anomalies ouvertes de la dernière photographie (moins celles traitées ici), ou traitées sur ce poste. */
+  listerAnomalies(options: OptionsListeAnomaliesLocale = {}): PageAnomalies {
+    return listerAnomaliesLocales(this.ctx, options);
+  }
+
+  /** Marque une anomalie traitée : marque locale et événement `ANOMALIE_TRAITEE` en une transaction. */
+  traiterAnomalie(anomalieId: string, commentaire: string, u: Utilisateur): Anomalie {
+    return traiterAnomalieLocale(this.ctx, anomalieId, commentaire, u);
   }
 
   // ------------------------------------------------------------------ caisse (PD02b)
@@ -321,7 +304,7 @@ export class CoeurCaisse {
     return s ? versSession(this.ctx, s) : null;
   }
 
-  ouvrirSession(entree: { id: string; comptage?: { coupures: { valeurFaciale: number; nombre: number }[] } }, u: Utilisateur): SessionCaisseOuverte {
+  ouvrirSession(entree: { id: string; comptage?: { montantEspeces?: number; coupures?: { valeurFaciale: number; nombre: number }[] } }, u: Utilisateur): SessionCaisseOuverte {
     return ouvrirSession(this.ctx, entree, u);
   }
 

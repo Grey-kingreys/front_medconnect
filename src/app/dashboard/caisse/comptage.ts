@@ -1,22 +1,24 @@
 /**
- * Règles pures du comptage de caisse par coupure. Aucune dépendance à React.
+ * Règles pures de la saisie des espèces de la caisse (montant total, sans coupures).
+ * Aucune dépendance à React.
  */
-import type { Coupure, LigneComptage } from "@/lib/api_caisse";
 
-/** Nombre maximal de billets d'une même coupure accepté par le serveur. */
-export const NOMBRE_MAX_BILLETS = 10000;
+/** Plafond accepté par le serveur pour un total d'espèces, en GNF. */
+export const MONTANT_ESPECES_MAX = 1_000_000_000;
 
-/** Somme de la valeur faciale multipliée par le nombre de billets. */
-export function totalComptage(lignes: LigneComptage[]): number {
-  return lignes.reduce((somme, l) => somme + l.valeurFaciale * l.nombre, 0);
+/** Garde les chiffres d'une saisie (lettres, espaces et séparateurs de milliers retirés), plafonnée au maximum du serveur. */
+export function chiffresDepuisSaisie(texte: string): string {
+  const chiffres = texte.replace(/\D/g, "").replace(/^0+(?=\d)/, "");
+  if (chiffres.length > 10 || Number(chiffres) > MONTANT_ESPECES_MAX) return String(MONTANT_ESPECES_MAX);
+  return chiffres;
 }
 
-/** Une ligne à zéro par coupure du référentiel, rangées par ordre. */
-export function lignesDepuisReferentiel(coupures: Coupure[]): LigneComptage[] {
-  return [...coupures].sort((a, b) => a.ordre - b.ordre).map((c) => ({ valeurFaciale: c.valeurFaciale, nombre: 0 }));
+/** Montant saisi, ou null tant que le champ est vide. */
+export function montantDepuisChiffres(chiffres: string): number | null {
+  return chiffres === "" ? null : Number.parseInt(chiffres, 10);
 }
 
-/** Lignes à envoyer : seulement celles dont le nombre est positif (un fond nul donne un tableau vide). */
-export function lignesAEnvoyer(lignes: LigneComptage[]): LigneComptage[] {
-  return lignes.filter((l) => l.nombre > 0);
+/** Affichage du champ : milliers séparés par une espace (« 350 000 »). */
+export function afficherSaisie(chiffres: string): string {
+  return chiffres.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
 }

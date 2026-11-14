@@ -31,6 +31,11 @@ export const CODES_ERREUR_VENTE = [
   "ANNULATION_AUTRE_POSTE",
   "ANNULATION_AUTRE_CAISSE",
   "ANNULATION_CAISSE_FERMEE",
+  // Vente à crédit.
+  "CREDIT_CLIENT_REQUIS",
+  "CREDIT_PAIEMENTS_INCOHERENTS",
+  "DATE_LIMITE_PASSEE",
+  "CLIENT_CREDIT_INTROUVABLE",
 ] as const;
 export type CodeErreurVente = (typeof CODES_ERREUR_VENTE)[number];
 
@@ -52,6 +57,14 @@ export interface CorpsCreationVente {
   clientNom?: string;
   clientTelephone?: string;
   ordonnanceVerifiee?: boolean;
+  /** Téléphone du prescripteur (ordonnance papier), facultatif. */
+  telephonePrescripteur?: string;
+  /** Vente à crédit : client existant (exclusif avec `nouveauClientCredit`). Sans `paiements`, la vente est réglée à crédit. */
+  clientCreditId?: string;
+  /** Vente à crédit : client créé dans la même opération. */
+  nouveauClientCredit?: { nomComplet: string; telephone?: string };
+  /** Vente à crédit : date limite de remboursement (AAAA-MM-JJ, aujourd'hui ou plus tard). */
+  dateLimiteCredit?: string;
 }
 export interface AllocationVente {
   lotId: string | null;
@@ -121,6 +134,8 @@ export interface Vente {
   ordonnanceVerifiee: boolean;
   clientNom: string | null;
   clientTelephone: string | null;
+  /** Absent sur une vente faite par un ancien poste. */
+  telephonePrescripteur?: string | null;
   vendeur: VendeurVente;
   annuleeLe: string | null;
   annuleeParId: string | null;
@@ -142,6 +157,9 @@ export interface Vente {
   motif: string | null;
   /** Vrai quand la même clé a déjà servi : vente renvoyée sans second retrait du stock. */
   rejeu?: boolean;
+  /** Vente à crédit : client et date limite (absents ou null pour une vente ordinaire). */
+  clientCreditId?: string | null;
+  credit?: { clientCreditId: string; nomComplet: string; dateLimite: string | null } | null;
 }
 export interface VenteResume {
   id: string;
@@ -154,6 +172,8 @@ export interface VenteResume {
   nombreArticles: number;
   vendeur: VendeurVente;
   clientNom: string | null;
+  /** Absent sur une vente faite par un ancien poste. */
+  telephonePrescripteur?: string | null;
   typePiece: TypePiece;
   /** Numéro de ticket du poste (entier, null pour une pièce d'annulation) ; le numéro lisible est `numero`. */
   numeroTicket: number | null;

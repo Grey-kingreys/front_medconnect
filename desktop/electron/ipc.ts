@@ -3,7 +3,7 @@
 // 2. les arguments sont validés (Zod), l'utilisateur, la pharmacie et le droit contrôlés par la passerelle.
 // La fenêtre cachée d'impression (PD05) lit le reçu par le même pont, mais ne peut ni poser un jeton ni déconnecter.
 import { ipcMain, type IpcMainInvokeEvent, type WebContents } from "electron";
-import { schemaJeton, schemasImpression, schemasPont, type NomMethodeImpression } from "@/lib/caisse/contrat_desktop_schemas";
+import { DOMAINES_PONT, schemaJeton, schemasImpression, schemasParDomaine, type NomMethodeImpression } from "@/lib/caisse/contrat_desktop_schemas";
 import type { EtatPosteDesktop, InfosPoste, ReglagesPoste, ReponsePont } from "@/lib/caisse/contrat_desktop";
 import { lectureAutoriseeDepuisImpression } from "../coeur/impression_file";
 import { MESSAGE_MAJ_INTERDITE } from "../coeur/maj_regle";
@@ -21,6 +21,8 @@ export interface DepsIpc {
   etat: () => EtatPosteDesktop;
   /** Installe la mise à jour prête si la règle le permet ; faux sinon. */
   installerMaj: () => boolean;
+  /** Ouvre le dossier des données du poste dans l'explorateur ; texte vide si réussi, sinon le message d'erreur du système. */
+  ouvrirDossierDonnees: () => Promise<string>;
   impression: ServiceImpression;
   reglages: {
     lire: () => ReglagesPoste;
@@ -52,11 +54,14 @@ export function enregistrerIpc(deps: DepsIpc): void {
     expediteurAutorise(evenement) ||
     (lectureAutoriseeDepuisImpression(canal) && deps.impression.contenusActifs().some((c) => cadreAutorise(evenement, c)));
 
-  for (const nom of Object.keys(schemasPont)) {
-    ipcMain.handle(`caisse:${nom}`, async (evenement, ...args: unknown[]) => {
-      if (!expediteurLecture(evenement, `caisse:${nom}`)) return REFUS;
-      return deps.passerelle.appeler(nom, args);
-    });
+  // Un canal par fonction de chaque domaine : `<domaine>:<fonction>`. Les domaines pharmacie à venir y entrent sans autre changement.
+  for (const domaine of DOMAINES_PONT) {
+    for (const nom of Object.keys(schemasParDomaine[domaine])) {
+      ipcMain.handle(`${domaine}:${nom}`, async (evenement, ...args: unknown[]) => {
+        if (!expediteurLecture(evenement, `${domaine}:${nom}`)) return REFUS;
+        return deps.passerelle.appeler(nom, args, domaine);
+      });
+    }
   }
 
   ipcMain.handle("etat", (evenement) => {
@@ -103,6 +108,12 @@ export function enregistrerIpc(deps: DepsIpc): void {
           return ok(deps.reglages.enregistrer(valeurs[0] as Partial<ReglagesPoste>), "Réglages enregistrés.");
         case "lireInfosPoste":
           return ok(deps.reglages.infosPoste(), "Informations de ce poste.");
+        case "ouvrirDossierDonnees": {
+          const erreur = await deps.ouvrirDossierDonnees();
+          return erreur === ""
+            ? ok(null, "Dossier ouvert.")
+            : { ok: false, status: 500, code: "DOSSIER_NON_OUVERT", message: "Le dossier des données n'a pas pu être ouvert." };
+        }
         case "imprimerVente":
           return deps.impression.imprimerVente(valeurs[0] as string);
       }

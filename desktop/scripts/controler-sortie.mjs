@@ -128,6 +128,8 @@ try {
       for (const ligne of readFileSync(path.join(dossier, nom), "utf8").split(/\r?\n/)) {
         const lue = /^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(ligne);
         if (!lue) continue;
+        // NEXT_PUBLIC_* : publiques par conception, inlinées dans le paquet (vérifiées à l'étape 3 ter).
+        if (lue[1].startsWith("NEXT_PUBLIC_")) continue;
         const valeur = lue[2].trim().replace(/^["']|["']$/g, "");
         // Les valeurs courtes ou banales (ports, booléens, noms) feraient de fausses alertes.
         if (valeur.length >= 16 && !/^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?\/?$/.test(valeur)) valeurs.set(lue[1], valeur);

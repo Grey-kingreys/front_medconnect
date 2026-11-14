@@ -21,7 +21,8 @@ import { preparerPaiements } from "@/lib/caisse/regles/paiements";
 import { calculerLigne, type LigneCalculee } from "@/lib/caisse/regles/prix";
 import { reliquatLot } from "@/lib/caisse/regles/quantites";
 import { selectionnerLots, type LotCandidat, type LotPerimeDisponible } from "@/lib/caisse/regles/selection_lots";
-import { calculerStockLocal, type SortieLocale } from "@/lib/caisse/regles/stock_local";
+import { calculerStockLocal } from "@/lib/caisse/regles/stock_local";
+import { ajouterMouvementLocal, lireSurcouche } from "./stock_surcouche";
 import { creerSession, lireSession, sessionOuverteLigne } from "./caisse_session";
 import type { Contexte } from "./contexte";
 import {
@@ -49,6 +50,13 @@ import type { FicheSynchro } from "./types_synchro";
 
 /** Plus grand montant enregistrable (colonne Int du serveur). */
 const PRIX_MAX = 2147483647;
+
+/** Facultatif, comme au serveur : chiffres, espaces, tirets, + en tête, 6 à 20 chiffres. */
+function telephonePrescripteurLocalValide(t: string): boolean {
+  if (t.length > 30 || !/^\+?[\d\s-]+$/.test(t)) return false;
+  const chiffres = t.replace(/\D/g, "").length;
+  return chiffres >= 6 && chiffres <= 20;
+}
 
 const entier = (v: unknown, min: number, max: number): v is number =>
   typeof v === "number" && Number.isInteger(v) && v >= min && v <= max;
@@ -239,6 +247,10 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
     const clientTelephone = (corps.clientTelephone ?? "").trim();
     if (clientNom.length > 100) throw refusValidation("Le nom du client ne doit pas dépasser 100 caractères.");
     if (clientTelephone.length > 30) throw refusValidation("Le téléphone du client ne doit pas dépasser 30 caractères.");
+    const telephonePrescripteur = (corps.telephonePrescripteur ?? "").trim();
+    if (telephonePrescripteur !== "" && !telephonePrescripteurLocalValide(telephonePrescripteur)) {
+      throw refusValidation("Le téléphone du prescripteur n'est pas valide (chiffres, espaces, + et tirets ; 6 à 20 chiffres).");
+    }
     const total = lignes.reduce((somme, x) => somme + x.calcul.montantLigne, 0);
     if (total > PRIX_MAX) throw refusValidation(MESSAGE_TOTAL_TROP_ELEVE);
 
@@ -293,11 +305,8 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
     const lotsParFiche = new Map<string, LotCandidat[]>();
     const lotsDeLaPhoto = new Map<string, Set<string>>();
     for (const [id, fiche] of fiches) {
-      const sorties = c.stockage.lire<SortieLocale>(
-        "SELECT lotId, quantiteUm FROM sorties_stock WHERE stockId = ? AND sequence > ?",
-        [id, etat.sequenceAppliquee],
-      );
-      const stock = calculerStockLocal(fiche, sorties, jour);
+      const surcouche = lireSurcouche(c.stockage, etat.sequenceAppliquee, id);
+      const stock = calculerStockLocal(fiche, surcouche.mouvements.get(id) ?? [], jour, surcouche.lotsLocaux.get(id) ?? []);
       lotsParFiche.set(id, stock.lots.map((l) => ({ ...l, coutUnitaire: 0 })));
       lotsDeLaPhoto.set(id, new Set(fiche.lots.map((l) => l.id)));
     }
@@ -433,6 +442,7 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       ...(clientNom !== "" ? { clientNom } : {}),
       ...(clientTelephone !== "" ? { clientTelephone } : {}),
       ordonnanceVerifiee: corps.ordonnanceVerifiee === true,
+      ...(telephonePrescripteur !== "" ? { telephonePrescripteur } : {}),
     };
 
     const vente: Vente = {
@@ -444,6 +454,7 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       ordonnanceVerifiee: corps.ordonnanceVerifiee === true,
       clientNom: clientNom !== "" ? clientNom : null,
       clientTelephone: clientTelephone !== "" ? clientTelephone : null,
+      telephonePrescripteur: telephonePrescripteur !== "" ? telephonePrescripteur : null,
       vendeur: { id: u.id, nom: u.nom },
       annuleeLe: null,
       annuleeParId: null,
@@ -472,13 +483,14 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
     );
     lignesReponse.forEach((ligne) => {
       for (const al of ligne.allocations) {
-        c.stockage.executer("INSERT INTO sorties_stock (venteId, sequence, stockId, lotId, quantiteUm) VALUES (?, ?, ?, ?, ?)", [
-          cle,
+        ajouterMouvementLocal(c.stockage, {
           sequence,
-          ligne.stockId,
-          al.lotId,
-          al.quantite,
-        ]);
+          stockId: ligne.stockId,
+          lotId: al.lotId,
+          quantiteUm: -al.quantite,
+          type: "VENTE",
+          reference: cle,
+        });
       }
     });
     for (const p of prepares.paiements) {
@@ -515,6 +527,7 @@ export function listerVentes(c: Contexte, jour: string): VentesDuJour {
     nombreArticles: v.lignes.reduce((s, l) => s + l.quantite, 0),
     vendeur: v.vendeur,
     clientNom: v.clientNom,
+    telephonePrescripteur: v.telephonePrescripteur ?? null,
     typePiece: v.typePiece,
     numeroTicket: v.numeroTicket,
     jourMetier: v.jourMetier,

@@ -3,7 +3,7 @@
 /* eslint-disable react-hooks/preserve-manual-memoization, react-hooks/set-state-in-effect */
 import { LoadingSpinner } from "@/components/LoadingSpinner";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
@@ -18,19 +18,25 @@ import {
   ShoppingBag,
   SlidersHorizontal,
   XCircle,
-  FileSpreadsheet
+  FileSpreadsheet,
+  Download
 } from "lucide-react";
 import {
-  getMyStock,
   StockMedicament,
   StockInfo,
   removeStockItem,
+  exporterStock,
+  type FiltreExportStock,
   type ModeImportStock
 } from "@/lib/api_pharmacie";
 import { calculerApercuStock } from "@/lib/apercu_pharmacie";
 import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { formaterGNF } from "@/lib/format_gnf";
 import { afficherDatePeremption } from "@/lib/date_peremption";
+import { estErreurReseau } from "@/lib/erreurs_api";
+import { MESSAGE_ACTION_EN_LIGNE } from "@/lib/caisse/source_desktop";
+import { horsLigneSurPoste, useEtatPoste } from "@/lib/caisse/etat_poste";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { jourConakry } from "../ventes/affichage";
 import StockModal from "@/components/modals/StockModal";
 import ImportStockModal from "@/components/modals/ImportStockModal";
@@ -42,10 +48,22 @@ import { SortieStock } from "./SortieStock";
 
 type Filtre = "all" | "low" | "rupture" | "qualifier";
 
+const MESSAGE_EXPORT_LOCAL = "Stock exporté depuis ce poste. Les prix d'achat ne sont pas dans le fichier (ils ne sont pas gardés sur le poste).";
+const MSG_EXPORT_ECHOUE = "Le stock n'a pas pu être exporté. Vérifiez votre connexion puis réessayez.";
+const FILTRE_VERS_API: Record<Filtre, FiltreExportStock> = { all: "tous", low: "alertes", rupture: "rupture", qualifier: "qualifier" };
+
 const MSG_CHARGEMENT_ECHOUE = "Le stock n'a pas pu être chargé. Vérifiez votre connexion puis réessayez.";
 
 export default function StockPage() {
   const { user, profile } = useAuth();
+  // Hors ligne sur le poste desktop : le stock se lit, se sort et se corrige ; le reste demande une connexion.
+  const suiviPoste = useEtatPoste();
+  const horsLigne = horsLigneSurPoste(suiviPoste);
+  const exigerConnexion = (): boolean => {
+    if (!horsLigne) return false;
+    setErreurExport(MESSAGE_ACTION_EN_LIGNE);
+    return true;
+  };
   // Modes d'import permis par les droits : livraison (réception) et inventaire (D695)
   const permissions = user ? lireContexteAcces(user, profile ?? null).permissions : null;
   const modesPermis: ModeImportStock[] = [
@@ -59,6 +77,30 @@ export default function StockPage() {
   const [succes, setSucces] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<Filtre>("all");
+  const [exportEnCours, setExportEnCours] = useState(false);
+  const [choixExportOuvert, setChoixExportOuvert] = useState(false);
+  const [erreurExport, setErreurExport] = useState<string | null>(null);
+  const zoneExportRef = useRef<HTMLDivElement>(null);
+  const boutonExportRef = useRef<HTMLButtonElement>(null);
+
+  // Le menu d'export se ferme sur un clic extérieur ou Échap (le focus revient au bouton)
+  useEffect(() => {
+    if (!choixExportOuvert) return;
+    const surClic = (e: MouseEvent) => {
+      if (!zoneExportRef.current?.contains(e.target as Node)) setChoixExportOuvert(false);
+    };
+    const surTouche = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setChoixExportOuvert(false);
+      boutonExportRef.current?.focus();
+    };
+    document.addEventListener("mousedown", surClic);
+    document.addEventListener("keydown", surTouche);
+    return () => {
+      document.removeEventListener("mousedown", surClic);
+      document.removeEventListener("keydown", surTouche);
+    };
+  }, [choixExportOuvert]);
 
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -74,8 +116,7 @@ export default function StockPage() {
     setSucces(null);
     setErreurChargement(null);
     try {
-      const res = await getMyStock(user.structureId);
-      setStockInfo(res.data);
+      setStockInfo(await sourcePharmacie().chargerStockInfo(user.structureId));
     } catch (err) {
       setErreurChargement(messageErreurPour(err, MSG_CHARGEMENT_ECHOUE));
     } finally {
@@ -91,37 +132,80 @@ export default function StockPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("importer") !== "1" || !peutImporter) return;
-    setIsImportOpen(true);
+    if (horsLigne) setErreurExport(MESSAGE_ACTION_EN_LIGNE);
+    else setIsImportOpen(true);
     params.delete("importer");
     const reste = params.toString();
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${reste ? `?${reste}` : ""}`);
-  }, [peutImporter]);
+  }, [peutImporter, horsLigne]);
 
   // Statuts lus des alertes du serveur (seuil des paramètres, quantité négative comprise)
   const idsStockBas = new Set(stockInfo?.alertes.stockBas.map((a) => a.id) ?? []);
   const idsRupture = new Set(stockInfo?.alertes.rupture.map((a) => a.id) ?? []);
   const nombreAQualifier = stockInfo?.stocks.filter((s) => s.qualifie === false).length ?? 0;
 
+  // Recherche sans espaces de début ni de fin, comme l'export côté serveur
+  const rechercheNettoyee = search.trim().toLowerCase();
   const filteredStocks = stockInfo?.stocks.filter(s => {
-    const matchesSearch = s.medicament.nom.toLowerCase().includes(search.toLowerCase()) ||
-                          s.medicament.nomGenerique?.toLowerCase().includes(search.toLowerCase());
+    const matchesSearch = s.medicament.nom.toLowerCase().includes(rechercheNettoyee) ||
+                          s.medicament.nomGenerique?.toLowerCase().includes(rechercheNettoyee);
     if (filter === "low") return matchesSearch && idsStockBas.has(s.id);
     if (filter === "rupture") return matchesSearch && idsRupture.has(s.id);
     if (filter === "qualifier") return matchesSearch && s.qualifie === false;
     return matchesSearch;
   }) || [];
 
+  // Exporte tout le stock ou seulement l'affichage actuel (onglet et recherche)
+  const exporter = async (seulementAffichage: boolean) => {
+    if (!user?.structureId) return;
+    setChoixExportOuvert(false);
+    setErreurExport(null);
+    setExportEnCours(true);
+    try {
+      // Hors ligne sur le poste : le fichier est fait sur le poste, sans coût, et enregistré par « Enregistrer sous ».
+      if (horsLigne) {
+        const resultat = await sourcePharmacie().exporterStock(
+          user.structureId,
+          seulementAffichage ? { filtre: FILTRE_VERS_API[filter], q: search.trim() } : {},
+        );
+        if (resultat.enregistre) setSucces(MESSAGE_EXPORT_LOCAL);
+        return;
+      }
+      const { blob, filename } = await exporterStock(
+        user.structureId,
+        seulementAffichage ? { filtre: FILTRE_VERS_API[filter], q: search.trim() } : {},
+      );
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement("a");
+      lien.href = url;
+      lien.download = filename;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    } catch (err) {
+      setErreurExport(estErreurReseau(err) ? MESSAGE_ACTION_EN_LIGNE : messageErreurPour(err, MSG_EXPORT_ECHOUE));
+    } finally {
+      setExportEnCours(false);
+    }
+  };
+
+  const affichageFiltre = filter !== "all" || search.trim() !== "";
+
   const openAddModal = () => {
+    if (exigerConnexion()) return;
     setSelectedStock(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (item: StockMedicament) => {
+    if (exigerConnexion()) return;
     setSelectedStock(item);
     setIsModalOpen(true);
   };
 
   const openDeleteModal = (item: StockMedicament) => {
+    if (exigerConnexion()) return;
     setSelectedStock(item);
     setIsDeleteModalOpen(true);
   };
@@ -172,6 +256,11 @@ export default function StockPage() {
   return (
     <div className="max-w-mc-contenu mx-auto space-y-6 animate-fade-in pb-20">
       {erreurChargement && <ErreurAvecReessai message={erreurChargement} onReessayer={fetchData} />}
+      {erreurExport && (
+        <div role="alert" className={ui.alerte.erreur}>
+          {erreurExport}
+        </div>
+      )}
       {succes && (
         <div role="status" className={ui.alerte.succes}>
           {succes}
@@ -233,13 +322,42 @@ export default function StockPage() {
           <div className="flex flex-wrap items-center gap-3">
             {peutImporter && (
               <button
-                onClick={() => setIsImportOpen(true)}
+                onClick={() => {
+                  if (!exigerConnexion()) setIsImportOpen(true);
+                }}
                 className={ui.bouton.secondaire}
               >
                 <FileSpreadsheet size={16} className="text-primary-600 dark:text-primary-400" />
                 Importer depuis Excel
               </button>
             )}
+            <div className="relative" ref={zoneExportRef}>
+              <button
+                type="button"
+                ref={boutonExportRef}
+                onClick={() => (affichageFiltre ? setChoixExportOuvert((o) => !o) : exporter(false))}
+                disabled={exportEnCours}
+                aria-haspopup={affichageFiltre ? "menu" : undefined}
+                aria-expanded={affichageFiltre ? choixExportOuvert : undefined}
+                className={ui.bouton.secondaire}
+              >
+                <Download size={16} className="text-primary-600 dark:text-primary-400" />
+                {exportEnCours ? "Export en cours..." : "Exporter le stock"}
+              </button>
+              {choixExportOuvert && (
+                <div
+                  role="menu"
+                  className="absolute right-0 z-20 mt-2 flex w-64 flex-col gap-1 rounded-lg border border-slate-200 bg-white p-2 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+                >
+                  <button type="button" role="menuitem" onClick={() => exporter(false)} className={ui.bouton.secondaire}>
+                    Tout le stock
+                  </button>
+                  <button type="button" role="menuitem" onClick={() => exporter(true)} className={ui.bouton.secondaire}>
+                    Seulement l&apos;affichage actuel
+                  </button>
+                </div>
+              )}
+            </div>
             <button
               onClick={openAddModal}
               className={ui.bouton.primaire}

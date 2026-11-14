@@ -14,7 +14,9 @@ export interface ReleveEntree {
 export interface ComptageEntree {
   id: string;
   moment: "OUVERTURE" | "FERMETURE";
-  coupures: LigneComptage[];
+  /** Total des espèces saisi directement ; exclusif avec `coupures` (ancien format, toujours accepté). */
+  montantEspeces?: number;
+  coupures?: LigneComptage[];
   releves?: ReleveEntree[];
 }
 
@@ -27,7 +29,7 @@ export interface MouvementEntree {
 }
 
 export interface FermetureEntree {
-  comptageFermeture?: { id: string; coupures: LigneComptage[]; releves?: ReleveEntree[] };
+  comptageFermeture?: { id: string; montantEspeces?: number; coupures?: LigneComptage[]; releves?: ReleveEntree[] };
   commentaire?: string;
 }
 

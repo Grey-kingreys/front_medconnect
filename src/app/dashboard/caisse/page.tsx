@@ -10,7 +10,6 @@ import { nouvelleCleIdempotence } from "@/lib/api_carnet";
 import { sourceCaisse } from "@/lib/caisse/source_active";
 import {
   type BilanCaisse,
-  type LigneComptage,
   type TypeMouvementCaisse,
   type Poste,
   type Referentiels,
@@ -32,12 +31,12 @@ import {
 } from "@/components/pharmacie/classes";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { formaterDateHeure, formaterHeure, formaterJour, jourConakry } from "../ventes/affichage";
-import { ComptageCoupures } from "./ComptageCoupures";
+import { ChampEspeces } from "./ChampEspeces";
 import { CaisseFermee, FermetureCaisse } from "./FermetureCaisse";
 import { MouvementCaisse } from "./MouvementCaisse";
-import { lignesAEnvoyer, lignesDepuisReferentiel } from "./comptage";
+import { montantDepuisChiffres } from "./comptage";
 
-type Action = "ouvrir" | "ouvrirSansCompter" | "enregistrerFond";
+type Action = "ouvrir" | "enregistrerFond";
 
 const LIBELLES_MOUVEMENT: Record<TypeMouvementCaisse, string> = {
   PRELEVEMENT: "Prélèvement",
@@ -61,7 +60,8 @@ export default function MaCaissePage() {
   const [erreurChargement, setErreurChargement] = useState(false);
   const [essai, setEssai] = useState(0);
 
-  const [lignes, setLignes] = useState<LigneComptage[]>([]);
+  const [fond, setFond] = useState("");
+  const [fondManquant, setFondManquant] = useState(false);
   const [idOuverture, setIdOuverture] = useState(nouvelleCleIdempotence);
   const [idComptage, setIdComptage] = useState(nouvelleCleIdempotence);
   const [envoi, setEnvoi] = useState(false);
@@ -144,7 +144,6 @@ export default function MaCaissePage() {
         setReferentiels(refs);
         setPoste(etat.poste);
         setSession(etat.session);
-        setLignes(lignesDepuisReferentiel(refs.coupures));
         setErreurChargement(false);
         setCharge(true);
       })
@@ -168,6 +167,12 @@ export default function MaCaissePage() {
 
   const lancer = async (action: Action) => {
     if (!structureId || !userId || !poste || envoi) return;
+    const montantFond = montantDepuisChiffres(fond);
+    if (montantFond === null) {
+      setFondManquant(true);
+      document.getElementById("fond-ouverture")?.focus();
+      return;
+    }
     setEnvoi(true);
     setRefus(null);
     setSucces(null);
@@ -178,14 +183,11 @@ export default function MaCaissePage() {
         await sourceCaisse().saisirComptage(structureId, session.id, {
           id: idComptage,
           moment: "OUVERTURE",
-          coupures: lignesAEnvoyer(lignes),
+          montantEspeces: montantFond,
         });
         setSucces("Le fond de caisse est enregistré.");
       } else {
-        const corps =
-          action === "ouvrir"
-            ? { id: idOuverture, posteId: poste.id, comptage: { coupures: lignesAEnvoyer(lignes) } }
-            : { id: idOuverture, posteId: poste.id };
+        const corps = { id: idOuverture, posteId: poste.id, comptage: { montantEspeces: montantFond } };
         const res = await sourceCaisse().ouvrirSession(structureId, corps);
         setSucces(res.message);
       }
@@ -209,7 +211,8 @@ export default function MaCaissePage() {
   const renouveler = () => {
     setIdOuverture(nouvelleCleIdempotence());
     setIdComptage(nouvelleCleIdempotence());
-    setLignes(lignesDepuisReferentiel(referentiels?.coupures ?? []));
+    setFond("");
+    setFondManquant(false);
   };
 
   const enTete = (
@@ -332,43 +335,34 @@ export default function MaCaissePage() {
       {session === null && (
         <div className={`${CARTE} space-y-5`}>
           <p className="text-mc-normal text-slate-700 dark:text-slate-300">
-            Votre caisse est fermée. Elle s&apos;ouvre aussi toute seule à votre première vente, sans fond compté.
+            Votre caisse est fermée. Indiquez la monnaie du tiroir pour l&apos;ouvrir. Si vous vendez avant, elle s&apos;ouvrira toute seule et vous devrez saisir la monnaie ici.
           </p>
-          <ComptageCoupures
-            coupures={referentiels.coupures}
-            valeur={lignes}
-            onChange={setLignes}
+          <ChampEspeces
+            id="fond-ouverture"
+            legende="Monnaie dans le tiroir à l'ouverture (GNF)"
+            aide="Le liquide mis dans la caisse avant la première vente, pour rendre la monnaie. Mettez 0 si le tiroir est vide."
+            erreur={fondManquant ? "Indiquez la monnaie du tiroir (0 si le tiroir est vide)." : null}
+            valeur={fond}
+            onChange={(v) => {
+              setFond(v);
+              setFondManquant(false);
+            }}
             onTermine={() => document.getElementById("ouvrir-avec-fond")?.focus()}
             desactive={verrouille}
-            legende="Fond de caisse : billets dans le tiroir"
+            autoFocus
           />
           {blocReessai}
           {aRejouer === null && (
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <button
-                  id="ouvrir-avec-fond"
-                  type="button"
-                  onClick={() => void lancer("ouvrir")}
-                  disabled={verrouille}
-                  className={BOUTON_PRIMAIRE}
-                >
-                  {envoi && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
-                  Ouvrir la caisse avec ce fond
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void lancer("ouvrirSansCompter")}
-                  disabled={verrouille}
-                  className={BOUTON_SECONDAIRE}
-                >
-                  Ouvrir sans compter
-                </button>
-              </div>
-              <p className="text-mc-legende text-slate-600 dark:text-slate-400">
-                Le fond sera compté à 0 et signalé au titulaire à la fermeture.
-              </p>
-            </div>
+            <button
+              id="ouvrir-avec-fond"
+              type="button"
+              onClick={() => void lancer("ouvrir")}
+              disabled={verrouille}
+              className={BOUTON_PRIMAIRE}
+            >
+              {envoi && <Loader2 className="w-4 h-4 animate-spin" aria-hidden="true" />}
+              Ouvrir la caisse avec ce fond
+            </button>
           )}
         </div>
       )}
@@ -419,13 +413,19 @@ export default function MaCaissePage() {
 
           {session.comptageOuverture === null && !fermetureOuverte && (
             <div className="space-y-4">
-              <ComptageCoupures
-                coupures={referentiels.coupures}
-                valeur={lignes}
-                onChange={setLignes}
+              <ChampEspeces
+                id="fond-ouverture"
+                legende="Monnaie dans le tiroir à l'ouverture (GNF)"
+            aide="Le liquide mis dans la caisse avant la première vente, pour rendre la monnaie. Mettez 0 si le tiroir est vide."
+            erreur={fondManquant ? "Indiquez la monnaie du tiroir (0 si le tiroir est vide)." : null}
+                valeur={fond}
+                onChange={(v) => {
+              setFond(v);
+              setFondManquant(false);
+            }}
                 onTermine={() => document.getElementById("enregistrer-fond")?.focus()}
                 desactive={verrouille}
-                legende="Comptez le fond de caisse"
+                autoFocus
               />
               {blocReessai}
               {aRejouer === null && (
@@ -541,7 +541,6 @@ export default function MaCaissePage() {
               sessionId={session.id}
               bilan={bilan}
               modes={referentiels.modesPaiement}
-              coupures={referentiels.coupures}
               jourPasse={session.jourMetier < aujourdhui ? session.jourMetier : null}
               onFermee={(figee) => {
                 setFermee({ bilan: figee, jourPasse: session.jourMetier < aujourdhui ? session.jourMetier : null });

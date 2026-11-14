@@ -8,7 +8,8 @@ import type {
   SessionCaisseOuverte,
   TypeMouvementCaisse,
 } from "../api_caisse";
-import type { StockMedicament } from "../api_pharmacie";
+import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
+import type { CorpsSortieStock, SortieStockEnregistree, StockMedicament } from "../api_pharmacie";
 import type { CorpsCreationVente, Vente, VentesDuJour } from "../api_ventes";
 import type { EtatCaisse } from "./source";
 
@@ -56,12 +57,13 @@ export interface EtatPosteDesktop {
 export interface CorpsOuverture {
   id: string;
   posteId?: string;
-  comptage?: { coupures: LigneComptage[] };
+  comptage?: { montantEspeces?: number; coupures?: LigneComptage[] };
 }
 export interface CorpsComptage {
   id: string;
   moment: "OUVERTURE" | "FERMETURE";
-  coupures: LigneComptage[];
+  montantEspeces?: number;
+  coupures?: LigneComptage[];
   releves?: { mode: string; montant: number }[];
 }
 export interface CorpsMouvement {
@@ -72,7 +74,7 @@ export interface CorpsMouvement {
   mode?: string;
 }
 export interface CorpsFermeture {
-  comptageFermeture?: { id: string; coupures: LigneComptage[]; releves?: { mode: string; montant: number }[] };
+  comptageFermeture?: { id: string; montantEspeces?: number; coupures?: LigneComptage[]; releves?: { mode: string; montant: number }[] };
   commentaire?: string;
 }
 
@@ -103,6 +105,8 @@ export interface InfosPoste {
   adresseApi?: string;
   /** Vrai si les mises à jour se font toutes seules, faux si elles sont manuelles. */
   majAutomatique?: boolean;
+  /** Dossier des données de ce poste (base, appareil.json, journal.log), ajouté par le processus principal. */
+  dossierDonnees?: string;
 }
 
 /** Codes d'échec d'une impression (ReponsePont, `code`). */
@@ -110,6 +114,33 @@ export const CODE_IMPRIMANTE_NON_CHOISIE = "IMPRIMANTE_NON_CHOISIE";
 export const CODE_IMPRESSION_ECHOUEE = "IMPRESSION_ECHOUEE";
 export const MESSAGE_IMPRESSION_ECHOUEE =
   "Le ticket n'a pas pu être imprimé. Vérifiez que l'imprimante est allumée et réessayez. La vente est bien enregistrée.";
+
+/** Fonctions d'un domaine pharmacie du pont (vide tant que le domaine n'a pas de fonction). Chaque fonction rend une `ReponsePont`. */
+export type PontDomaine = Record<string, (...args: never[]) => Promise<ReponsePont<unknown>>>;
+
+/** Domaine `stock` du pont : sortie de stock et correction de quantité faites sur le poste (permission `stock:write`). */
+export interface PontStock extends PontDomaine {
+  sortir(s: string, corps: CorpsSortieStock & { id: string }): Promise<ReponsePont<SortieStockEnregistree>>;
+  corriger(
+    s: string,
+    stockId: string,
+    corps: { id: string; lotId?: string; variation: number; motif: string; notes?: string },
+  ): Promise<ReponsePont<StockMedicament>>;
+  /** Génère le .xlsx du stock local (sans coût) et l'enregistre par une boîte « Enregistrer sous ». */
+  exporter(s: string, options: { filtre?: "tous" | "alertes" | "rupture" | "qualifier"; q?: string }): Promise<ReponsePont<ResultatExportStock>>;
+}
+
+/** Résultat de l'export du stock sur le poste : `enregistre` est faux si la personne a fermé la boîte sans enregistrer. */
+export interface ResultatExportStock {
+  enregistre: boolean;
+  nomFichier: string;
+}
+
+/** Domaine `anomalie` du pont : file des anomalies ouvertes et traitement sur le poste (permission `anomalie:gerer`). */
+export interface PontAnomalie extends PontDomaine {
+  lister(s: string, options: OptionsListeAnomalies): Promise<ReponsePont<PageAnomalies>>;
+  traiter(s: string, anomalieId: string, corps: { commentaire: string }): Promise<ReponsePont<Anomalie>>;
+}
 
 export interface PontDesktop {
   version: string;
@@ -136,6 +167,12 @@ export interface PontDesktop {
     getVente(s: string, venteId: string): Promise<ReponsePont<Vente | null>>;
     enregistrerAnnulationServeur(reponse: Vente): Promise<ReponsePont<null>>;
   };
+  /** Domaines pharmacie à venir, prêts à recevoir leurs fonctions (absents des anciens préchargements). */
+  stock?: PontStock;
+  reception?: PontDomaine;
+  inventaire?: PontDomaine;
+  credit?: PontDomaine;
+  anomalie?: PontAnomalie;
   maj: {
     /** Installe la mise à jour prête et relance l'application ; refusé si une caisse est ouverte ou si des ventes attendent. */
     installer(): Promise<ReponsePont<null>>;
@@ -145,6 +182,8 @@ export interface PontDesktop {
     lireReglages(): Promise<ReponsePont<ReglagesPoste>>;
     enregistrerReglages(modif: Partial<ReglagesPoste>): Promise<ReponsePont<ReglagesPoste>>;
     lireInfosPoste(): Promise<ReponsePont<InfosPoste>>;
+    /** Ouvre le dossier des données de ce poste dans l'explorateur de fichiers. */
+    ouvrirDossierDonnees(): Promise<ReponsePont<null>>;
     /** Imprime le ticket de la vente locale sans dialogue, avec l'imprimante et le format réglés. */
     imprimerVente(venteId: string): Promise<ReponsePont<null>>;
     /** Appelé par la fenêtre cachée d'impression quand le reçu est rendu (logo chargé ou replié). */

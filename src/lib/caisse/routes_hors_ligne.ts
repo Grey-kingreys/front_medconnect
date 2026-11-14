@@ -3,6 +3,8 @@ const ROUTES_HORS_LIGNE = [
   "/dashboard/vente",
   "/dashboard/caisse",
   "/dashboard/ventes",
+  "/dashboard/stock",
+  "/dashboard/anomalies",
   "/dashboard/poste",
   "/dashboard/profil",
 ] as const;

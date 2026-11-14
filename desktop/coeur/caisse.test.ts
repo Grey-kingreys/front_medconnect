@@ -64,7 +64,7 @@ describe("vente et caisse ouverte automatiquement (CA19)", () => {
     expect(v.session.ouverteAutomatiquement).toBe(true);
     expect(v.rejeu).toBeUndefined();
     expect(s.lireUn<{ ouverteAutomatiquement: number }>("SELECT ouverteAutomatiquement FROM sessions")?.ouverteAutomatiquement).toBe(1);
-    expect(s.lire("SELECT sequence FROM sorties_stock")).toEqual([{ sequence: 2 }]);
+    expect(s.lire("SELECT sequence FROM mouvements_locaux")).toEqual([{ sequence: 2 }]);
     expect(evenements(s)[0].corps).toEqual({ sessionId: v.session.id });
     expect(s.lireUn<{ prochaineSequence: number }>("SELECT prochaineSequence FROM etat_poste")?.prochaineSequence).toBe(3);
     expect(c.sessionOuverte()?.id).toBe(v.session.id);
@@ -200,7 +200,7 @@ describe("deux prix (CA1, CA2)", () => {
     expect(refus(() => c.enregistrerVente({ lignes: [{ stockId: "inconnue", quantite: 1 }] }, cle(3), VENDEUR))).toMatchObject({ status: 404, code: "STOCK_INTROUVABLE" });
     expect(refus(() => c.enregistrerVente({ lignes: [] }, cle(4), VENDEUR)).code).toBe("VALIDATION");
     expect(refus(() => c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 10001 }] }, cle(5), VENDEUR)).code).toBe("VALIDATION");
-    for (const table of ["ventes", "sessions", "evenements", "sorties_stock", "paiements_locaux"]) expect(compte(s, table)).toBe(0);
+    for (const table of ["ventes", "sessions", "evenements", "mouvements_locaux", "paiements_locaux"]) expect(compte(s, table)).toBe(0);
   });
 });
 
@@ -308,6 +308,23 @@ describe("ordonnance et paiements (CA16)", () => {
     expect(corps).not.toHaveProperty("clientTelephone");
   });
 
+  it("téléphone du prescripteur : stocké dans la vente, envoyé à la synchro, absent s'il est vide", () => {
+    const { c, s } = coeurPret([fiche(1)]);
+    const v = c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }], telephonePrescripteur: "  +224 622 11 22 33 " }, cle(1), VENDEUR);
+    expect(v.telephonePrescripteur).toBe("+224 622 11 22 33");
+    expect(evenements(s)[1].corps.telephonePrescripteur).toBe("+224 622 11 22 33");
+    expect(c.lireVente(v.id)?.telephonePrescripteur).toBe("+224 622 11 22 33");
+
+    const sans = c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }], telephonePrescripteur: "  " }, cle(2), VENDEUR);
+    expect(sans.telephonePrescripteur).toBeNull();
+    expect(evenements(s)[2].corps).not.toHaveProperty("telephonePrescripteur");
+  });
+
+  it("téléphone du prescripteur invalide refusé", () => {
+    const { c } = coeurPret([fiche(1)]);
+    expect(() => c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }], telephonePrescripteur: "abc" }, cle(1), VENDEUR)).toThrow();
+  });
+
   it("paiements incohérents ou mode inconnu refusés, avec les messages du serveur", () => {
     const { c } = coeurPret([fiche(1)]);
     expect(
@@ -368,7 +385,7 @@ describe("caisse (CA15, CA18)", () => {
     // CA18 : fermeture sans comptage refusée.
     expect(refus(() => c.fermerSession(uuid(1), {}, VENDEUR))).toMatchObject({
       code: "COMPTAGE_FERMETURE_REQUIS",
-      message: "Comptez les billets du tiroir avant de fermer la caisse.",
+      message: "Comptez l'argent du tiroir avant de fermer la caisse.",
     });
     // Écart au-delà du seuil sans commentaire : refusée, rien d'écrit.
     const comptage = { id: uuid(3), coupures: coupures(24, 1) };
@@ -400,6 +417,36 @@ describe("caisse (CA15, CA18)", () => {
     const suivante = c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 1 }] }, cle(2), VENDEUR);
     expect(suivante.session.id).not.toBe(uuid(1));
     expect(suivante.session.ouverteAutomatiquement).toBe(true);
+  });
+
+  it("comptage par montant total : fond, écart, événements au nouveau format ; les coupures restent acceptées", () => {
+    const { s, c } = coeurPret([fiche(1, { prixUnitaire: 100000 })]);
+    const ouverte = c.ouvrirSession({ id: uuid(1), comptage: { montantEspeces: 200000 } }, VENDEUR);
+    expect(ouverte).toMatchObject({ fondCaisse: 200000, fondCompte: true });
+    expect(evenements(s)[1].corps).toMatchObject({ moment: "OUVERTURE", montantEspeces: 200000 });
+    expect(evenements(s)[1].corps).not.toHaveProperty("coupures");
+
+    c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 4 }] }, cle(1), VENDEUR);
+    // Théorique 600 000, compté 590 000 : écart de -10 000, commentaire exigé.
+    const comptage = { id: uuid(3), montantEspeces: 590000 };
+    expect(refus(() => c.fermerSession(uuid(1), { comptageFermeture: comptage }, VENDEUR))).toMatchObject({
+      status: 400,
+      code: "COMMENTAIRE_ECART_REQUIS",
+    });
+    const figee = c.fermerSession(uuid(1), { comptageFermeture: comptage, commentaire: "Erreur de rendu de monnaie" }, VENDEUR);
+    expect(figee).toMatchObject({ fige: true, ecartEspeces: -10000 });
+    expect(figee.compte.find((e) => e.mode === "ESPECES")?.montant).toBe(590000);
+    expect(evenements(s).at(-1)?.corps).toMatchObject({ comptageFermeture: { comptageId: uuid(3), montantEspeces: 590000 } });
+    expect(evenements(s).at(-1)?.corps.comptageFermeture).not.toHaveProperty("coupures");
+
+    // Les deux formats ensemble, aucun, ou un montant invalide : refusés.
+    const autre = coeurPret([fiche(1)]);
+    autre.c.ouvrirSession({ id: uuid(1) }, VENDEUR);
+    for (const corps of [{ montantEspeces: 10, coupures: coupures(1) }, {}, { montantEspeces: -5 }, { montantEspeces: 1.5 }]) {
+      expect(refus(() => autre.c.saisirComptage(uuid(1), { id: uuid(5), moment: "FERMETURE", ...corps }, VENDEUR)).status).toBe(400);
+    }
+    // Ancien format par coupures : toujours accepté, total inchangé.
+    expect(autre.c.saisirComptage(uuid(1), { id: uuid(6), moment: "FERMETURE", coupures: coupures(3) }, VENDEUR)).toMatchObject({ totalEspeces: 60000 });
   });
 
   it("comptages : coupures du référentiel, doublons, bornes, ouverture sans relevé, comptage déjà saisi", () => {
@@ -478,7 +525,7 @@ describe("atomicité : une coupure à la dernière écriture n'écrit rien", () 
     arme = true;
     expect(() => c.enregistrerVente({ lignes: [{ stockId: "s1", quantite: 2 }] }, cle(1), VENDEUR)).toThrow("coupure de courant");
 
-    for (const table of ["ventes", "sessions", "evenements", "sorties_stock", "paiements_locaux"]) expect(compte(reel, table)).toBe(0);
+    for (const table of ["ventes", "sessions", "evenements", "mouvements_locaux", "paiements_locaux"]) expect(compte(reel, table)).toBe(0);
     expect(reel.lireUn("SELECT prochaineSequence, prochainSecours FROM etat_poste")).toEqual({ prochaineSequence: 1, prochainSecours: 1 });
     expect(reel.lireUn<{ dernierUtilise: number | null }>("SELECT dernierUtilise FROM plages")?.dernierUtilise).toBeNull();
     expect(c.lireStock()[0].quantite).toBe(40);

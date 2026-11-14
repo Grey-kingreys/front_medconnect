@@ -1,5 +1,5 @@
 // Processus principal : fenêtre, serveur Next local, garde-fous de navigation.
-import { app, BrowserWindow, Menu, session, shell, type WebPreferences } from "electron";
+import { app, BrowserWindow, dialog, Menu, session, shell, type WebPreferences } from "electron";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { randomUUID } from "node:crypto";
@@ -7,6 +7,7 @@ import os from "node:os";
 import { retirerEtControlerCookieRefresh } from "../coeur/cookie_session";
 import { Passerelle, construireEtat } from "../coeur/passerelle";
 import { ouvrirCaisse, type CaisseOuverte } from "./demarrage";
+import { writeFile } from "node:fs/promises";
 import { creerServiceImpression } from "./impression";
 import { enregistrerIpc } from "./ipc";
 import { creerJournalFichier } from "./journal_fichier";
@@ -198,6 +199,18 @@ if (!premiereInstance) {
       },
       apresRattachement: () => service!.declencher("demarrage"),
       etatChange: notifier,
+      enregistrerFichier: async (nomFichier, contenu) => {
+        // Boîte « Enregistrer sous » : le nom proposé est celui du serveur, dans les documents de la personne.
+        const options = {
+          title: "Enregistrer le stock",
+          defaultPath: path.join(app.getPath("documents"), nomFichier),
+          filters: [{ name: "Classeur Excel", extensions: ["xlsx"] }],
+        };
+        const choix = fenetre ? await dialog.showSaveDialog(fenetre, options) : await dialog.showSaveDialog(options);
+        if (choix.canceled || !choix.filePath) return false;
+        await writeFile(choix.filePath, contenu);
+        return true;
+      },
       journal,
     });
     const impression = creerServiceImpression({
@@ -215,9 +228,10 @@ if (!premiereInstance) {
       reglages: {
         lire: () => coeur.lireReglages(),
         enregistrer: (modif) => coeur.enregistrerReglages(modif),
-        infosPoste: () => ({ ...coeur.infosPoste(), adresseApi: adresseApiAffichee(), majAutomatique: maj?.automatique ?? false }),
+        infosPoste: () => ({ ...coeur.infosPoste(), adresseApi: adresseApiAffichee(), majAutomatique: maj?.automatique ?? false, dossierDonnees: app.getPath("userData") }),
       },
       installerMaj: () => maj?.installerMaintenant() ?? false,
+      ouvrirDossierDonnees: () => shell.openPath(app.getPath("userData")),
       definirJeton: (jeton) => service!.definirJeton(jeton),
       deconnecter: () => {
         service!.deconnecter();

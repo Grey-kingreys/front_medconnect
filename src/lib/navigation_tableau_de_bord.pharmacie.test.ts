@@ -135,6 +135,18 @@ describe("raccourcis de la pharmacie", () => {
     expect(estRouteAutorisee("/dashboard/receptions", vendeur)).toBe(false);
   });
 
+  it("montre Crédits seulement avec credit:read, fiche et nouveau crédit compris, et jamais sur le web hors ligne", () => {
+    const avec = contexte("PHARMACIEN", "PHARMACIE", [...PHARMACIEN, "credit:read", "credit:write"]);
+    expect(hrefs(sectionsMenu(avec))).toContain("/dashboard/credits");
+    expect(estRouteAutorisee("/dashboard/credits", avec)).toBe(true);
+    expect(estRouteAutorisee("/dashboard/credits/nouveau", avec)).toBe(true);
+    expect(estRouteAutorisee("/dashboard/credits/c-123", avec)).toBe(true);
+    const sans = contexte("PHARMACIEN", "PHARMACIE", PHARMACIEN);
+    expect(hrefs(sectionsMenu(sans))).not.toContain("/dashboard/credits");
+    expect(estRouteAutorisee("/dashboard/credits", sans)).toBe(false);
+    expect(estRouteAutorisee("/dashboard/credits/c-123", sans)).toBe(false);
+  });
+
   it("montre Inventaire avec inventaire:write et la refuse au rôle Pharmacien (D704)", () => {
     const titulaire = contexte("STRUCTURE_ADMIN", "PHARMACIE", [...ADMIN_PHARMACIE, "inventaire:write"]);
     expect(hrefs(sectionsMenu(titulaire))).toContain("/dashboard/inventaire");

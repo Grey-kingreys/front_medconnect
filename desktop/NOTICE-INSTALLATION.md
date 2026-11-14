@@ -15,7 +15,14 @@ Pour le vérifier : ouvrez **Paramètres**, puis **Système**, puis **Informatio
 ## Installer
 
 1. Téléchargez le fichier « MedConnecte Caisse Setup » **uniquement depuis le lien donné par MedConnecte**.
-2. Double-cliquez dessus. L'installation se fait seule, sans mot de passe d'administrateur, et le programme s'ouvre à la fin.
+2. Double-cliquez dessus. Un assistant en français s'ouvre : suivez les écrans.
+3. Lisez les **conditions d'utilisation** et cliquez sur **J'accepte**.
+4. Choisissez **Installer pour moi seulement** (aucun mot de passe d'administrateur) ou **Installer pour tous les utilisateurs** de l'ordinateur (Windows demande alors l'accord d'un administrateur).
+5. Choisissez le dossier d'installation, ou gardez celui proposé.
+6. Les raccourcis « MedConnecte Caisse » sont créés sur le bureau et dans le menu Démarrer.
+7. À la fin, laissez cochée la case **Lancer MedConnecte Caisse** pour ouvrir le programme.
+
+Pour désinstaller : **Paramètres**, **Applications**, **Applications installées**, puis « MedConnecte Caisse ».
 
 ### Si Windows affiche « Windows a protégé votre ordinateur »
 
@@ -38,7 +45,7 @@ Dans le menu, ouvrez **Ce poste**. Choisissez votre imprimante et la taille du t
 
 **Ne désinstallez pas le programme, et ne formatez pas l'ordinateur, s'il reste des ventes à envoyer.** Le bandeau en haut de l'écran indique combien de ventes attendent. Attendez qu'il n'y en ait plus.
 
-Si vous désinstallez le programme, les ventes et les réglages de ce poste **restent sur l'ordinateur**, dans le dossier « MedConnecte Caisse » de vos données d'application (pour l'ouvrir : touche Windows + R, tapez `%APPDATA%`, puis Entrée). Ne les supprimez pas à la main.
+Si vous désinstallez le programme, les ventes et les réglages de ce poste **restent sur l'ordinateur**, dans le **dossier des données** : `%APPDATA%\MedConnecte Caisse` (par exemple `C:\Users\VotreNom\AppData\Roaming\MedConnecte Caisse`). Il contient la base des ventes et du stock, le fichier `appareil.json` (identité du poste) et le journal `journal.log`. Pour l'ouvrir : dans le programme, page **Ce poste**, ligne « Dossier des données », bouton **Ouvrir le dossier** ; ou touche Windows + R, tapez `%APPDATA%\MedConnecte Caisse`, puis Entrée. Ne le supprimez pas à la main, et pensez à le sauvegarder.
 
 Les mises à jour peuvent demander de fermer la caisse : fermez-la, laissez partir les ventes, puis quittez le programme.
 

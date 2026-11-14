@@ -72,6 +72,8 @@ import {
   retirerDuPanier,
   retirerLignes,
   telephoneClientValide,
+  telephonePrescripteurValide,
+  filtrerTelephonePrescripteur,
   texteAvertissement,
   totalPanier,
   uniteParDefaut,
@@ -91,7 +93,7 @@ const CODES_CAISSE = ["POSTE_INCONNU", "SESSION_AUTRE_UTILISATEUR", "JOURNEE_CLO
 const CLASSE_BADGE_OUVERT = "bg-emerald-50 dark:bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
 const CLASSE_BADGE_FERME = "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300";
 
-type CibleFocus = "telephone" | "ordonnance";
+type CibleFocus = "telephone" | "ordonnance" | "prescripteur";
 
 interface SortieEnCours {
   stockId: string;
@@ -165,9 +167,11 @@ export default function NouvelleVentePage() {
   const [reimpressionEnCours, setReimpressionEnCours] = useState(false);
   const [erreurTelephone, setErreurTelephone] = useState(false);
   const [erreurOrdonnance, setErreurOrdonnance] = useState(false);
+  const [erreurPrescripteur, setErreurPrescripteur] = useState(false);
 
   const champTelephone = useRef<HTMLInputElement>(null);
   const caseOrdonnance = useRef<HTMLInputElement>(null);
+  const champPrescripteur = useRef<HTMLInputElement>(null);
   const titreSucces = useRef<HTMLHeadingElement>(null);
   const focusAFaire = useRef<CibleFocus | null>(null);
   const envoiEnCours = useRef(false);
@@ -220,6 +224,7 @@ export default function NouvelleVentePage() {
   useEffect(() => {
     if (focusAFaire.current === "telephone") champTelephone.current?.focus();
     if (focusAFaire.current === "ordonnance") caseOrdonnance.current?.focus();
+    if (focusAFaire.current === "prescripteur") champPrescripteur.current?.focus();
     focusAFaire.current = null;
   });
 
@@ -344,6 +349,11 @@ export default function NouvelleVentePage() {
     if (surOrdonnance.length > 0 && !panier.ordonnanceVue) {
       setErreurOrdonnance(true);
       focusAFaire.current = "ordonnance";
+      return;
+    }
+    if (surOrdonnance.length > 0 && !telephonePrescripteurValide(panier.telephonePrescripteur)) {
+      setErreurPrescripteur(true);
+      focusAFaire.current = "prescripteur";
       return;
     }
     setConfirmation(true);
@@ -1029,6 +1039,30 @@ export default function NouvelleVentePage() {
                     {MSG_COCHER_ORDONNANCE}
                   </p>
                 )}
+                <div>
+                  <label htmlFor="telephone-prescripteur" className="block text-mc-normal text-slate-700 dark:text-slate-300 mb-1">
+                    Téléphone du prescripteur (facultatif)
+                  </label>
+                  <input
+                    ref={champPrescripteur}
+                    id="telephone-prescripteur"
+                    type="tel"
+                    inputMode="tel"
+                    maxLength={30}
+                    value={panier.telephonePrescripteur}
+                    disabled={verrouille}
+                    onChange={(e) => {
+                      setPanier({ ...panier, telephonePrescripteur: filtrerTelephonePrescripteur(e.target.value) });
+                      setErreurPrescripteur(false);
+                    }}
+                    className={`${CHAMP} disabled:opacity-60`}
+                  />
+                  {erreurPrescripteur && (
+                    <p role="alert" className="text-mc-normal text-rose-700 dark:text-rose-300 mt-1">
+                      {MSG_TELEPHONE_INVALIDE}
+                    </p>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1103,6 +1137,7 @@ export default function NouvelleVentePage() {
                   setDerniereCle(null);
                   setErreurOrdonnance(false);
                   setErreurTelephone(false);
+                  setErreurPrescripteur(false);
                 }}
                 disabled={verrouille}
                 className={`${ui.bouton.discret} w-full`}
