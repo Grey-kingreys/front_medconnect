@@ -59,7 +59,14 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
     lister: (s: string, options: unknown) => appeler("inventaire:lister", s, options),
     lire: (s: string, inventaireId: string) => appeler("inventaire:lire", s, inventaireId),
   },
-  credit: {},
+  credit: {
+    lister: (s: string, options: unknown) => appeler("credit:lister", s, options),
+    lire: (s: string, clientId: string) => appeler("credit:lire", s, clientId),
+    creerClient: (s: string, corps: unknown) => appeler("credit:creerClient", s, corps),
+    modifierClient: (s: string, clientId: string, corps: unknown) => appeler("credit:modifierClient", s, clientId, corps),
+    modifierDateLimite: (s: string, venteId: string, corps: unknown) => appeler("credit:modifierDateLimite", s, venteId, corps),
+    enregistrerRemboursement: (s: string, clientId: string, corps: unknown) => appeler("credit:enregistrerRemboursement", s, clientId, corps),
+  },
   anomalie: {
     lister: (s: string, options: unknown) => appeler("anomalie:lister", s, options),
     traiter: (s: string, anomalieId: string, corps: unknown) => appeler("anomalie:traiter", s, anomalieId, corps),

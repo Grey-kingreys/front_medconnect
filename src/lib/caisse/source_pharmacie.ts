@@ -2,6 +2,15 @@ import type { ApiResponse } from "../api_auth";
 import type { ChampsFicheSurs } from "./contrat_desktop";
 import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
 import type {
+  CorpsClientCredit,
+  CorpsModifClientCredit,
+  CorpsRemboursement,
+  FicheClientCredit,
+  FiltreStatutCredit,
+  ListeCredits,
+  ResultatRemboursement,
+} from "../api_credit";
+import type {
   CorpsInventaire,
   CorpsReception,
   CorpsSortieStock,
@@ -75,6 +84,18 @@ export interface SourcePharmacie {
   listerInventaires(structureId: string, page: number): Promise<ApiResponse<PageInventaires>>;
   /** Détail d'un inventaire. Sur le desktop : 30 derniers jours, sans aucun coût. */
   lireInventaire(structureId: string, inventaireId: string): Promise<ApiResponse<Inventaire>>;
+  /** Clients du cahier de crédit. Sur le desktop : photographie plus opérations du poste, reste et statut calculés sur le poste. */
+  listerCredits(structureId: string, options: { q?: string; statut?: FiltreStatutCredit; page?: number; parPage?: number }): Promise<ApiResponse<ListeCredits>>;
+  /** Fiche d'un client de crédit : prises, remboursements, reste. */
+  lireFicheCredit(structureId: string, clientId: string): Promise<ApiResponse<FicheClientCredit>>;
+  /** Nouveau client de crédit ; rejouable avec le même `id` sur le desktop (événement `CLIENT_CREDIT_CREE`). */
+  creerClientCredit(structureId: string, corps: CorpsClientCredit & { id?: string }): Promise<ApiResponse<FicheClientCredit>>;
+  /** Modifie nom, téléphone ou note d'un client (événement `CLIENT_CREDIT_MODIFIE` sur le desktop). */
+  modifierClientCredit(structureId: string, clientId: string, corps: CorpsModifClientCredit): Promise<ApiResponse<FicheClientCredit>>;
+  /** Pose ou retire (null) la date limite d'une prise (événement `DATE_LIMITE_MODIFIEE` sur le desktop). */
+  modifierDateLimitePrise(structureId: string, venteId: string, dateLimite: string | null): Promise<ApiResponse<FicheClientCredit>>;
+  /** Enregistre un remboursement ; rejouable avec le même `id` sur le desktop (événement `REMBOURSEMENT_CREDIT`, entrée de caisse locale si versé en caisse). */
+  enregistrerRemboursementCredit(structureId: string, clientId: string, corps: CorpsRemboursement & { id?: string }): Promise<ApiResponse<ResultatRemboursement>>;
   /** Recherche dans le catalogue des médicaments. Sur le desktop : copie allégée de la dernière photographie (nom, générique, catégorie, formes, ordonnance). */
   rechercherCatalogue(structureId: string, recherche: string): Promise<Medicament[]>;
   /** Ajoute un médicament du catalogue au stock, sans quantité ; rejouable avec le même `id`. Sur le desktop : fiche locale et événement `FICHE_CREEE`. */

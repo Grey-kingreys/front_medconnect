@@ -1,6 +1,14 @@
 import { enregistrerInventaire, getInventaire, listerInventaires, getCatalogue, modifierFiche, upsertStock, creerFournisseur, enregistrerReception, exporterStock, getReception, listerFournisseurs, listerReceptions, getMyStock, listerLotsFiche, sortirDuStock, updateStockQuantite } from "../api_pharmacie";
+import { creerClientCredit, enregistrerRemboursement, getFicheClientCredit, listerCredits, modifierClientCredit, modifierDateLimitePrise } from "../api_credit";
 import { listerAnomalies, traiterAnomalie } from "../api_pilotage";
 import type { SourcePharmacie } from "./source_pharmacie";
+
+/** Le serveur refuse l'identifiant que le poste donne à ses clients et remboursements (champ inconnu) : on le retire. */
+function sansIdentifiantDePoste<T extends { id?: string }>(corps: T): Omit<T, "id"> {
+  const copie = { ...corps };
+  delete copie.id;
+  return copie;
+}
 
 /** Source de la pharmacie par l'API. Les erreurs remontent telles quelles. */
 export const sourcePharmacieEnLigne: SourcePharmacie = {
@@ -22,6 +30,13 @@ export const sourcePharmacieEnLigne: SourcePharmacie = {
   enregistrerInventaire: (structureId, corps) => enregistrerInventaire(structureId, corps),
   listerInventaires: (structureId, page) => listerInventaires(structureId, page),
   lireInventaire: (structureId, inventaireId) => getInventaire(structureId, inventaireId),
+  listerCredits: (structureId, options) => listerCredits(structureId, options),
+  lireFicheCredit: (structureId, clientId) => getFicheClientCredit(structureId, clientId),
+  // L'identifiant du poste n'a pas de sens en ligne : le serveur le refuserait (champ inconnu).
+  creerClientCredit: (structureId, corps) => creerClientCredit(structureId, sansIdentifiantDePoste(corps)),
+  modifierClientCredit: (structureId, clientId, corps) => modifierClientCredit(structureId, clientId, corps),
+  modifierDateLimitePrise: (structureId, venteId, dateLimite) => modifierDateLimitePrise(structureId, venteId, dateLimite),
+  enregistrerRemboursementCredit: (structureId, clientId, corps) => enregistrerRemboursement(structureId, clientId, sansIdentifiantDePoste(corps)),
   listerFournisseurs: (structureId) => listerFournisseurs(structureId),
   creerFournisseur: (structureId, corps) => creerFournisseur(structureId, corps),
   enregistrerReception: (structureId, corps) => enregistrerReception(structureId, corps),

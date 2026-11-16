@@ -66,6 +66,9 @@ const corpsVente = z
     clientTelephone: z.string().max(30).optional(),
     ordonnanceVerifiee: z.boolean().optional(),
     telephonePrescripteur: z.string().max(30).optional(),
+    clientCreditId: z.string().uuid().optional(),
+    nouveauClientCredit: z.object({ nomComplet: z.string().max(100), telephone: z.string().max(30).optional() }).strict().optional(),
+    dateLimiteCredit: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   })
   .strict();
 
@@ -271,6 +274,39 @@ export const schemasInventaire = {
 
 export type NomMethodeInventaire = keyof typeof schemasInventaire;
 
+/** Fonctions du domaine `credit` : cahier de crédit sur le poste (lecture `credit:read`, écritures `credit:write`). */
+export const schemasCredit = {
+  lister: z.tuple([
+    identifiant,
+    z
+      .object({
+        q: z.string().max(100).optional(),
+        statut: z.enum(["TOUS", "EN_COURS", "EN_RETARD", "SOLDE"]).optional(),
+        page: z.number().int().min(1).max(100_000).optional(),
+        parPage: z.number().int().min(1).max(200).optional(),
+      })
+      .strict(),
+  ]),
+  lire: z.tuple([identifiant, identifiant]),
+  creerClient: z.tuple([
+    identifiant,
+    z.object({ id: uuid, nomComplet: z.string().max(100), telephone: z.string().max(30).optional(), note: z.string().max(500).optional() }).strict(),
+  ]),
+  modifierClient: z.tuple([
+    identifiant,
+    identifiant,
+    z.object({ nomComplet: z.string().max(100).optional(), telephone: z.string().max(30).nullable().optional(), note: z.string().max(500).nullable().optional() }).strict(),
+  ]),
+  modifierDateLimite: z.tuple([identifiant, identifiant, z.object({ dateLimite: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable() }).strict()]),
+  enregistrerRemboursement: z.tuple([
+    identifiant,
+    identifiant,
+    z.object({ id: uuid, montant: z.number().int().min(1).max(2_147_483_647), note: z.string().max(500).optional(), verseEnCaisse: z.boolean().optional() }).strict(),
+  ]),
+} as const;
+
+export type NomMethodeCredit = keyof typeof schemasCredit;
+
 const TYPES_ANOMALIE = [
   "STOCK_NEGATIF",
   "ECART_INVENTAIRE",
@@ -288,6 +324,7 @@ const TYPES_ANOMALIE = [
   "RECEPTION_COEFFICIENT_DIFFERENT",
   "FICHE_MODIFIEE_ENTRETEMPS",
   "THEORIQUE_DIVERGENT",
+  "CREDIT_TROP_PERCU",
 ] as const;
 
 /** Fonctions du domaine `anomalie` : lecture de la file et traitement (permission `anomalie:gerer`). */
@@ -316,7 +353,7 @@ export const schemasParDomaine: Record<DomainePont, SchemasDomaine> = {
   reception: schemasReception as unknown as SchemasDomaine,
   fournisseur: schemasFournisseur as unknown as SchemasDomaine,
   inventaire: schemasInventaire as unknown as SchemasDomaine,
-  credit: {},
+  credit: schemasCredit as unknown as SchemasDomaine,
   anomalie: schemasAnomalie as unknown as SchemasDomaine,
   fiche: schemasFiche as unknown as SchemasDomaine,
   catalogue: schemasCatalogue as unknown as SchemasDomaine,

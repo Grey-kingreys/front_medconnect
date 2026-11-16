@@ -9,7 +9,8 @@ import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
-import { listerCredits, type FiltreStatutCredit, type ListeCredits } from "@/lib/api_credit";
+import { type FiltreStatutCredit, type ListeCredits } from "@/lib/api_credit";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { formaterGNF } from "@/lib/format_gnf";
 import { formaterDateCourte } from "../ventes/affichage";
 import { CLASSE_BADGE_STATUT, formaterJourCourt, libelleStatut } from "./affichage";
@@ -47,7 +48,8 @@ export default function CreditsPage() {
   const charger = useCallback(() => {
     if (!structureId) return () => undefined;
     let actif = true;
-    listerCredits(structureId, { q: rechercheEnvoyee, statut, parPage: 200 })
+    sourcePharmacie()
+      .listerCredits(structureId, { q: rechercheEnvoyee, statut, parPage: 200 })
       .then((res) => {
         if (!actif) return;
         setListe(res.data);

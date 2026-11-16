@@ -165,6 +165,55 @@ export interface MedicamentAllegeSynchro {
   ordonnanceRequise: boolean;
 }
 
+/** Ligne d'une prise à crédit de la photographie : nom, quantité affichée et montant, jamais de coût. */
+export interface LignePriseSynchro {
+  nomMedicament: string;
+  nombreAffiche: number;
+  uniteAffichee: "BOITE" | "UNITE";
+  sousTotal: number;
+}
+
+/** Prise à crédit d'un client (une vente en mode CREDIT) ; la date limite est brute, le poste calcule le retard avec son horloge. */
+export interface PriseCreditSynchro {
+  venteId: string;
+  numero: string;
+  createdAt: string;
+  jourMetier: string;
+  vendeurNom: string;
+  total: number;
+  annulee: boolean;
+  motifAnnulation: string | null;
+  dateLimite: string | null;
+  resteSurPrise: number;
+  lignes: LignePriseSynchro[];
+}
+
+export interface RemboursementCreditSynchro {
+  id: string;
+  montant: number;
+  note: string | null;
+  verseEnCaisse: boolean;
+  auteurNom: string | null;
+  createdAt: string;
+}
+
+/** Client du cahier de crédit de la photographie (statut EN_COURS ou SOLDE : EN_RETARD se calcule sur le poste). */
+export interface ClientCreditSynchro {
+  id: string;
+  nomComplet: string;
+  telephone: string | null;
+  note: string | null;
+  createdAt: string;
+  resteAPayer: number;
+  totalPris: number;
+  totalRembourse: number;
+  statut: "EN_COURS" | "SOLDE";
+  prises: PriseCreditSynchro[];
+  remboursements: RemboursementCreditSynchro[];
+  /** Ce que la borne de la photographie a retiré de l'historique (plus anciennes prises et remboursements). Absent d'un serveur plus ancien. */
+  anterieur?: { totalPris: number; totalRembourse: number };
+}
+
 export interface Photographie {
   pharmacie: {
     id: string;
@@ -194,6 +243,8 @@ export interface Photographie {
   receptions?: ReceptionSynchro[];
   /** Les 200 derniers inventaires, sans coût (absents d'un serveur plus ancien). */
   inventaires?: InventaireSynchro[];
+  /** Clients du cahier de crédit, avec prises et remboursements, sans coût (absents d'un serveur plus ancien). */
+  clientsCredit?: ClientCreditSynchro[];
   /** Catalogue global allégé, trié par identifiant (absent d'un serveur plus ancien). */
   medicaments?: MedicamentAllegeSynchro[];
 }

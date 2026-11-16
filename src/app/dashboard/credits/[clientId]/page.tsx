@@ -9,13 +9,8 @@ import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
-import {
-  getFicheClientCredit,
-  modifierClientCredit,
-  modifierDateLimitePrise,
-  type FicheClientCredit,
-  type PriseCredit,
-} from "@/lib/api_credit";
+import { type FicheClientCredit, type PriseCredit } from "@/lib/api_credit";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { formaterGNF } from "@/lib/format_gnf";
 import { filtrerTelephonePrescripteur, telephonePrescripteurValide } from "../../vente/panier";
 import { formaterDateHeure, jourConakry } from "../../ventes/affichage";
@@ -53,7 +48,7 @@ function DateLimitePrise({
     setEnvoi(true);
     setErreur(null);
     try {
-      const res = await modifierDateLimitePrise(structureId, prise.venteId, dateLimite);
+      const res = await sourcePharmacie().modifierDateLimitePrise(structureId, prise.venteId, dateLimite);
       setEdition(false);
       onFiche(res.data);
     } catch (err) {
@@ -134,7 +129,8 @@ export default function FicheClientCreditPage({ params }: { params: Promise<{ cl
   const charger = useCallback(() => {
     if (!structureId) return () => undefined;
     let actif = true;
-    getFicheClientCredit(structureId, clientId)
+    sourcePharmacie()
+      .lireFicheCredit(structureId, clientId)
       .then((res) => {
         if (!actif) return;
         setFiche(res.data);
@@ -172,7 +168,7 @@ export default function FicheClientCreditPage({ params }: { params: Promise<{ cl
     setEnvoiEdition(true);
     setErreurEdition(null);
     try {
-      const res = await modifierClientCredit(structureId, clientId, {
+      const res = await sourcePharmacie().modifierClientCredit(structureId, clientId, {
         nomComplet: nom.trim(),
         telephone: telephone.trim() === "" ? null : telephone.trim(),
         note: note.trim() === "" ? null : note.trim(),

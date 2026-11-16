@@ -22,6 +22,15 @@ import type {
   SortieStockEnregistree,
   StockMedicament,
 } from "../api_pharmacie";
+import type {
+  CorpsClientCredit,
+  CorpsModifClientCredit,
+  CorpsRemboursement,
+  FiltreStatutCredit,
+  FicheClientCredit,
+  ListeCredits,
+  ResultatRemboursement,
+} from "../api_credit";
 import type { CorpsCreationVente, Vente, VentesDuJour } from "../api_ventes";
 import type { EtatCaisse } from "./source";
 
@@ -162,6 +171,16 @@ export interface PontInventaire extends PontDomaine {
   lire(s: string, inventaireId: string): Promise<ReponsePont<Inventaire>>;
 }
 
+/** Domaine `credit` du pont : cahier de crédit (lecture `credit:read`, écritures `credit:write`). */
+export interface PontCredit extends PontDomaine {
+  lister(s: string, options: { q?: string; statut?: FiltreStatutCredit; page?: number; parPage?: number }): Promise<ReponsePont<ListeCredits>>;
+  lire(s: string, clientId: string): Promise<ReponsePont<FicheClientCredit>>;
+  creerClient(s: string, corps: CorpsClientCredit & { id: string }): Promise<ReponsePont<FicheClientCredit>>;
+  modifierClient(s: string, clientId: string, corps: CorpsModifClientCredit): Promise<ReponsePont<FicheClientCredit>>;
+  modifierDateLimite(s: string, venteId: string, corps: { dateLimite: string | null }): Promise<ReponsePont<FicheClientCredit>>;
+  enregistrerRemboursement(s: string, clientId: string, corps: CorpsRemboursement & { id: string }): Promise<ReponsePont<ResultatRemboursement>>;
+}
+
 /** Domaine `fournisseur` du pont : liste et création (permission `reception:write`). */
 export interface PontFournisseur extends PontDomaine {
   lister(s: string): Promise<ReponsePont<Fournisseur[]>>;
@@ -223,7 +242,7 @@ export interface PontDesktop {
   reception?: PontReception;
   fournisseur?: PontFournisseur;
   inventaire?: PontInventaire;
-  credit?: PontDomaine;
+  credit?: PontCredit;
   anomalie?: PontAnomalie;
   fiche?: PontFiche;
   catalogue?: PontCatalogue;

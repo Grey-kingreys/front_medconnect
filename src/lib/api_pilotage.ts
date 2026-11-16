@@ -22,6 +22,7 @@ export const TYPES_ANOMALIE = [
   "RECEPTION_COEFFICIENT_DIFFERENT",
   "FICHE_MODIFIEE_ENTRETEMPS",
   "THEORIQUE_DIVERGENT",
+  "CREDIT_TROP_PERCU",
 ] as const;
 export type TypeAnomalie = (typeof TYPES_ANOMALIE)[number];
 

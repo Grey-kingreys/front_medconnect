@@ -24,6 +24,17 @@ import {
   lireReceptionLocale,
 } from "./reception_locale";
 import type { CorpsInventaire, CorpsReception, Fournisseur, Inventaire, PageInventaires, PageReceptions, Reception } from "@/lib/api_pharmacie";
+import type { CorpsClientCredit, CorpsModifClientCredit, FicheClientCredit, ListeCredits, ResultatRemboursement } from "@/lib/api_credit";
+import {
+  creerClientCreditLocal,
+  enregistrerRemboursementLocal,
+  listerCreditsLocaux,
+  lireFicheCreditLocale,
+  modifierClientCreditLocal,
+  modifierDateLimiteLocale,
+  type CorpsRemboursementLocal,
+  type OptionsListeCredits,
+} from "./credit_locale";
 import { enregistrerInventaireLocal, listerInventairesLocaux, lireInventaireLocal } from "./inventaire_locale";
 import {
   creerFicheLocale,
@@ -220,6 +231,14 @@ export class CoeurCaisse {
         });
       }
 
+      // Un serveur plus ancien n'envoie pas le cahier de crédit : la table n'est pas touchée.
+      if (photo.clientsCredit !== undefined) {
+        s.executer("DELETE FROM clients_credit_photo");
+        photo.clientsCredit.forEach((cl, rang) => {
+          s.executer("INSERT INTO clients_credit_photo (id, rang, document) VALUES (?, ?, ?)", [cl.id, rang, JSON.stringify(cl)]);
+        });
+      }
+
       // Un serveur plus ancien n'envoie pas le catalogue allégé : la table n'est pas touchée.
       if (photo.medicaments !== undefined) {
         s.executer("DELETE FROM medicaments_catalogue");
@@ -371,6 +390,34 @@ export class CoeurCaisse {
 
   lireInventaire(id: string): Inventaire {
     return lireInventaireLocal(this.ctx, id);
+  }
+
+  // ------------------------------------------------------------------ cahier de crédit hors ligne
+
+  /** Clients du cahier : photographie plus opérations du poste pas encore appliquées, reste et statut calculés ici. */
+  listerCredits(options: OptionsListeCredits = {}): ListeCredits {
+    return listerCreditsLocaux(this.ctx, options);
+  }
+
+  lireFicheCredit(clientId: string): FicheClientCredit {
+    return lireFicheCreditLocale(this.ctx, clientId);
+  }
+
+  creerClientCredit(corps: CorpsClientCredit & { id: string }, u: Utilisateur): FicheClientCredit {
+    return creerClientCreditLocal(this.ctx, corps, u);
+  }
+
+  modifierClientCredit(clientId: string, corps: CorpsModifClientCredit, u: Utilisateur): FicheClientCredit {
+    return modifierClientCreditLocal(this.ctx, clientId, corps, u);
+  }
+
+  modifierDateLimiteCredit(venteId: string, dateLimite: string | null, u: Utilisateur): FicheClientCredit {
+    return modifierDateLimiteLocale(this.ctx, venteId, dateLimite, u);
+  }
+
+  /** Remboursement : ligne locale, entrée de caisse locale si versé en caisse, et événement `REMBOURSEMENT_CREDIT`. */
+  enregistrerRemboursementCredit(clientId: string, corps: CorpsRemboursementLocal, u: Utilisateur): ResultatRemboursement {
+    return enregistrerRemboursementLocal(this.ctx, clientId, corps, u);
   }
 
   // ------------------------------------------------------------------ fiches hors ligne

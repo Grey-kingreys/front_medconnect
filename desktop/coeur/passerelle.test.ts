@@ -389,10 +389,10 @@ describe("domaines du pont et permission propre à chaque fonction (A3, A5)", ()
     expect(permissionsRequises("caisse", "creerVente")).toEqual(["caisse:utiliser"]);
     expect(permissionsRequises("caisse", "chargerStock")).toEqual(["caisse:utiliser"]);
     expect(permissionsRequises("caisse", "toString")).toBeNull();
-    for (const d of ["credit"] as const) {
-      expect(Object.keys(schemasParDomaine[d])).toEqual([]);
-      expect(Object.keys(PERMISSIONS_PAR_FONCTION[d])).toEqual([]);
-    }
+    expect(Object.keys(schemasParDomaine.credit)).toEqual(["lister", "lire", "creerClient", "modifierClient", "modifierDateLimite", "enregistrerRemboursement"]);
+    expect(Object.keys(PERMISSIONS_PAR_FONCTION.credit)).toEqual(Object.keys(schemasParDomaine.credit));
+    expect(permissionsRequises("credit", "lire")).toEqual(["credit:read"]);
+    expect(permissionsRequises("credit", "enregistrerRemboursement")).toEqual(["credit:write"]);
     expect(Object.keys(schemasParDomaine.reception)).toEqual(["enregistrer", "lister", "lire"]);
     expect(Object.keys(schemasParDomaine.fournisseur)).toEqual(["lister", "creer"]);
     expect(Object.keys(schemasParDomaine.inventaire)).toEqual(["enregistrer", "lister", "lire"]);
@@ -423,9 +423,6 @@ describe("domaines du pont et permission propre à chaque fonction (A3, A5)", ()
     try {
       p.confirmerIdentite(UTILISATEUR);
       expect(await p.appeler("essai", ["ph1"], "credit")).toMatchObject({ ok: false, status: 403, code: "PERMISSION_REFUSEE" });
-      p.confirmerIdentite({ ...UTILISATEUR, permissions: ["caisse:utiliser", "stock:write"] });
-      // Permission suffisante : la fonction n'est pas encore branchée sur le cœur.
-      expect(await p.appeler("essai", ["ph1"], "credit")).toMatchObject({ ok: false, status: 501, code: "NON_IMPLEMENTE" });
     } finally {
       delete schemasParDomaine.credit.essai;
       delete PERMISSIONS_PAR_FONCTION.credit.essai;
@@ -441,5 +438,31 @@ describe("domaines du pont et permission propre à chaque fonction (A3, A5)", ()
     } finally {
       delete schemasParDomaine.credit.sansDroit;
     }
+  });
+});
+
+describe("cahier de crédit : droits propres à chaque fonction", () => {
+  const CLIENT = uuid(5, "cccccccc");
+
+  it("la lecture exige credit:read, les écritures credit:write", async () => {
+    const { p } = monter();
+    p.confirmerIdentite(UTILISATEUR);
+    expect(await p.appeler("lister", ["ph1", {}], "credit")).toMatchObject({ ok: false, status: 403, code: "PERMISSION_REFUSEE" });
+    p.confirmerIdentite({ ...UTILISATEUR, permissions: ["caisse:utiliser", "credit:read"] });
+    expect(await p.appeler("lister", ["ph1", {}], "credit")).toMatchObject({ ok: true, data: { total: 0 } });
+    expect(await p.appeler("enregistrerRemboursement", ["ph1", CLIENT, { id: uuid(6, "cccccccc"), montant: 100 }], "credit")).toMatchObject({ ok: false, status: 403, code: "PERMISSION_REFUSEE" });
+    p.confirmerIdentite({ ...UTILISATEUR, permissions: ["caisse:utiliser", "credit:write"] });
+    expect(await p.appeler("enregistrerRemboursement", ["ph1", CLIENT, { id: uuid(6, "cccccccc"), montant: 100 }], "credit")).toMatchObject({ ok: false, status: 404, code: "CLIENT_CREDIT_INTROUVABLE" });
+  });
+
+  it("une vente à crédit exige aussi credit:write ; une vente ordinaire n'en a pas besoin", async () => {
+    const { p, deps } = monter();
+    p.confirmerIdentite(UTILISATEUR);
+    const aCredit = { lignes: [{ stockId: "s1", quantite: 1 }], nouveauClientCredit: { nomComplet: "Awa Sow" } };
+    expect(await p.appeler("creerVente", ["ph1", aCredit, uuid(1)])).toMatchObject({ ok: false, status: 403, code: "PERMISSION_REFUSEE" });
+    expect(deps.apresVente).not.toHaveBeenCalled();
+    expect(await p.appeler("creerVente", ["ph1", corpsVente(), uuid(2)])).toMatchObject({ ok: true });
+    p.confirmerIdentite({ ...UTILISATEUR, permissions: ["caisse:utiliser", "vente:write", "credit:write"] });
+    expect(await p.appeler("creerVente", ["ph1", aCredit, uuid(3)])).toMatchObject({ ok: true, data: { credit: { nomComplet: "Awa Sow" } } });
   });
 });

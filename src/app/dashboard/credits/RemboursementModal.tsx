@@ -6,12 +6,9 @@ import { ui } from "@/theme/ui";
 import { FOCUS } from "@/components/pharmacie/classes";
 import { useDialogA11y } from "@/hooks/useDialogA11y";
 import { messageErreurPour } from "@/hooks/useToast";
-import {
-  enregistrerRemboursement,
-  listerCredits,
-  type ClientCreditResume,
-  type ResultatRemboursement,
-} from "@/lib/api_credit";
+import { nouvelleCleIdempotence } from "@/lib/api_carnet";
+import { type ClientCreditResume, type ResultatRemboursement } from "@/lib/api_credit";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { sourceCaisse } from "@/lib/caisse/source_active";
 import { formaterGNF } from "@/lib/format_gnf";
 import { filtrerMontant, lireMontant } from "./affichage";
@@ -50,6 +47,8 @@ function Contenu({ structureId, userId, client: clientFixe, onClose, onSucces }:
   const [erreur, setErreur] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const envoiRef = useRef(false);
+  // Même identifiant pour un renvoi : sur le poste, le remboursement n'est jamais enregistré deux fois.
+  const idRemboursement = useRef<string | null>(null);
 
   // La case « Mettre cet argent dans ma caisse » n'existe que si une caisse est ouverte à mon nom.
   useEffect(() => {
@@ -72,7 +71,8 @@ function Contenu({ structureId, userId, client: clientFixe, onClose, onSucces }:
     if (clientFixe) return;
     let actif = true;
     const delai = setTimeout(() => {
-      listerCredits(structureId, { q: recherche, parPage: 20 })
+      sourcePharmacie()
+        .listerCredits(structureId, { q: recherche, parPage: 20 })
         .then((res) => {
           if (!actif) return;
           setResultats(res.data.clients.filter((c) => c.statut !== "SOLDE"));
@@ -103,7 +103,9 @@ function Contenu({ structureId, userId, client: clientFixe, onClose, onSucces }:
     setEnvoi(true);
     setErreur(null);
     try {
-      const res = await enregistrerRemboursement(structureId, client.id, {
+      idRemboursement.current ??= nouvelleCleIdempotence();
+      const res = await sourcePharmacie().enregistrerRemboursementCredit(structureId, client.id, {
+        id: idRemboursement.current,
         montant: valeur,
         ...(note.trim() !== "" ? { note: note.trim() } : {}),
         verseEnCaisse: caisseOuverte && verseEnCaisse,

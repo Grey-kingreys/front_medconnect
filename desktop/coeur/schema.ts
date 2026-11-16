@@ -253,6 +253,54 @@ const ETAPES: string[] = [
     document TEXT NOT NULL
   );
   `,
+  // Version 10 (cahier de crédit hors ligne) : clients de la dernière photographie (lecture : prises, remboursements,
+  // dates limites, sans coût), puis ce qui a été fait sur le poste et n'est pas encore appliqué par le serveur (même
+  // règle de séquence que les mouvements) : clients créés ou modifiés, prises à crédit (la vente est dans `ventes`),
+  // remboursements et dates limites.
+  `
+  CREATE TABLE clients_credit_photo (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE clients_credit_locaux (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    nomComplet TEXT NOT NULL,
+    telephone TEXT,
+    note TEXT,
+    creeLe TEXT NOT NULL
+  );
+  CREATE TABLE clients_credit_modifies_locaux (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence INTEGER NOT NULL,
+    clientId TEXT NOT NULL,
+    champ TEXT NOT NULL,
+    valeur TEXT NOT NULL
+  );
+  CREATE TABLE prises_credit_locales (
+    venteId TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    clientId TEXT NOT NULL,
+    dateLimite TEXT
+  );
+  CREATE TABLE remboursements_credit_locaux (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    clientId TEXT NOT NULL,
+    montant INTEGER NOT NULL,
+    note TEXT,
+    verseEnCaisse INTEGER NOT NULL,
+    auteurNom TEXT NOT NULL,
+    creeLe TEXT NOT NULL
+  );
+  CREATE TABLE dates_limites_locales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence INTEGER NOT NULL,
+    venteId TEXT NOT NULL,
+    dateLimite TEXT
+  );
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

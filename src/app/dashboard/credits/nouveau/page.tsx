@@ -11,7 +11,8 @@ import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { lireContexteAcces } from "@/lib/acces";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
-import { listerCredits, type ClientCreditResume } from "@/lib/api_credit";
+import { type ClientCreditResume } from "@/lib/api_credit";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import type { StockMedicament } from "@/lib/api_pharmacie";
 import { codeErreurVente, creerVente, type UniteVente } from "@/lib/api_ventes";
 import { LIBELLES_UNITE_MINIMALE, formaterQuantite } from "@/lib/caisse/regles/quantites";
@@ -109,7 +110,8 @@ export default function NouveauCreditPage() {
     if (!structureId || mode !== "existant") return;
     let actif = true;
     const delai = setTimeout(() => {
-      listerCredits(structureId, { q: rechercheClient, parPage: 10 })
+      sourcePharmacie()
+        .listerCredits(structureId, { q: rechercheClient, parPage: 10 })
         .then((res) => {
           if (!actif) return;
           setClients(res.data.clients);

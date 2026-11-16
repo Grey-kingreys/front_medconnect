@@ -1,5 +1,5 @@
 import type { LotEnStock, StockInfo, StockMedicament } from "../api_pharmacie";
-import type { PontAnomalie, PontCatalogue, PontDesktop, PontFiche, PontFournisseur, PontInventaire, PontReception, PontStock } from "./contrat_desktop";
+import type { PontAnomalie, PontCatalogue, PontCredit, PontDesktop, PontFiche, PontFournisseur, PontInventaire, PontReception, PontStock } from "./contrat_desktop";
 import type { SourcePharmacie } from "./source_pharmacie";
 import { lire } from "./source_desktop";
 
@@ -54,6 +54,10 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     if (pont.inventaire === undefined || typeof pont.inventaire.enregistrer !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
     return pont.inventaire;
   };
+  const credit = (): PontCredit => {
+    if (pont.credit === undefined || typeof pont.credit.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.credit;
+  };
   const fournisseur = (): PontFournisseur => {
     if (pont.fournisseur === undefined || typeof pont.fournisseur.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
     return pont.fournisseur;
@@ -100,6 +104,24 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     },
     async lireInventaire(structureId, inventaireId) {
       return lire(await inventaire().lire(structureId, inventaireId));
+    },
+    async listerCredits(structureId, options) {
+      return lire(await credit().lister(structureId, options));
+    },
+    async lireFicheCredit(structureId, clientId) {
+      return lire(await credit().lire(structureId, clientId));
+    },
+    async creerClientCredit(structureId, corps) {
+      return lire(await credit().creerClient(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async modifierClientCredit(structureId, clientId, corps) {
+      return lire(await credit().modifierClient(structureId, clientId, corps));
+    },
+    async modifierDateLimitePrise(structureId, venteId, dateLimite) {
+      return lire(await credit().modifierDateLimite(structureId, venteId, { dateLimite }));
+    },
+    async enregistrerRemboursementCredit(structureId, clientId, corps) {
+      return lire(await credit().enregistrerRemboursement(structureId, clientId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
     },
     async listerFournisseurs(structureId) {
       return lire(await fournisseur().lister(structureId));
