@@ -11,6 +11,8 @@ import type {
   ResultatRemboursement,
 } from "../api_credit";
 import type {
+  CorpsImportDiffere,
+  ImportDiffere,
   CorpsInventaire,
   CorpsReception,
   CorpsSortieStock,
@@ -104,4 +106,8 @@ export interface SourcePharmacie {
   modifierFiche(structureId: string, fiche: { id: string; medicamentId: string }, champs: ChampsFicheSurs): Promise<ApiResponse<{ fiche: StockMedicament; modifiee: boolean }>>;
   /** Exporte le stock en .xlsx. Sur le desktop : fichier fait sur le poste (sans coût), enregistré par « Enregistrer sous ». */
   exporterStock(structureId: string, options: OptionsExportStock): Promise<ResultatExport>;
+  /** Met un fichier Excel de côté, sans aperçu, pour l'importer au retour du réseau. Desktop seulement : en ligne, l'import passe par l'aperçu. */
+  mettreImportDeCote(structureId: string, corps: CorpsImportDiffere): Promise<ApiResponse<ImportDiffere>>;
+  /** Les 20 derniers imports mis de côté (en attente, traités, refusés). Vide en ligne. */
+  listerImportsDifferes(structureId: string): Promise<ImportDiffere[]>;
 }

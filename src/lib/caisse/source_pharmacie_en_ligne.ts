@@ -55,6 +55,8 @@ export const sourcePharmacieEnLigne: SourcePharmacie = {
     const res = Object.keys(corps).length > 0 ? await modifierFiche(structureId, fiche.id, corps) : null;
     return { success: true, message: res?.message ?? "Fiche produit enregistrée.", data: { fiche: (res?.data ?? fiche) as never, modifiee: true } };
   },
+  mettreImportDeCote: () => Promise.reject(new Error("Un fichier ne se met de côté que sur le poste hors ligne : en ligne, vérifiez puis importez le fichier.")),
+  listerImportsDifferes: () => Promise.resolve([]),
   async exporterStock(structureId, options) {
     const { blob, filename } = await exporterStock(structureId, options);
     const url = URL.createObjectURL(blob);

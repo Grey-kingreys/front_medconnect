@@ -14,6 +14,7 @@ import type { CoeurCaisse, ReponseAnnulation } from "./coeur";
 import { messageCorrectionEnregistree, MESSAGE_SORTIE_ENREGISTREE, MESSAGE_SORTIE_REJOUEE } from "./messages_stock";
 import { MESSAGE_ANOMALIE_TRAITEE } from "./anomalies_locales";
 import { MESSAGE_CLIENT_CREDIT_ENREGISTRE, MESSAGE_CLIENT_CREDIT_MODIFIE, MESSAGE_DATE_LIMITE_ENREGISTREE, MESSAGE_DATE_LIMITE_RETIREE, messageRemboursementEnregistre } from "./credit_locale";
+import { MESSAGE_IMPORT_DIFFERE_REJOUE, MESSAGE_IMPORT_MIS_DE_COTE } from "./import_differe_locale";
 import { MESSAGE_INVENTAIRE_REJOUE, messageInventaireEnregistre, nombreEcartsAuDelaDeLaTolerance } from "./inventaire_locale";
 import { messageReceptionEnregistree, MESSAGE_FOURNISSEUR_ENREGISTRE, MESSAGE_RECEPTION_REJOUEE } from "./reception_locale";
 import { MESSAGE_AUCUNE_MODIFICATION, MESSAGE_FICHE_AJOUTEE_HORS_LIGNE, MESSAGE_FICHE_DEJA_PRESENTE, MESSAGE_FICHE_ENREGISTREE_HORS_LIGNE } from "./fiche_edition_locale";
@@ -224,6 +225,16 @@ export class Passerelle {
     const u = this.utilisateur as UtilisateurPoste;
     const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
     try {
+      if (methode === "listerImportsDifferes") return succes(coeur.listerImportsDifferes(), "Imports mis de côté sur ce poste.");
+      if (methode === "importerDiffere") {
+        // Le droit du mode, comme la route en ligne : le serveur le recontrôle au rejeu
+        const mode = (v[1] as { mode: string }).mode;
+        if (!u.permissions.includes(mode === "livraison" ? "reception:write" : "inventaire:write")) return echec(403, "PERMISSION_REFUSEE", MESSAGE_PERMISSION_REFUSEE);
+        const r = coeur.mettreImportDeCote(v[1] as never, utilisateur);
+        this.deps.etatChange();
+        this.deps.apresVente();
+        return succes(r.import, r.dejaMisDeCote ? MESSAGE_IMPORT_DIFFERE_REJOUE : MESSAGE_IMPORT_MIS_DE_COTE);
+      }
       let reponse: ReponsePont<unknown>;
       if (methode === "sortir") {
         const sortie = coeur.sortirStock(v[1] as never, utilisateur);

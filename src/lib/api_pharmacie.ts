@@ -312,6 +312,48 @@ export async function importerStock(structureId: string, fichier: File, mode: Mo
   });
 }
 
+// ─── Import Excel du stock mis de côté hors ligne (poste desktop) ───
+
+/**
+ * Taille maximale d'un fichier mis de côté hors ligne (octets) : le lot envoyé au serveur est limité à 2 Mo et le
+ * fichier y voyage en base64 (un tiers de plus). En ligne la limite est de 2 Mo, hors ligne de 1,4 Mo.
+ */
+export const TAILLE_MAX_FICHIER_DIFFERE = 1_400_000;
+
+/** Fichier choisi sur le poste hors ligne, sans aperçu : lu en base64 et importé au retour du réseau. */
+export interface CorpsImportDiffere {
+  id?: string;
+  mode: ModeImportStock;
+  nomFichier: string;
+  contenuBase64: string;
+}
+
+/** Résultat d'un import mis de côté, une fois traité par le serveur : lignes importées et refusées, jamais un coût. */
+export interface ResultatImportDiffere {
+  mode: ModeImportStock;
+  nomFichier: string;
+  totalLignes: number;
+  importees: number;
+  rejetees: number;
+  receptionId: string | null;
+  inventaireId: string | null;
+  lignesRejetees: { ligne: number; nom: string; raison: string }[];
+}
+
+/** En attente sur le poste, envoyé (résultat à venir), traité par le serveur ou refusé. */
+export type StatutImportDiffere = "EN_ATTENTE" | "ENVOYE" | "TRAITE" | "REFUSE";
+
+/** Import mis de côté sur ce poste, avec son sort (aucune heure, aucun coût). */
+export interface ImportDiffere {
+  id: string;
+  mode: ModeImportStock | null;
+  nomFichier: string;
+  statut: StatutImportDiffere;
+  /** Raison du refus, texte du serveur lisible par un pharmacien. */
+  message: string | null;
+  resultat: ResultatImportDiffere | null;
+}
+
 // ─── Import Excel du catalogue ──────────────────────────────────
 
 /** Résultat de l'analyse d'une ligne du fichier Excel du catalogue. */

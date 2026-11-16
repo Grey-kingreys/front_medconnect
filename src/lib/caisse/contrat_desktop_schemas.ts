@@ -148,6 +148,20 @@ export const schemasStock = {
       })
       .strict(),
   ]),
+  /** Import Excel mis de côté hors ligne : le fichier part en base64 (1,4 Mo au plus, soit 1 866 668 caractères), sans aperçu. */
+  importerDiffere: z.tuple([
+    identifiant,
+    z
+      .object({
+        id: uuid,
+        mode: z.enum(["livraison", "inventaire"]),
+        nomFichier: z.string().min(1).max(255),
+        contenuBase64: z.string().min(4).max(1_866_668),
+      })
+      .strict(),
+  ]),
+  /** Les 20 derniers imports mis de côté sur ce poste et leur résultat. */
+  listerImportsDifferes: z.tuple([identifiant]),
 } as const;
 
 export type NomMethodeStock = keyof typeof schemasStock;

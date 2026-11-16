@@ -44,6 +44,8 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
     sortir: (s: string, corps: unknown) => appeler("stock:sortir", s, corps),
     corriger: (s: string, stockId: string, corps: unknown) => appeler("stock:corriger", s, stockId, corps),
     exporter: (s: string, options: unknown) => appeler("stock:exporter", s, options),
+    importerDiffere: (s: string, corps: unknown) => appeler("stock:importerDiffere", s, corps),
+    listerImportsDifferes: (s: string) => appeler("stock:listerImportsDifferes", s),
   },
   reception: {
     enregistrer: (s: string, corps: unknown) => appeler("reception:enregistrer", s, corps),

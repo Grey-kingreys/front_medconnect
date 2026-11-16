@@ -10,10 +10,12 @@ import type {
 } from "../api_caisse";
 import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
 import type {
+  CorpsImportDiffere,
   CorpsInventaire,
   CorpsReception,
   CorpsSortieStock,
   Fournisseur,
+  ImportDiffere,
   Medicament,
   PageInventaires,
   PageReceptions,
@@ -149,6 +151,10 @@ export interface PontStock extends PontDomaine {
   ): Promise<ReponsePont<StockMedicament>>;
   /** Génère le .xlsx du stock local (sans coût) et l'enregistre par une boîte « Enregistrer sous ». */
   exporter(s: string, options: { filtre?: "tous" | "alertes" | "rupture" | "qualifier"; q?: string }): Promise<ReponsePont<ResultatExportStock>>;
+  /** Met un fichier Excel de côté (un événement du journal, aucun aperçu, stock local inchangé) : importé au retour du réseau. */
+  importerDiffere(s: string, corps: CorpsImportDiffere & { id: string }): Promise<ReponsePont<ImportDiffere>>;
+  /** Les 20 derniers imports mis de côté : en attente, envoyés, traités (avec leur résultat) ou refusés. */
+  listerImportsDifferes(s: string): Promise<ReponsePont<ImportDiffere[]>>;
 }
 
 /** Résultat de l'export du stock sur le poste : `enregistre` est faux si la personne a fermé la boîte sans enregistrer. */

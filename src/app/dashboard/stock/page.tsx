@@ -40,6 +40,7 @@ import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { jourConakry } from "../ventes/affichage";
 import StockModal from "@/components/modals/StockModal";
 import ImportStockModal from "@/components/modals/ImportStockModal";
+import { ImportsDifferes } from "./ImportsDifferes";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
 import { ui } from "@/theme/ui";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
@@ -132,12 +133,11 @@ export default function StockPage() {
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("importer") !== "1" || !peutImporter) return;
-    if (horsLigne) setErreurExport(MESSAGE_ACTION_EN_LIGNE);
-    else setIsImportOpen(true);
+    setIsImportOpen(true);
     params.delete("importer");
     const reste = params.toString();
     window.history.replaceState(window.history.state, "", `${window.location.pathname}${reste ? `?${reste}` : ""}`);
-  }, [peutImporter, horsLigne]);
+  }, [peutImporter]);
 
   // Statuts lus des alertes du serveur (seuil des paramètres, quantité négative comprise)
   const idsStockBas = new Set(stockInfo?.alertes.stockBas.map((a) => a.id) ?? []);
@@ -305,6 +305,9 @@ export default function StockPage() {
         </div>
       </div>
 
+      {/* Fichiers Excel mis de côté hors ligne et leur résultat (poste desktop) */}
+      {user?.structureId && peutImporter && <ImportsDifferes structureId={user.structureId} rafraichir={`${suiviPoste.etat?.horsLigne}|${suiviPoste.etat?.fileEnAttente}|${suiviPoste.etat?.photographieLe}|${isImportOpen}`} />}
+
       {/* Main Controls */}
       <div className="space-y-3">
         <div className="flex flex-wrap items-center gap-3">
@@ -321,9 +324,8 @@ export default function StockPage() {
           <div className="flex flex-wrap items-center gap-3">
             {peutImporter && (
               <button
-                onClick={() => {
-                  if (!exigerConnexion()) setIsImportOpen(true);
-                }}
+                // Hors ligne sur le poste, le fichier se met de côté (importé au retour du réseau) : plus de connexion exigée
+                onClick={() => setIsImportOpen(true)}
                 className={ui.bouton.secondaire}
               >
                 <FileSpreadsheet size={16} className="text-primary-600 dark:text-primary-400" />
@@ -559,6 +561,7 @@ export default function StockPage() {
       {user?.structureId && peutImporter && (
         <ImportStockModal
           modesPermis={modesPermis}
+          horsLigne={horsLigne}
           isOpen={isImportOpen}
           onClose={() => setIsImportOpen(false)}
           structureId={user.structureId}

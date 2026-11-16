@@ -147,6 +147,17 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     async modifierFiche(structureId, f, champs) {
       return lire(await fiche().modifier(structureId, f.id, champs));
     },
+    async mettreImportDeCote(structureId, corps) {
+      const s = stock();
+      if (typeof s.importerDiffere !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+      return lire(await s.importerDiffere(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async listerImportsDifferes(structureId) {
+      const s = stock();
+      // Une application plus ancienne n'a pas cette fonction : la liste est vide, sans erreur
+      if (typeof s.listerImportsDifferes !== "function") return [];
+      return lire(await s.listerImportsDifferes(structureId)).data;
+    },
     async exporterStock(structureId, options) {
       const s = stock();
       if (typeof s.exporter !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);

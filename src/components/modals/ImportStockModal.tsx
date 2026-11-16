@@ -15,7 +15,10 @@ import {
   type ModeImportStock,
   type RapportImport,
   type RapportImportStock,
+  TAILLE_MAX_FICHIER_DIFFERE,
 } from "@/lib/api_pharmacie";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
+import { fichierEnBase64 } from "@/lib/fichier_base64";
 import { messageErreurPour, useToast } from "@/hooks/useToast";
 import Link from "next/link";
 import { ui } from "@/theme/ui";
@@ -23,7 +26,7 @@ import { afficherDatePeremption } from "@/lib/date_peremption";
 import { formaterGNF } from "@/lib/format_gnf";
 
 type Etape = "preparer" | "verifier" | "termine";
-type Chargement = "modele" | "apercu" | "import" | null;
+type Chargement = "modele" | "apercu" | "import" | "cote" | null;
 
 // Limites du serveur (D08)
 const TAILLE_MAX_OCTETS = 2 * 1024 * 1024;
@@ -105,6 +108,15 @@ export interface ConfigImportExcel<L extends LigneImportBase, M extends string =
   renduResultat?: (rapport: RapportImport<L>, message: string | undefined) => ReactNode;
   /** Si présent, une notification de succès est affichée après l'import. */
   notifierSucces?: boolean;
+  /**
+   * Poste desktop hors ligne : pas d'aperçu ni de modèle à télécharger, le fichier est mis de côté et importé au retour
+   * du réseau (décision Q7). Le fichier est alors limité à `tailleMaxOctets`.
+   */
+  horsLigne?: {
+    tailleMaxOctets: number;
+    texteTailleMax: string;
+    mettreDeCote: (fichier: File, mode?: M) => Promise<{ message?: string }>;
+  };
 }
 
 interface ImportExcelModalProps<L extends LigneImportBase, M extends string = string> {
@@ -184,6 +196,8 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
   // Mode de l'aperçu affiché : les colonnes et la confirmation suivent l'aperçu, pas un choix en cours de vérification
   const [modeApercu, setModeApercu] = useState<M | undefined>(undefined);
   const [messageServeur, setMessageServeur] = useState<string | undefined>(undefined);
+  // Hors ligne : message affiché une fois le fichier mis de côté
+  const [miseDeCote, setMiseDeCote] = useState<string | null>(null);
 
   // Un mode qui n'est plus proposé (droits changés) retombe sur le premier mode permis
   const mode = config.modes?.some((o) => o.valeur === modeChoisi) ? modeChoisi : config.modes?.[0]?.valeur;
@@ -198,6 +212,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
     setFichier(null);
     setRapport(null);
     setMessageServeur(undefined);
+    setMiseDeCote(null);
     setErreur(null);
     setSeulementACorriger(false);
     setConfirmation(false);
@@ -205,7 +220,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
 
   const fermer = () => {
     if (chargement) return;
-    if (etape === "termine") onSuccess();
+    if (etape === "termine" && !miseDeCote) onSuccess();
     recommencer();
     setMode(config.modes?.[0]?.valeur);
     onClose();
@@ -250,8 +265,9 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
       setErreur("Le fichier doit être un classeur Excel (.xlsx). Téléchargez le modèle pour partir d'un fichier valide.");
       return;
     }
-    if (choisi.size > TAILLE_MAX_OCTETS) {
-      setErreur(`Le fichier dépasse 2 Mo. Gardez seulement vos médicaments dans la feuille « ${config.nomFeuille} », puis réessayez.`);
+    const tailleMax = config.horsLigne?.tailleMaxOctets ?? TAILLE_MAX_OCTETS;
+    if (choisi.size > tailleMax) {
+      setErreur(`Le fichier dépasse ${config.horsLigne?.texteTailleMax ?? "2 Mo"}. Gardez seulement vos médicaments dans la feuille « ${config.nomFeuille} », puis réessayez.`);
       return;
     }
     setFichier(choisi);
@@ -272,6 +288,21 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
     } catch (err) {
       if (modeSiEchec !== undefined) setMode(modeSiEchec);
       setErreur(messageErreurPour(err, "Le fichier n'a pas pu être vérifié. Vérifiez votre connexion puis réessayez."));
+    } finally {
+      setChargement(null);
+    }
+  };
+
+  const mettreDeCote = async () => {
+    if (!fichier || !config.horsLigne) return;
+    setErreur(null);
+    setChargement("cote");
+    try {
+      const res = await config.horsLigne.mettreDeCote(fichier, mode);
+      setMiseDeCote(res.message ?? "Fichier mis de côté : il sera importé automatiquement au retour du réseau.");
+      setEtape("termine");
+    } catch (err) {
+      setErreur(messageErreurPour(err, "Le fichier n'a pas pu être mis de côté. Choisissez-le à nouveau puis réessayez."));
     } finally {
       setChargement(null);
     }
@@ -336,7 +367,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 {config.titre}
               </h2>
               <p className="text-mc-legende text-slate-600 dark:text-slate-400 font-semibold uppercase tracking-widest">
-                {etape === "preparer" ? "Étape 1 sur 3 : préparer le fichier" : etape === "verifier" ? "Étape 2 sur 3 : vérifier" : "Étape 3 sur 3 : terminé"}
+                {etape === "preparer" ? (config.horsLigne ? "Étape 1 sur 2 : préparer le fichier" : "Étape 1 sur 3 : préparer le fichier") : etape === "verifier" ? "Étape 2 sur 3 : vérifier" : config.horsLigne ? "Étape 2 sur 2 : terminé" : "Étape 3 sur 3 : terminé"}
               </p>
             </div>
           </div>
@@ -372,19 +403,25 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 ))}
               </ol>
 
-              <button
-                type="button"
-                onClick={telechargerModele}
-                disabled={!!chargement}
-                className="inline-flex items-center gap-2 text-mc-normal font-semibold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
-              >
-                {chargement === "modele" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-                Télécharger le modèle Excel
-              </button>
+              {config.horsLigne ? (
+                <p role="status" className="px-3 py-2 rounded-mc-moyen border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/40 text-mc-normal text-amber-900 dark:text-amber-200">
+                  Vous êtes hors ligne : le fichier sera importé automatiquement au retour du réseau, sans aperçu. Vous verrez le résultat dans les anomalies et ici.
+                </p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={telechargerModele}
+                  disabled={!!chargement}
+                  className="inline-flex items-center gap-2 text-mc-normal font-semibold text-primary-600 dark:text-primary-400 hover:underline disabled:opacity-50"
+                >
+                  {chargement === "modele" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  Télécharger le modèle Excel
+                </button>
+              )}
 
               <div className="space-y-2">
                 <label htmlFor={champFichierId} className={ui.label}>
-                  Votre fichier Excel (.xlsx, 2 Mo maximum)
+                  Votre fichier Excel (.xlsx, {config.horsLigne?.texteTailleMax ?? "2 Mo"} maximum)
                 </label>
                 <input
                   id={champFichierId}
@@ -399,15 +436,22 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
                 <ChoixModeImport options={config.modes} valeur={mode} onChange={changerMode} desactive={!!chargement} />
               )}
 
-              <button
-                type="button"
-                onClick={() => verifier()}
-                disabled={!fichier || !!chargement}
-                className={`${ui.bouton.primaire} w-full`}
-              >
-                {chargement === "apercu" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
-                Vérifier le fichier
-              </button>
+              {config.horsLigne ? (
+                <button type="button" onClick={mettreDeCote} disabled={!fichier || !!chargement} className={`${ui.bouton.primaire} w-full`}>
+                  {chargement === "cote" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                  Mettre le fichier de côté
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => verifier()}
+                  disabled={!fichier || !!chargement}
+                  className={`${ui.bouton.primaire} w-full`}
+                >
+                  {chargement === "apercu" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Upload className="w-5 h-5" />}
+                  Vérifier le fichier
+                </button>
+              )}
             </>
           )}
 
@@ -563,7 +607,17 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
           )}
 
           {/* Étape 3 : terminé */}
-          {etape === "termine" && rapport && (
+          {etape === "termine" && miseDeCote && (
+            <div className="flex flex-col items-center text-center gap-4 py-6" aria-live="polite">
+              <CheckCircle2 className="w-14 h-14 text-secondary-600 dark:text-secondary-400" />
+              <p className="text-mc-section font-semibold text-slate-900 dark:text-white">Fichier mis de côté</p>
+              <p className="text-mc-normal text-slate-700 dark:text-slate-300">{miseDeCote}</p>
+              <button type="button" onClick={fermer} className={ui.bouton.primaire}>
+                Fermer
+              </button>
+            </div>
+          )}
+          {etape === "termine" && rapport && !miseDeCote && (
             <div className="flex flex-col items-center text-center gap-4 py-6" aria-live="polite">
               <CheckCircle2 className="w-14 h-14 text-secondary-600 dark:text-secondary-400" />
               <p className="text-mc-section font-semibold text-slate-900 dark:text-white">
@@ -596,6 +650,7 @@ export function ImportExcelModal<L extends LigneImportBase, M extends string = s
 export function configImportStock(
   structureId: string,
   modesPermis: ModeImportStock[] = ["livraison", "inventaire"],
+  horsLigne = false,
 ): ConfigImportExcel<LigneImportStock, ModeImportStock> {
   const toutes: OptionModeImport<ModeImportStock>[] = [
     {
@@ -624,6 +679,20 @@ export function configImportStock(
       "Envoyez le fichier : rien n'est enregistré avant votre confirmation.",
     ],
     modes: options,
+    horsLigne: horsLigne
+      ? {
+          tailleMaxOctets: TAILLE_MAX_FICHIER_DIFFERE,
+          texteTailleMax: "1,4 Mo",
+          mettreDeCote: async (fichier, mode) => {
+            const res = await sourcePharmacie().mettreImportDeCote(structureId, {
+              mode: mode ?? modeParDefaut,
+              nomFichier: fichier.name,
+              contenuBase64: await fichierEnBase64(fichier),
+            });
+            return { message: res.message };
+          },
+        }
+      : undefined,
     colonnes: (rapport, mode) => colonnesImportStock(rapport, mode),
     textes: {
       prets: (n) => `${pluriel(n, "médicament prêt", "médicaments prêts")} à être importé${n > 1 ? "s" : ""}`,
@@ -758,11 +827,13 @@ interface ImportStockModalProps {
   onSuccess: () => void;
   /** Modes que l'utilisateur a le droit d'utiliser (D695) ; livraison puis inventaire par défaut. */
   modesPermis?: ModeImportStock[];
+  /** Poste desktop hors ligne : le fichier est mis de côté, sans aperçu. */
+  horsLigne?: boolean;
 }
 
 /** Import du stock depuis un fichier Excel : préparer, vérifier, terminé (F1). */
-export default function ImportStockModal({ isOpen, onClose, structureId, onSuccess, modesPermis }: ImportStockModalProps) {
-  return <ImportExcelModal isOpen={isOpen} onClose={onClose} onSuccess={onSuccess} config={configImportStock(structureId, modesPermis)} />;
+export default function ImportStockModal({ isOpen, onClose, structureId, onSuccess, modesPermis, horsLigne = false }: ImportStockModalProps) {
+  return <ImportExcelModal isOpen={isOpen} onClose={onClose} onSuccess={onSuccess} config={configImportStock(structureId, modesPermis, horsLigne)} />;
 }
 
 // ─── Import du catalogue des médicaments ────────────────────────

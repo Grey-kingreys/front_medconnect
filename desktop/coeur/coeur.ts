@@ -23,7 +23,7 @@ import {
   listerReceptionsLocales,
   lireReceptionLocale,
 } from "./reception_locale";
-import type { CorpsInventaire, CorpsReception, Fournisseur, Inventaire, PageInventaires, PageReceptions, Reception } from "@/lib/api_pharmacie";
+import type { CorpsImportDiffere, ImportDiffere, CorpsInventaire, CorpsReception, Fournisseur, Inventaire, PageInventaires, PageReceptions, Reception } from "@/lib/api_pharmacie";
 import type { CorpsClientCredit, CorpsModifClientCredit, FicheClientCredit, ListeCredits, ResultatRemboursement } from "@/lib/api_credit";
 import {
   creerClientCreditLocal,
@@ -35,6 +35,7 @@ import {
   type CorpsRemboursementLocal,
   type OptionsListeCredits,
 } from "./credit_locale";
+import { importDejaMisDeCote, listerImportsDifferesLocaux, mettreImportDeCoteLocal, rangerImportsDifferesPhoto } from "./import_differe_locale";
 import { enregistrerInventaireLocal, listerInventairesLocaux, lireInventaireLocal } from "./inventaire_locale";
 import {
   creerFicheLocale,
@@ -231,6 +232,9 @@ export class CoeurCaisse {
         });
       }
 
+      // Un serveur plus ancien n'envoie pas les imports mis de côté : le réglage n'est pas touché.
+      if (photo.importsDifferes !== undefined) rangerImportsDifferesPhoto(this.ctx, photo.importsDifferes);
+
       // Un serveur plus ancien n'envoie pas le cahier de crédit : la table n'est pas touchée.
       if (photo.clientsCredit !== undefined) {
         s.executer("DELETE FROM clients_credit_photo");
@@ -381,6 +385,17 @@ export class CoeurCaisse {
   /** Inventaire : lots locaux des lots trouvés, mouvements qui amènent le stock au compté et événement `INVENTAIRE_ENREGISTRE` en une transaction. */
   enregistrerInventaire(corps: CorpsInventaire, u: Utilisateur): Inventaire {
     return enregistrerInventaireLocal(this.ctx, corps, u);
+  }
+
+  /** Import Excel mis de côté hors ligne : un seul événement, aucun aperçu, aucune écriture dans le stock local. */
+  mettreImportDeCote(corps: CorpsImportDiffere & { id: string }, u: Utilisateur): { import: ImportDiffere; dejaMisDeCote: boolean } {
+    const dejaMisDeCote = importDejaMisDeCote(this.ctx, corps.id);
+    return { import: mettreImportDeCoteLocal(this.ctx, corps, u), dejaMisDeCote };
+  }
+
+  /** Les 20 derniers imports mis de côté : en attente, envoyés ou traités (résultat de la photographie). */
+  listerImportsDifferes(): ImportDiffere[] {
+    return listerImportsDifferesLocaux(this.ctx);
   }
 
   /** Inventaires des 30 derniers jours (photographie plus ceux faits ici), sans aucun coût. */

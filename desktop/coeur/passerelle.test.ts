@@ -401,10 +401,12 @@ describe("domaines du pont et permission propre à chaque fonction (A3, A5)", ()
     expect(permissionsRequises("reception", "enregistrer")).toEqual(["reception:write"]);
     expect(permissionsRequises("fournisseur", "creer")).toEqual(["reception:write"]);
     // Le domaine stock a deux fonctions, chacune avec stock:write.
-    expect(Object.keys(schemasParDomaine.stock)).toEqual(["sortir", "corriger", "exporter"]);
+    expect(Object.keys(schemasParDomaine.stock)).toEqual(["sortir", "corriger", "exporter", "importerDiffere", "listerImportsDifferes"]);
     expect(Object.keys(PERMISSIONS_PAR_FONCTION.anomalie)).toEqual(["lister", "traiter"]);
     expect(permissionsRequises("anomalie", "traiter")).toEqual(["anomalie:gerer"]);
     expect(permissionsRequises("stock", "exporter")).toEqual(["stock:read"]);
+    expect(permissionsRequises("stock", "importerDiffere")).toEqual(["stock:read", "stock:write"]);
+    expect(permissionsRequises("stock", "listerImportsDifferes")).toEqual(["stock:read", "stock:write"]);
     expect(permissionsRequises("stock", "sortir")).toEqual(["stock:write"]);
     expect(permissionsRequises("stock", "corriger")).toEqual(["stock:write"]);
   });

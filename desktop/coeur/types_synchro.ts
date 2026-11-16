@@ -155,6 +155,27 @@ export interface InventaireSynchro {
   lignes: LigneInventaireSynchro[];
 }
 
+/** Import Excel mis de côté par ce poste, tel que la photographie le donne (sans contenu, sans coût, sans heure). */
+export interface ImportDiffereSynchro {
+  id: string;
+  evenementId: string;
+  mode: string | null;
+  nomFichier: string | null;
+  statut: "EN_ATTENTE" | "APPLIQUE" | "REJETE";
+  code: string | null;
+  message: string | null;
+  importe: {
+    mode: string;
+    nomFichier: string;
+    totalLignes: number;
+    importees: number;
+    rejetees: number;
+    receptionId: string | null;
+    inventaireId: string | null;
+    lignesRejetees: { ligne: number; nom: string; raison: string }[];
+  } | null;
+}
+
 /** Médicament du catalogue global, allégé : seulement de quoi ajouter une fiche au stock (aucun prix, aucun coût). */
 export interface MedicamentAllegeSynchro {
   id: string;
@@ -243,6 +264,8 @@ export interface Photographie {
   receptions?: ReceptionSynchro[];
   /** Les 200 derniers inventaires, sans coût (absents d'un serveur plus ancien). */
   inventaires?: InventaireSynchro[];
+  /** Les 20 derniers imports Excel mis de côté par ce poste et leur résultat (absents d'un serveur plus ancien). */
+  importsDifferes?: ImportDiffereSynchro[];
   /** Clients du cahier de crédit, avec prises et remboursements, sans coût (absents d'un serveur plus ancien). */
   clientsCredit?: ClientCreditSynchro[];
   /** Catalogue global allégé, trié par identifiant (absent d'un serveur plus ancien). */
