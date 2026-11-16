@@ -9,12 +9,17 @@ files:
   - dist/**
   - "!dist/**/*.map"
   - package.json
-  - node_modules/better-sqlite3/package.json
-  - node_modules/better-sqlite3/lib/**
-  - node_modules/better-sqlite3/prebuilds/win32-x64.node
+  - node_modules/better-sqlite3-multiple-ciphers/package.json
+  - node_modules/better-sqlite3-multiple-ciphers/lib/**
+  - node_modules/better-sqlite3-multiple-ciphers/prebuilds/win32-x64.node
   - node_modules/node-addon-api/package.json
+  # electron-builder ajoute seul les fichiers de la dépendance : on écarte le code source et les autres plateformes.
+  - "!node_modules/better-sqlite3-multiple-ciphers/{deps,src}/**"
+  - "!node_modules/better-sqlite3-multiple-ciphers/{binding.gyp,index.d.ts,README.md}"
+  - "!node_modules/better-sqlite3-multiple-ciphers/prebuilds/{darwin,linux,linuxmusl}-*.node"
+  - "!node_modules/better-sqlite3-multiple-ciphers/prebuilds/win32-arm64.node"
 asarUnpack:
-  - node_modules/better-sqlite3/prebuilds/win32-x64.node
+  - node_modules/better-sqlite3-multiple-ciphers/prebuilds/win32-x64.node
 npmRebuild: false
 nodeGypRebuild: false
 buildDependenciesFromSource: false

@@ -35,7 +35,7 @@ const attendus = [
   [path.join(serveur, ".next", "static"), "serveur Next : .next/static"],
   [path.join(serveur, "node_modules"), "serveur Next : node_modules"],
   [fichierAsar, "app.asar"],
-  [path.join(ressources, "app.asar.unpacked", "node_modules", "better-sqlite3", "prebuilds", "win32-x64.node"), "better-sqlite3 : win32-x64.node hors de l'asar"],
+  [path.join(ressources, "app.asar.unpacked", "node_modules", "better-sqlite3-multiple-ciphers", "prebuilds", "win32-x64.node"), "better-sqlite3-multiple-ciphers : win32-x64.node hors de l'asar"],
 ];
 for (const [chemin, libelle] of attendus) if (!existsSync(chemin)) manque(`Manque : ${libelle}.`);
 if (!existsSync(paquet)) {

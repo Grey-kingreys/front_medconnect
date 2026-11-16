@@ -53,9 +53,9 @@ describe("garde des imports du cœur", () => {
     expect(sansCommentaires("preload.ts")).not.toMatch(/definirUtilisateur|"utilisateur"/);
   });
 
-  it("seul stockage_sqlite.ts importe better-sqlite3", () => {
+  it("seul stockage_sqlite.ts importe la bibliothèque SQLite", () => {
     const importeurs = fichiers
-      .filter((f) => modulesImportes(readFileSync(f, "utf8")).includes("better-sqlite3"))
+      .filter((f) => modulesImportes(readFileSync(f, "utf8")).includes("better-sqlite3-multiple-ciphers"))
       .map((f) => f.slice(DOSSIER.length + 1).replace(/\\/g, "/"));
     expect(importeurs).toEqual(["stockage_sqlite.ts"]);
   });

@@ -1,4 +1,4 @@
-import Database from "better-sqlite3";
+import Database from "better-sqlite3-multiple-ciphers";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
 import { copyFileSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -61,7 +61,7 @@ describe("incident : -wal d'une base neuve posé à côté de la vraie base", ()
     writeFileSync(path.join(dossier, "appareil.json"), JSON.stringify({ appareilId: ID }) + "\n");
 
     // Base neuve migrée dont l'écrivain est tué sans fermeture : son -wal reste.
-    const chemin = createRequire(import.meta.url).resolve("better-sqlite3");
+    const chemin = createRequire(import.meta.url).resolve("better-sqlite3-multiple-ciphers");
     const script = `const D=require(process.argv[1]);const b=new D(process.argv[2]);b.pragma('journal_mode=WAL');b.exec(process.argv[3]);b.prepare('INSERT INTO etat_poste (id) VALUES (1)').run();console.log('PRET');setInterval(()=>{},1000);`;
     const enfant = spawn(process.execPath, ["-e", script, chemin, neuve, SCHEMA], { stdio: ["ignore", "pipe", "inherit"] });
     await new Promise<void>((ok, ko) => {

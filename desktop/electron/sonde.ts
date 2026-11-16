@@ -265,7 +265,7 @@ export async function lancerSonde(opts: {
     // 2. better-sqlite3 sous Electron
     try {
       const exiger = createRequire(path.join(app.getAppPath(), "package.json"));
-      const Database = exiger("better-sqlite3");
+      const Database = exiger("better-sqlite3-multiple-ciphers");
       const base = new Database(":memory:");
       const ligne = base.prepare("select 1 as un").get() as { un: number };
       base.close();

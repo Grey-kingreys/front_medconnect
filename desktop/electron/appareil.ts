@@ -32,14 +32,14 @@ function tailleFichier(chemin: string): number | null {
  * Examen sans écriture, avant toute ouverture de la base : vrai si elle serait vue vide alors qu'un -wal et
  * appareil.json existent (voir `base_suspecte`). Une base illisible n'est pas suspecte : `traiterBaseIllisible` s'en charge.
  */
-export function baseSuspecteSurDisque(dossier: string): boolean {
+export function baseSuspecteSurDisque(dossier: string, cle?: string): boolean {
   const chemin = path.join(dossier, "caisse.sqlite");
   const tailleBase = tailleFichier(chemin);
   const tailleWal = tailleFichier(`${chemin}-wal`);
   const appareilJsonValide = lireAppareilId(dossier) !== null;
   // Pas la peine d'ouvrir quoi que ce soit si une des trois premières conditions manque.
   if (!tailleBase || !tailleWal || !appareilJsonValide) return false;
-  const lu = lireAppareilIdEnLectureSeule(chemin);
+  const lu = lireAppareilIdEnLectureSeule(chemin, cle);
   if (lu === "illisible") return false;
   return baseVueVideSuspecte({ tailleBase, tailleWal, appareilJsonValide, appareilIdEnBase: lu });
 }
