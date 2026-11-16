@@ -206,6 +206,42 @@ export const schemasFournisseur = {
 
 export type NomMethodeFournisseur = keyof typeof schemasFournisseur;
 
+/** Fonctions du domaine `fiche` : champs sûrs d'une fiche et ajout depuis le catalogue (permission `stock:write`). */
+export const schemasFiche = {
+  modifier: z.tuple([
+    identifiant,
+    identifiant,
+    z
+      .object({
+        prixUnitaire: montant.nullable().optional(),
+        prixUnite: montant.nullable().optional(),
+        toleranceInventaire: z.number().int().min(0).max(1_000_000).nullable().optional(),
+        notes: z.string().max(2000).nullable().optional(),
+      })
+      .strict(),
+  ]),
+  creer: z.tuple([
+    identifiant,
+    z
+      .object({
+        id: uuid,
+        medicamentId: identifiant,
+        prixUnitaire: montant.nullable().optional(),
+        notes: z.string().max(2000).nullable().optional(),
+      })
+      .strict(),
+  ]),
+} as const;
+
+export type NomMethodeFiche = keyof typeof schemasFiche;
+
+/** Fonctions du domaine `catalogue` : recherche dans le catalogue global allégé copié sur le poste (permission `stock:write`). */
+export const schemasCatalogue = {
+  rechercher: z.tuple([identifiant, z.string().max(100)]),
+} as const;
+
+export type NomMethodeCatalogue = keyof typeof schemasCatalogue;
+
 const TYPES_ANOMALIE = [
   "STOCK_NEGATIF",
   "ECART_INVENTAIRE",
@@ -221,6 +257,7 @@ const TYPES_ANOMALIE = [
   "EVENEMENT_REJETE",
   "SEQUENCE_MANQUANTE",
   "RECEPTION_COEFFICIENT_DIFFERENT",
+  "FICHE_MODIFIEE_ENTRETEMPS",
 ] as const;
 
 /** Fonctions du domaine `anomalie` : lecture de la file et traitement (permission `anomalie:gerer`). */
@@ -240,7 +277,7 @@ export const schemasAnomalie = {
 
 export type NomMethodeAnomalie = keyof typeof schemasAnomalie;
 
-export const DOMAINES_PONT = ["caisse", "stock", "reception", "fournisseur", "inventaire", "credit", "anomalie"] as const;
+export const DOMAINES_PONT = ["caisse", "stock", "reception", "fournisseur", "inventaire", "credit", "anomalie", "fiche", "catalogue"] as const;
 export type DomainePont = (typeof DOMAINES_PONT)[number];
 
 export const schemasParDomaine: Record<DomainePont, SchemasDomaine> = {
@@ -251,6 +288,8 @@ export const schemasParDomaine: Record<DomainePont, SchemasDomaine> = {
   inventaire: {},
   credit: {},
   anomalie: schemasAnomalie as unknown as SchemasDomaine,
+  fiche: schemasFiche as unknown as SchemasDomaine,
+  catalogue: schemasCatalogue as unknown as SchemasDomaine,
 };
 
 export function estDomainePont(nom: string): nom is DomainePont {

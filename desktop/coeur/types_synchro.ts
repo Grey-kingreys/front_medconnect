@@ -27,6 +27,8 @@ export interface FicheSynchro {
   coefficientBoite: number;
   uniteMinimale: string;
   deconditionnable: boolean;
+  /** Écart d'inventaire toléré, en unités minimales. Absent d'un serveur plus ancien. */
+  toleranceInventaire?: number | null;
   /** Faux : la fiche reste à qualifier. Absent d'un serveur plus ancien. */
   qualifie?: boolean;
   notes?: string | null;
@@ -127,6 +129,16 @@ export interface ReceptionSynchro {
   lots: LotReceptionSynchro[];
 }
 
+/** Médicament du catalogue global, allégé : seulement de quoi ajouter une fiche au stock (aucun prix, aucun coût). */
+export interface MedicamentAllegeSynchro {
+  id: string;
+  nom: string;
+  nomGenerique: string | null;
+  categorie: string;
+  formes: string[];
+  ordonnanceRequise: boolean;
+}
+
 export interface Photographie {
   pharmacie: {
     id: string;
@@ -154,6 +166,8 @@ export interface Photographie {
   /** Fournisseurs et réceptions des 30 derniers jours, sans coût (absents d'un serveur plus ancien). */
   fournisseurs?: FournisseurSynchro[];
   receptions?: ReceptionSynchro[];
+  /** Catalogue global allégé, trié par identifiant (absent d'un serveur plus ancien). */
+  medicaments?: MedicamentAllegeSynchro[];
 }
 
 /** Ligne du journal local prête à partir : `corps` est le texte stocké, jamais retransformé. */

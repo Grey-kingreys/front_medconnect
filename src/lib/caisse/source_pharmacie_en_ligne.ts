@@ -1,4 +1,4 @@
-import { creerFournisseur, enregistrerReception, exporterStock, getReception, listerFournisseurs, listerReceptions, getMyStock, listerLotsFiche, sortirDuStock, updateStockQuantite } from "../api_pharmacie";
+import { getCatalogue, modifierFiche, upsertStock, creerFournisseur, enregistrerReception, exporterStock, getReception, listerFournisseurs, listerReceptions, getMyStock, listerLotsFiche, sortirDuStock, updateStockQuantite } from "../api_pharmacie";
 import { listerAnomalies, traiterAnomalie } from "../api_pilotage";
 import type { SourcePharmacie } from "./source_pharmacie";
 
@@ -24,6 +24,19 @@ export const sourcePharmacieEnLigne: SourcePharmacie = {
   enregistrerReception: (structureId, corps) => enregistrerReception(structureId, corps),
   listerReceptions: (structureId, page) => listerReceptions(structureId, page),
   lireReception: (structureId, receptionId) => getReception(structureId, receptionId),
+  async rechercherCatalogue(_structureId, recherche) {
+    return (await getCatalogue(recherche)).data;
+  },
+  async creerFiche(structureId, corps) {
+    const res = await upsertStock(structureId, { medicamentId: corps.medicamentId, ...(corps.prixUnitaire != null ? { prixUnitaire: corps.prixUnitaire } : {}), ...(corps.notes ? { notes: corps.notes } : {}) });
+    return { ...res, data: { fiche: res.data as never, cree: true } };
+  },
+  async modifierFiche(structureId, fiche, champs) {
+    const { notes, ...corps } = champs;
+    if (notes !== undefined) await upsertStock(structureId, { medicamentId: fiche.medicamentId, notes: notes ?? "" });
+    const res = Object.keys(corps).length > 0 ? await modifierFiche(structureId, fiche.id, corps) : null;
+    return { success: true, message: res?.message ?? "Fiche produit enregistrée.", data: { fiche: (res?.data ?? fiche) as never, modifiee: true } };
+  },
   async exporterStock(structureId, options) {
     const { blob, filename } = await exporterStock(structureId, options);
     const url = URL.createObjectURL(blob);

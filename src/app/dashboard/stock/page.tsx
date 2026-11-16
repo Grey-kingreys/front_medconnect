@@ -192,14 +192,13 @@ export default function StockPage() {
 
   const affichageFiltre = filter !== "all" || search.trim() !== "";
 
+  // Hors ligne, l'ajout depuis le catalogue et la modification des champs sûrs se font sur le poste.
   const openAddModal = () => {
-    if (exigerConnexion()) return;
     setSelectedStock(null);
     setIsModalOpen(true);
   };
 
   const openEditModal = (item: StockMedicament) => {
-    if (exigerConnexion()) return;
     setSelectedStock(item);
     setIsModalOpen(true);
   };
@@ -552,6 +551,7 @@ export default function StockPage() {
           editItem={selectedStock}
           fichesActives={stockInfo?.stocks}
           onModifierFiche={setSelectedStock}
+          horsLigne={horsLigne}
         />
       )}
 

@@ -1,9 +1,11 @@
 import type { ApiResponse } from "../api_auth";
+import type { ChampsFicheSurs } from "./contrat_desktop";
 import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
 import type {
   CorpsReception,
   CorpsSortieStock,
   Fournisseur,
+  Medicament,
   PageReceptions,
   Reception,
   LotEnStock,
@@ -64,6 +66,12 @@ export interface SourcePharmacie {
   listerReceptions(structureId: string, page: number): Promise<ApiResponse<PageReceptions>>;
   /** Détail d'une réception. Sur le desktop : sans coût ni montant de facture (ils ne descendent pas sur le poste). */
   lireReception(structureId: string, receptionId: string): Promise<ApiResponse<Reception>>;
+  /** Recherche dans le catalogue des médicaments. Sur le desktop : copie allégée de la dernière photographie (nom, générique, catégorie, formes, ordonnance). */
+  rechercherCatalogue(structureId: string, recherche: string): Promise<Medicament[]>;
+  /** Ajoute un médicament du catalogue au stock, sans quantité ; rejouable avec le même `id`. Sur le desktop : fiche locale et événement `FICHE_CREEE`. */
+  creerFiche(structureId: string, corps: { id?: string; medicamentId: string; prixUnitaire?: number | null; notes?: string | null }): Promise<ApiResponse<{ fiche: StockMedicament; cree: boolean }>>;
+  /** Modifie les champs sûrs d'une fiche (prix de la boîte, prix à l'unité, tolérance, notes). Sur le desktop : écriture locale et événement `FICHE_MODIFIEE`. */
+  modifierFiche(structureId: string, fiche: { id: string; medicamentId: string }, champs: ChampsFicheSurs): Promise<ApiResponse<{ fiche: StockMedicament; modifiee: boolean }>>;
   /** Exporte le stock en .xlsx. Sur le desktop : fichier fait sur le poste (sans coût), enregistré par « Enregistrer sous ». */
   exporterStock(structureId: string, options: OptionsExportStock): Promise<ResultatExport>;
 }

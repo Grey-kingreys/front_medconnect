@@ -13,6 +13,7 @@ import type {
   CorpsReception,
   CorpsSortieStock,
   Fournisseur,
+  Medicament,
   PageReceptions,
   Reception,
   SortieStockEnregistree,
@@ -163,6 +164,25 @@ export interface PontAnomalie extends PontDomaine {
   traiter(s: string, anomalieId: string, corps: { commentaire: string }): Promise<ReponsePont<Anomalie>>;
 }
 
+/** Champs d'une fiche modifiables hors ligne : prix de la boîte, prix à l'unité, tolérance d'inventaire, notes (null efface). */
+export interface ChampsFicheSurs {
+  prixUnitaire?: number | null;
+  prixUnite?: number | null;
+  toleranceInventaire?: number | null;
+  notes?: string | null;
+}
+
+/** Domaine `fiche` du pont : modifier les champs sûrs d'une fiche, ajouter un médicament au stock (permission `stock:write`). */
+export interface PontFiche extends PontDomaine {
+  modifier(s: string, stockId: string, champs: ChampsFicheSurs): Promise<ReponsePont<{ fiche: StockMedicament; modifiee: boolean }>>;
+  creer(s: string, corps: { id: string; medicamentId: string; prixUnitaire?: number | null; notes?: string | null }): Promise<ReponsePont<{ fiche: StockMedicament; cree: boolean }>>;
+}
+
+/** Domaine `catalogue` du pont : recherche dans le catalogue global allégé copié sur le poste (permission `stock:write`). */
+export interface PontCatalogue extends PontDomaine {
+  rechercher(s: string, recherche: string): Promise<ReponsePont<Medicament[]>>;
+}
+
 export interface PontDesktop {
   version: string;
   /** Le rendu ne pousse que le jeton : le processus principal en tire l'identité auprès du serveur (`/auth/me`). */
@@ -195,6 +215,8 @@ export interface PontDesktop {
   inventaire?: PontDomaine;
   credit?: PontDomaine;
   anomalie?: PontAnomalie;
+  fiche?: PontFiche;
+  catalogue?: PontCatalogue;
   maj: {
     /** Installe la mise à jour prête et relance l'application ; refusé si une caisse est ouverte ou si des ventes attendent. */
     installer(): Promise<ReponsePont<null>>;

@@ -24,6 +24,16 @@ import {
   lireReceptionLocale,
 } from "./reception_locale";
 import type { CorpsReception, Fournisseur, PageReceptions, Reception } from "@/lib/api_pharmacie";
+import {
+  creerFicheLocale,
+  modifierFicheLocale,
+  rechercherCatalogueLocal,
+  type ChampsFicheModifiables,
+  type CorpsFicheCreee,
+  type ResultatCreation,
+  type ResultatModification,
+} from "./fiche_edition_locale";
+import type { Medicament } from "@/lib/api_pharmacie";
 import { corrigerQuantite, sortirStock, type CorpsCorrectionLocale, type CorpsSortieLocale } from "./stock_operations";
 import { plageRestante } from "./plages_locales";
 import { enregistrerReglages, lireReglages } from "./reglages";
@@ -201,6 +211,14 @@ export class CoeurCaisse {
         });
       }
 
+      // Un serveur plus ancien n'envoie pas le catalogue allégé : la table n'est pas touchée.
+      if (photo.medicaments !== undefined) {
+        s.executer("DELETE FROM medicaments_catalogue");
+        photo.medicaments.forEach((m, rang) => {
+          s.executer("INSERT INTO medicaments_catalogue (id, rang, document) VALUES (?, ?, ?)", [m.id, rang, JSON.stringify(m)]);
+        });
+      }
+
       s.executer("DELETE FROM fiches");
       for (const fiche of photo.fiches) {
         s.executer("INSERT INTO fiches (stockId, document, nom) VALUES (?, ?, ?)", [
@@ -330,6 +348,23 @@ export class CoeurCaisse {
 
   lireReception(id: string): Reception {
     return lireReceptionLocale(this.ctx, id);
+  }
+
+  // ------------------------------------------------------------------ fiches hors ligne
+
+  /** Modifie les champs sûrs d'une fiche (prix, tolérance, notes) : surcouche locale et événement `FICHE_MODIFIEE`. */
+  modifierFiche(stockId: string, champs: ChampsFicheModifiables, u: Utilisateur): ResultatModification {
+    return modifierFicheLocale(this.ctx, stockId, champs, u);
+  }
+
+  /** Ajoute un médicament du catalogue au stock, sans quantité : fiche locale et événement `FICHE_CREEE`. */
+  creerFiche(corps: CorpsFicheCreee, u: Utilisateur): ResultatCreation {
+    return creerFicheLocale(this.ctx, corps, u);
+  }
+
+  /** Médicaments du catalogue global allégé (copie de la dernière photographie). */
+  rechercherCatalogue(recherche: string): Medicament[] {
+    return rechercherCatalogueLocal(this.ctx, recherche);
   }
 
   // ------------------------------------------------------------------ anomalies hors ligne

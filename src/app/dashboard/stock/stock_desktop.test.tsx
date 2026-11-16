@@ -100,18 +100,21 @@ describe("Stock sur le poste desktop", () => {
     await waitFor(() => expect(onSucces).toHaveBeenCalledWith("Stock réduit sur ce poste (nouvelle quantité : 20)"));
   });
 
-  it("hors ligne, la page se lit et les autres actions demandent une connexion", async () => {
+  it("hors ligne, la page se lit, la fiche s'ouvre pour les champs sûrs et les autres actions demandent une connexion", async () => {
     installerPont(true);
     render(<StockPage />);
     expect(await screen.findByText("Doliprane")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Sortir Doliprane du stock" })).toBeTruthy());
 
-    for (const nom of ["Importer depuis Excel", "Ajouter un médicament", "Modifier Doliprane"]) {
+    for (const nom of ["Importer depuis Excel"]) {
       fireEvent.click(screen.getByRole("button", { name: nom }));
       expect((await screen.findByRole("alert")).textContent).toBe("Cette action demande une connexion.");
     }
     expect(screen.queryByText("Fenêtre d'import ouverte")).toBeNull();
     expect(screen.queryByText("Fiche ouverte")).toBeNull();
+    // Ajouter et modifier une fiche se font sur le poste : la fenêtre s'ouvre.
+    fireEvent.click(screen.getByRole("button", { name: "Modifier Doliprane" }));
+    expect(await screen.findByText("Fiche ouverte")).toBeTruthy();
   });
 
   it("hors ligne, l'export se fait sur le poste, sans connexion, et dit que les prix d'achat n'y sont pas", async () => {

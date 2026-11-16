@@ -27,6 +27,9 @@ export const PERMISSIONS_PAR_FONCTION: Record<DomainePont, Record<string, readon
   inventaire: {},
   credit: {},
   anomalie: { lister: ["anomalie:gerer"], traiter: ["anomalie:gerer"] },
+  // Ajouter un médicament au stock ne demande que stock:write en ligne (POST /pharmacie/stock/:id) : pas de catalogue:write.
+  fiche: { modifier: ["stock:write"], creer: ["stock:write"] },
+  catalogue: { rechercher: ["stock:write"] },
 };
 
 /** Permissions exigées par une fonction, ou null si la fonction n'existe pas dans ce domaine. */

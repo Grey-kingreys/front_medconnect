@@ -214,6 +214,30 @@ const ETAPES: string[] = [
     document TEXT NOT NULL
   );
   `,
+  // Version 8 (fiches hors ligne) : catalogue global allégé de la dernière photographie (lecture, ajout d'un médicament
+  // au stock), modifications de champs sûrs d'une fiche et fiches créées sur le poste pas encore appliquées par le
+  // serveur (même règle de séquence que les mouvements).
+  `
+  CREATE TABLE medicaments_catalogue (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE fiches_modifiees_locales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence INTEGER NOT NULL,
+    stockId TEXT NOT NULL,
+    champ TEXT NOT NULL,
+    valeur TEXT NOT NULL
+  );
+  CREATE INDEX fiches_modifiees_locales_fiche ON fiches_modifiees_locales (stockId, sequence);
+  CREATE TABLE fiches_creees_locales (
+    stockId TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    medicamentId TEXT NOT NULL,
+    document TEXT NOT NULL
+  );
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

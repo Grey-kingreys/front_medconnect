@@ -43,6 +43,7 @@ const FILTRES_TYPE: { type: TypeAnomalie; libelle: string }[] = [
   { type: "EVENEMENT_REJETE", libelle: "Opération de caisse rejetée" },
   { type: "SEQUENCE_MANQUANTE", libelle: "Opération de caisse manquante" },
   { type: "RECEPTION_COEFFICIENT_DIFFERENT", libelle: "Réception hors ligne : unités par boîte différentes" },
+  { type: "FICHE_MODIFIEE_ENTRETEMPS", libelle: "Fiche modifiée hors ligne et ailleurs entre-temps" },
 ];
 
 const MESSAGE_RESEAU = "Le traitement n'a peut-être pas été enregistré. Fermez cette fenêtre et vérifiez la liste.";

@@ -32,7 +32,7 @@ export interface EtatPoste {
   plageDemandeeId: string | null;
 }
 
-export type TypeEvenement = "SESSION_OUVERTE" | "COMPTAGE_SAISI" | "MOUVEMENT_CAISSE" | "SESSION_FERMEE" | "VENTE" | "SORTIE_STOCK" | "CORRECTION_QUANTITE" | "ANOMALIE_TRAITEE" | "FOURNISSEUR_CREE" | "RECEPTION_ENREGISTREE";
+export type TypeEvenement = "SESSION_OUVERTE" | "COMPTAGE_SAISI" | "MOUVEMENT_CAISSE" | "SESSION_FERMEE" | "VENTE" | "SORTIE_STOCK" | "CORRECTION_QUANTITE" | "ANOMALIE_TRAITEE" | "FOURNISSEUR_CREE" | "RECEPTION_ENREGISTREE" | "FICHE_MODIFIEE" | "FICHE_CREEE";
 
 /** Accès commun aux fonctions de caisse et de vente : stockage, horloge, état du poste, journal. */
 export class Contexte {
