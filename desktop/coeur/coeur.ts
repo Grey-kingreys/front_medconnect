@@ -23,7 +23,8 @@ import {
   listerReceptionsLocales,
   lireReceptionLocale,
 } from "./reception_locale";
-import type { CorpsReception, Fournisseur, PageReceptions, Reception } from "@/lib/api_pharmacie";
+import type { CorpsInventaire, CorpsReception, Fournisseur, Inventaire, PageInventaires, PageReceptions, Reception } from "@/lib/api_pharmacie";
+import { enregistrerInventaireLocal, listerInventairesLocaux, lireInventaireLocal } from "./inventaire_locale";
 import {
   creerFicheLocale,
   modifierFicheLocale,
@@ -211,6 +212,14 @@ export class CoeurCaisse {
         });
       }
 
+      // Un serveur plus ancien n'envoie pas d'inventaires : la table n'est pas touchée.
+      if (photo.inventaires !== undefined) {
+        s.executer("DELETE FROM inventaires_photo");
+        photo.inventaires.forEach((i, rang) => {
+          s.executer("INSERT INTO inventaires_photo (id, rang, document) VALUES (?, ?, ?)", [i.id, rang, JSON.stringify(i)]);
+        });
+      }
+
       // Un serveur plus ancien n'envoie pas le catalogue allégé : la table n'est pas touchée.
       if (photo.medicaments !== undefined) {
         s.executer("DELETE FROM medicaments_catalogue");
@@ -348,6 +357,20 @@ export class CoeurCaisse {
 
   lireReception(id: string): Reception {
     return lireReceptionLocale(this.ctx, id);
+  }
+
+  /** Inventaire : lots locaux des lots trouvés, mouvements qui amènent le stock au compté et événement `INVENTAIRE_ENREGISTRE` en une transaction. */
+  enregistrerInventaire(corps: CorpsInventaire, u: Utilisateur): Inventaire {
+    return enregistrerInventaireLocal(this.ctx, corps, u);
+  }
+
+  /** Inventaires des 30 derniers jours (photographie plus ceux faits ici), sans aucun coût. */
+  listerInventaires(page = 1): PageInventaires {
+    return listerInventairesLocaux(this.ctx, page);
+  }
+
+  lireInventaire(id: string): Inventaire {
+    return lireInventaireLocal(this.ctx, id);
   }
 
   // ------------------------------------------------------------------ fiches hors ligne

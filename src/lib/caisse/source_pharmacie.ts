@@ -2,11 +2,14 @@ import type { ApiResponse } from "../api_auth";
 import type { ChampsFicheSurs } from "./contrat_desktop";
 import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
 import type {
+  CorpsInventaire,
   CorpsReception,
   CorpsSortieStock,
   Fournisseur,
   Medicament,
+  PageInventaires,
   PageReceptions,
+  Inventaire,
   Reception,
   LotEnStock,
   SortieStockEnregistree,
@@ -66,6 +69,12 @@ export interface SourcePharmacie {
   listerReceptions(structureId: string, page: number): Promise<ApiResponse<PageReceptions>>;
   /** Détail d'une réception. Sur le desktop : sans coût ni montant de facture (ils ne descendent pas sur le poste). */
   lireReception(structureId: string, receptionId: string): Promise<ApiResponse<Reception>>;
+  /** Enregistre un inventaire par lot ; rejouable avec le même `id`. Sur le desktop : écriture locale (le stock devient le compté) et événement `INVENTAIRE_ENREGISTRE`. */
+  enregistrerInventaire(structureId: string, corps: CorpsInventaire): Promise<ApiResponse<Inventaire>>;
+  /** Inventaires, les plus récents d'abord. Sur le desktop : 30 derniers jours, sans aucun coût. */
+  listerInventaires(structureId: string, page: number): Promise<ApiResponse<PageInventaires>>;
+  /** Détail d'un inventaire. Sur le desktop : 30 derniers jours, sans aucun coût. */
+  lireInventaire(structureId: string, inventaireId: string): Promise<ApiResponse<Inventaire>>;
   /** Recherche dans le catalogue des médicaments. Sur le desktop : copie allégée de la dernière photographie (nom, générique, catégorie, formes, ordonnance). */
   rechercherCatalogue(structureId: string, recherche: string): Promise<Medicament[]>;
   /** Ajoute un médicament du catalogue au stock, sans quantité ; rejouable avec le même `id`. Sur le desktop : fiche locale et événement `FICHE_CREEE`. */

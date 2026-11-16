@@ -129,6 +129,32 @@ export interface ReceptionSynchro {
   lots: LotReceptionSynchro[];
 }
 
+/** Ligne d'un inventaire récent : aucun coût n'arrive sur le poste. */
+export interface LigneInventaireSynchro {
+  id: string;
+  stockId: string;
+  nom: string;
+  lotId: string | null;
+  numeroLot: string | null;
+  dateExpiration: string | null;
+  lotTechnique: boolean;
+  quantiteTheorique: number;
+  quantiteARegulariser: number;
+  quantiteComptee: number;
+  ecart: number;
+  sousTolerance: boolean;
+  anomalieId: string | null;
+}
+
+/** Inventaire des derniers jours, tel que la photographie le donne (le poste n'en montre que 30 jours). */
+export interface InventaireSynchro {
+  id: string;
+  createdAt: string;
+  commentaire: string | null;
+  auteur: { id: string; nom: string };
+  lignes: LigneInventaireSynchro[];
+}
+
 /** Médicament du catalogue global, allégé : seulement de quoi ajouter une fiche au stock (aucun prix, aucun coût). */
 export interface MedicamentAllegeSynchro {
   id: string;
@@ -166,6 +192,8 @@ export interface Photographie {
   /** Fournisseurs et réceptions des 30 derniers jours, sans coût (absents d'un serveur plus ancien). */
   fournisseurs?: FournisseurSynchro[];
   receptions?: ReceptionSynchro[];
+  /** Les 200 derniers inventaires, sans coût (absents d'un serveur plus ancien). */
+  inventaires?: InventaireSynchro[];
   /** Catalogue global allégé, trié par identifiant (absent d'un serveur plus ancien). */
   medicaments?: MedicamentAllegeSynchro[];
 }

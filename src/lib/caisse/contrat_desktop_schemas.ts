@@ -242,6 +242,35 @@ export const schemasCatalogue = {
 
 export type NomMethodeCatalogue = keyof typeof schemasCatalogue;
 
+const ligneInventaire = z
+  .object({
+    stockId: identifiant,
+    lotId: identifiant.optional(),
+    dateExpiration: z.string().max(10).optional(),
+    sansPeremption: z.boolean().optional(),
+    nombreBoites: z.number().int().min(0).max(1_000_000).optional(),
+    unitesEnPlus: z.number().int().min(0).max(1_000_000_000).optional(),
+  })
+  .strict();
+
+/** Fonctions du domaine `inventaire` : enregistrer un comptage, lister et lire (permission `inventaire:write`). */
+export const schemasInventaire = {
+  enregistrer: z.tuple([
+    identifiant,
+    z
+      .object({
+        id: uuid,
+        commentaire: z.string().max(500).optional(),
+        lignes: z.array(ligneInventaire).min(1).max(500),
+      })
+      .strict(),
+  ]),
+  lister: z.tuple([identifiant, z.object({ page: z.number().int().min(1).max(100_000).optional() }).strict()]),
+  lire: z.tuple([identifiant, identifiant]),
+} as const;
+
+export type NomMethodeInventaire = keyof typeof schemasInventaire;
+
 const TYPES_ANOMALIE = [
   "STOCK_NEGATIF",
   "ECART_INVENTAIRE",
@@ -258,6 +287,7 @@ const TYPES_ANOMALIE = [
   "SEQUENCE_MANQUANTE",
   "RECEPTION_COEFFICIENT_DIFFERENT",
   "FICHE_MODIFIEE_ENTRETEMPS",
+  "THEORIQUE_DIVERGENT",
 ] as const;
 
 /** Fonctions du domaine `anomalie` : lecture de la file et traitement (permission `anomalie:gerer`). */
@@ -285,7 +315,7 @@ export const schemasParDomaine: Record<DomainePont, SchemasDomaine> = {
   stock: schemasStock as unknown as SchemasDomaine,
   reception: schemasReception as unknown as SchemasDomaine,
   fournisseur: schemasFournisseur as unknown as SchemasDomaine,
-  inventaire: {},
+  inventaire: schemasInventaire as unknown as SchemasDomaine,
   credit: {},
   anomalie: schemasAnomalie as unknown as SchemasDomaine,
   fiche: schemasFiche as unknown as SchemasDomaine,

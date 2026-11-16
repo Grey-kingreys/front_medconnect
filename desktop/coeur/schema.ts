@@ -238,6 +238,21 @@ const ETAPES: string[] = [
     document TEXT NOT NULL
   );
   `,
+  // Version 9 (inventaire hors ligne) : inventaires récents de la dernière photographie (lecture, sans coût) et
+  // inventaires faits sur le poste pas encore appliqués par le serveur (même règle de séquence que les mouvements).
+  `
+  CREATE TABLE inventaires_photo (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE inventaires_locales (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    creeLe TEXT NOT NULL,
+    document TEXT NOT NULL
+  );
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

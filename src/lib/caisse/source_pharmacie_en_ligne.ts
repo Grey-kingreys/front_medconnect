@@ -1,4 +1,4 @@
-import { getCatalogue, modifierFiche, upsertStock, creerFournisseur, enregistrerReception, exporterStock, getReception, listerFournisseurs, listerReceptions, getMyStock, listerLotsFiche, sortirDuStock, updateStockQuantite } from "../api_pharmacie";
+import { enregistrerInventaire, getInventaire, listerInventaires, getCatalogue, modifierFiche, upsertStock, creerFournisseur, enregistrerReception, exporterStock, getReception, listerFournisseurs, listerReceptions, getMyStock, listerLotsFiche, sortirDuStock, updateStockQuantite } from "../api_pharmacie";
 import { listerAnomalies, traiterAnomalie } from "../api_pilotage";
 import type { SourcePharmacie } from "./source_pharmacie";
 
@@ -19,6 +19,9 @@ export const sourcePharmacieEnLigne: SourcePharmacie = {
   corrigerQuantite: (structureId, stockId, corps) => updateStockQuantite(structureId, stockId, corps),
   listerAnomalies: (structureId, options) => listerAnomalies(structureId, options),
   traiterAnomalie: (structureId, anomalieId, commentaire) => traiterAnomalie(structureId, anomalieId, commentaire),
+  enregistrerInventaire: (structureId, corps) => enregistrerInventaire(structureId, corps),
+  listerInventaires: (structureId, page) => listerInventaires(structureId, page),
+  lireInventaire: (structureId, inventaireId) => getInventaire(structureId, inventaireId),
   listerFournisseurs: (structureId) => listerFournisseurs(structureId),
   creerFournisseur: (structureId, corps) => creerFournisseur(structureId, corps),
   enregistrerReception: (structureId, corps) => enregistrerReception(structureId, corps),

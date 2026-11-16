@@ -7,9 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
 import {
-  enregistrerInventaire,
-  getMyStock,
-  listerLotsFiche,
   type CorpsInventaire,
   type Inventaire,
   type LigneInventaireDemandee,
@@ -18,6 +15,7 @@ import {
   type StockMedicament,
   type UniteMinimale,
 } from "@/lib/api_pharmacie";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { LIBELLES_UNITE_MINIMALE, formaterARegulariser, formaterQuantite } from "@/lib/caisse/regles/quantites";
 import { afficherDatePeremption, lireDatePeremption } from "@/lib/date_peremption";
 import { champsErreur, codeErreur, detailsErreur, estErreurReseau } from "@/lib/erreurs_api";
@@ -212,10 +210,11 @@ export default function InventairePage() {
   useEffect(() => {
     if (!structureId) return;
     let actif = true;
-    getMyStock(structureId)
+    sourcePharmacie()
+      .chargerStockInfo(structureId)
       .then((s) => {
         if (!actif) return;
-        const fiches = s.data.stocks.filter((x) => !x.archiveLe);
+        const fiches = s.stocks.filter((x) => !x.archiveLe);
         setStock(fiches);
         setErreurChargement(null);
         // Une fiche disparue depuis le dernier chargement sort de l'inventaire.
@@ -295,12 +294,13 @@ export default function InventairePage() {
       );
     };
     if (cites.length === 0) setBlocs((prev) => prev.map((b) => (b.stockId === stockId ? { ...b, statut: "chargement" } : b)));
-    listerLotsFiche(structureId, stockId)
-      .then((res) => {
-        const recus = res.data.map((lot: LotEnStock) =>
+    sourcePharmacie()
+      .listerLots(structureId, stockId)
+      .then((lotsRecus) => {
+        const recus = lotsRecus.map((lot: LotEnStock) =>
           nouvelleLigne("propose", coefficientDuLot(lot, coefFiche), { lotId: lot.id, libelle: libelleLotAveugle(lot, aujourdhui) }),
         );
-        const ids = new Set(res.data.map((lot) => lot.id));
+        const ids = new Set(lotsRecus.map((lot) => lot.id));
         appliquer([...recus, ...cites.filter((lot) => !ids.has(lot.lotId)).map(ligneCitee)]);
       })
       .catch(() => {
@@ -473,7 +473,8 @@ export default function InventairePage() {
     setBandeau(null);
     setReessayable(false);
     setConfirmationModif(false);
-    enregistrerInventaire(structureId, corps)
+    sourcePharmacie()
+      .enregistrerInventaire(structureId, corps)
       .then((res) => {
         envoiEnCours.current = false;
         setEnvoi(false);

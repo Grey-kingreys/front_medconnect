@@ -24,7 +24,7 @@ export const PERMISSIONS_PAR_FONCTION: Record<DomainePont, Record<string, readon
   stock: { sortir: ["stock:write"], corriger: ["stock:write"], exporter: ["stock:read"] },
   reception: { enregistrer: ["reception:write"], lister: ["reception:write"], lire: ["reception:write"] },
   fournisseur: { lister: ["reception:write"], creer: ["reception:write"] },
-  inventaire: {},
+  inventaire: { enregistrer: ["inventaire:write"], lister: ["inventaire:write"], lire: ["inventaire:write"] },
   credit: {},
   anomalie: { lister: ["anomalie:gerer"], traiter: ["anomalie:gerer"] },
   // Ajouter un médicament au stock ne demande que stock:write en ligne (POST /pharmacie/stock/:id) : pas de catalogue:write.

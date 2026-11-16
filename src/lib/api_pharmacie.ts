@@ -610,6 +610,26 @@ export interface Inventaire {
   /** Faux sur le rejeu d'un identifiant déjà enregistré. */
   cree?: boolean;
   avertissements?: AvertissementInventaire[];
+  /** Auteur nommé ; fourni par la lecture d'un inventaire sur le poste desktop. */
+  auteur?: { id: string; nom: string };
+}
+
+/** Un inventaire de la liste : sans ses lignes (sur le desktop, les 30 derniers jours, sans aucun coût). */
+export interface InventaireResume {
+  id: string;
+  createdAt: string;
+  commentaire: string | null;
+  auteur: { id: string; nom: string };
+  nombreLignes: number;
+  nombreEcarts: number;
+  nombreAnomalies: number;
+}
+
+export interface PageInventaires {
+  inventaires: InventaireResume[];
+  page: number;
+  parPage: number;
+  total: number;
 }
 
 /** Enregistre un inventaire ; rejouable avec le même `id` sans rien compter deux fois. */
@@ -618,6 +638,16 @@ export async function enregistrerInventaire(structureId: string, corps: CorpsInv
     method: "POST",
     body: JSON.stringify(corps),
   });
+}
+
+/** Inventaires, les plus récents d'abord, vingt par page. */
+export async function listerInventaires(structureId: string, page = 1) {
+  return authFetch<PageInventaires>(`/pharmacie/${encodeURIComponent(structureId)}/inventaires?page=${page}`);
+}
+
+/** Détail d'un inventaire. */
+export async function getInventaire(structureId: string, inventaireId: string) {
+  return authFetch<Inventaire>(`/pharmacie/${encodeURIComponent(structureId)}/inventaires/${encodeURIComponent(inventaireId)}`);
 }
 
 export type RaisonSortie = "PERIME" | "CASSE" | "PERDU" | "RETOUR_FOURNISSEUR" | "AUTRE";

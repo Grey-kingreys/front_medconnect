@@ -1,5 +1,5 @@
 import type { LotEnStock, StockInfo, StockMedicament } from "../api_pharmacie";
-import type { PontAnomalie, PontCatalogue, PontDesktop, PontFiche, PontFournisseur, PontReception, PontStock } from "./contrat_desktop";
+import type { PontAnomalie, PontCatalogue, PontDesktop, PontFiche, PontFournisseur, PontInventaire, PontReception, PontStock } from "./contrat_desktop";
 import type { SourcePharmacie } from "./source_pharmacie";
 import { lire } from "./source_desktop";
 
@@ -50,6 +50,10 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     if (pont.reception === undefined || typeof pont.reception.enregistrer !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
     return pont.reception;
   };
+  const inventaire = (): PontInventaire => {
+    if (pont.inventaire === undefined || typeof pont.inventaire.enregistrer !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.inventaire;
+  };
   const fournisseur = (): PontFournisseur => {
     if (pont.fournisseur === undefined || typeof pont.fournisseur.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
     return pont.fournisseur;
@@ -87,6 +91,15 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     },
     async traiterAnomalie(structureId, anomalieId, commentaire) {
       return lire(await anomalie().traiter(structureId, anomalieId, { commentaire }));
+    },
+    async enregistrerInventaire(structureId, corps) {
+      return lire(await inventaire().enregistrer(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async listerInventaires(structureId, page) {
+      return lire(await inventaire().lister(structureId, { page }));
+    },
+    async lireInventaire(structureId, inventaireId) {
+      return lire(await inventaire().lire(structureId, inventaireId));
     },
     async listerFournisseurs(structureId) {
       return lire(await fournisseur().lister(structureId));

@@ -54,7 +54,11 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
     lister: (s: string) => appeler("fournisseur:lister", s),
     creer: (s: string, corps: unknown) => appeler("fournisseur:creer", s, corps),
   },
-  inventaire: {},
+  inventaire: {
+    enregistrer: (s: string, corps: unknown) => appeler("inventaire:enregistrer", s, corps),
+    lister: (s: string, options: unknown) => appeler("inventaire:lister", s, options),
+    lire: (s: string, inventaireId: string) => appeler("inventaire:lire", s, inventaireId),
+  },
   credit: {},
   anomalie: {
     lister: (s: string, options: unknown) => appeler("anomalie:lister", s, options),

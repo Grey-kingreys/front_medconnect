@@ -10,11 +10,14 @@ import type {
 } from "../api_caisse";
 import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
 import type {
+  CorpsInventaire,
   CorpsReception,
   CorpsSortieStock,
   Fournisseur,
   Medicament,
+  PageInventaires,
   PageReceptions,
+  Inventaire,
   Reception,
   SortieStockEnregistree,
   StockMedicament,
@@ -152,6 +155,13 @@ export interface PontReception extends PontDomaine {
   lire(s: string, receptionId: string): Promise<ReponsePont<Reception>>;
 }
 
+/** Domaine `inventaire` du pont : comptage par lot, liste et détail des inventaires récents (permission `inventaire:write`). */
+export interface PontInventaire extends PontDomaine {
+  enregistrer(s: string, corps: CorpsInventaire & { id: string }): Promise<ReponsePont<Inventaire>>;
+  lister(s: string, options: { page?: number }): Promise<ReponsePont<PageInventaires>>;
+  lire(s: string, inventaireId: string): Promise<ReponsePont<Inventaire>>;
+}
+
 /** Domaine `fournisseur` du pont : liste et création (permission `reception:write`). */
 export interface PontFournisseur extends PontDomaine {
   lister(s: string): Promise<ReponsePont<Fournisseur[]>>;
@@ -212,7 +222,7 @@ export interface PontDesktop {
   stock?: PontStock;
   reception?: PontReception;
   fournisseur?: PontFournisseur;
-  inventaire?: PontDomaine;
+  inventaire?: PontInventaire;
   credit?: PontDomaine;
   anomalie?: PontAnomalie;
   fiche?: PontFiche;
