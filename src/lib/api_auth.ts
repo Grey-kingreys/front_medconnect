@@ -5,7 +5,7 @@
  * L'URL du backend est lue depuis NEXT_PUBLIC_API_URL dans .env
  */
 
-import { deconnexionForcee, motifDepuisReponse, MESSAGES_DECONNEXION, type MotifDeconnexion } from "./deconnexion_forcee";
+import { deconnexionForcee, signalerSessionExpiree, motifDepuisReponse, MESSAGES_DECONNEXION, type MotifDeconnexion } from "./deconnexion_forcee";
 import { estPermissionRefusee, signalerAccesRefuse } from "./acces";
 import { deconnecterPoste, panneReseauDesktop, pousserJeton } from "./connexion_desktop";
 import type { StructureType } from "./api_admin";
@@ -303,6 +303,7 @@ async function avecRafraichissement<R>(appel: (token: string | null) => Promise<
       localStorage.removeItem("user");
       // Retirer aussi le cookie témoin lu par src/proxy.ts (voir useAuth.tsx)
       document.cookie = "mc_connecte=; path=/; max-age=0; SameSite=Lax";
+      signalerSessionExpiree();
     }
     throw new ApiError("Vous avez été déconnecté. Reconnectez-vous pour continuer.", 401);
   }

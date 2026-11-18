@@ -14,6 +14,19 @@ export const MESSAGES_DECONNEXION: Record<MotifDeconnexion, string> = {
 /** Nom de l'événement window écouté par AuthProvider. */
 export const EVENEMENT_DECONNEXION_FORCEE = "mc:deconnexion-forcee";
 
+/**
+ * Nom de l'événement window émis quand le rafraîchissement de la session est refusé (session expirée, sans motif
+ * à afficher). Sans lui, le stockage et le cookie témoin sont retirés mais l'état d'AuthProvider garde l'utilisateur :
+ * le menu reste affiché et chaque lien est renvoyé par `src/proxy.ts` vers la connexion, puis vers l'accueil.
+ */
+export const EVENEMENT_SESSION_EXPIREE = "mc:session-expiree";
+
+/** Prévient AuthProvider que la session locale a été retirée (le nettoyage du stockage est déjà fait). */
+export function signalerSessionExpiree(): void {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new Event(EVENEMENT_SESSION_EXPIREE));
+}
+
 export interface DetailDeconnexionForcee {
   motif: MotifDeconnexion;
 }

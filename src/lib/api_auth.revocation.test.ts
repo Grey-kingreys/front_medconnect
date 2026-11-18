@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError, changePassword, getMe, refreshAccessToken } from "./api_auth";
-import { EVENEMENT_DECONNEXION_FORCEE, type DetailDeconnexionForcee } from "./deconnexion_forcee";
+import { EVENEMENT_DECONNEXION_FORCEE, EVENEMENT_SESSION_EXPIREE, type DetailDeconnexionForcee } from "./deconnexion_forcee";
 
 const reponse = (statut: number, corps: unknown) =>
   new Response(JSON.stringify(corps), { status: statut, headers: { "Content-Type": "application/json" } });
@@ -66,6 +66,19 @@ describe("déconnexion forcée par le serveur", () => {
     expect((erreur as ApiError).message).toBe("Vous avez été déconnecté. Reconnectez-vous pour continuer.");
     expect(motifsRecus).toEqual([]);
     expect(sessionStorage.getItem("mc_motif_deconnexion")).toBeNull();
+  });
+
+  it("rafraîchissement refusé : prévient l'application (sinon le menu garde l'utilisateur sans cookie et chaque lien ramène à l'accueil)", async () => {
+    const surExpiration = vi.fn();
+    window.addEventListener(EVENEMENT_SESSION_EXPIREE, surExpiration);
+    fetchSimule
+      .mockResolvedValueOnce(reponse(401, { statusCode: 401, message: "expiré" }))
+      .mockResolvedValueOnce(reponse(401, { statusCode: 401, message: "x", code: "SESSION_EXPIREE" }));
+
+    await getMe().catch(() => undefined);
+    window.removeEventListener(EVENEMENT_SESSION_EXPIREE, surExpiration);
+
+    expect(surExpiration).toHaveBeenCalledTimes(1);
   });
 
   it("refreshAccessToken avec REFRESH_REUTILISE : rejet et déconnexion forcée", async () => {
