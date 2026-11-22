@@ -108,10 +108,9 @@ describe("champ Quantité", () => {
     expect(champ.value).toBe("12");
     saisir("Quantité, ligne 1", "123456");
     expect(champ.value).toBe("123456");
-    expect(champ.className).toContain("w-20");
-    expect(champ.className).toContain("shrink-0");
+    // Largeur de la colonne (tableau à largeurs fixes) : le champ la remplit, aligné sur son en-tête.
+    expect(champ.className).toContain("w-full");
     expect(champ.className).not.toContain("min-w-0");
-    expect(champ.className).not.toContain("w-full");
   });
 });
 

@@ -42,8 +42,8 @@ const compact = (classes: string) =>
   classes.replace("h-mc-controle ", "h-mc-controle-petit ").replace("text-mc-normal", "text-mc-petit").replace("px-3", "px-2");
 const CHAMP_PETIT = compact(CHAMP);
 const CHAMP_PETIT_INVALIDE = compact(CHAMP_INVALIDE);
-const CHAMP_QUANTITE = CHAMP_PETIT.replace("w-full ", "w-20 shrink-0 text-right tabular-nums ");
-const CHAMP_QUANTITE_INVALIDE = CHAMP_PETIT_INVALIDE.replace("w-full ", "w-20 shrink-0 text-right tabular-nums ");
+const CHAMP_QUANTITE = CHAMP_PETIT.replace("w-full ", "w-full text-right tabular-nums ");
+const CHAMP_QUANTITE_INVALIDE = CHAMP_PETIT_INVALIDE.replace("w-full ", "w-full text-right tabular-nums ");
 // Montants : alignés à droite, chiffres de largeur fixe.
 const CHAMP_NOMBRE = CHAMP_PETIT.replace("w-full ", "w-full text-right tabular-nums ");
 const CHAMP_NOMBRE_INVALIDE = CHAMP_PETIT_INVALIDE.replace("w-full ", "w-full text-right tabular-nums ");
@@ -1072,13 +1072,13 @@ export default function NouvelleReceptionPage() {
               <tr className={`${ui.enteteTableau} align-bottom`}>
                 <th scope="col" className={`${ENTETE} w-10 text-right`}>Ligne</th>
                 <th scope="col" className={`${ENTETE} w-24`}>Code</th>
-                <th scope="col" className={`${ENTETE} sticky left-0 z-10 w-60 bg-slate-50 dark:bg-slate-800`}>Désignation des produits</th>
+                <th scope="col" className={`${ENTETE} sticky left-0 z-10 w-60 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)] bg-slate-50 dark:bg-slate-800`}>Désignation des produits</th>
                 <th scope="col" className={`${ENTETE} w-28`}>Péremption<br />(MM/AA)</th>
                 <th scope="col" className={`${ENTETE} w-14`}>TB</th>
                 <th scope="col" className={`${ENTETE} w-28 text-right`}>Prix<br />public</th>
                 <th scope="col" className={`${ENTETE} w-16 text-right`}>TVA</th>
                 <th scope="col" className={`${ENTETE} w-24 text-right`}>Qté<br />commandée</th>
-                <th scope="col" className={`${ENTETE} w-28`}>Qté<br />livrée</th>
+                <th scope="col" className={`${ENTETE} w-28 text-right`}>Qté<br />livrée</th>
                 <th scope="col" className={`${ENTETE} w-28 text-right`}>Prix<br />unitaire</th>
                 <th scope="col" className={`${ENTETE} w-32 text-right`}>Montant<br />HT</th>
                 <th scope="col" className={`${ENTETE} w-22 text-right`}>Colisage</th>
@@ -1105,7 +1105,7 @@ export default function NouvelleReceptionPage() {
                     <tr className="align-top">
                       <td className={`${CELLULE} text-right tabular-nums text-slate-600 dark:text-slate-400`}>{n}</td>
                       <td className={CELLULE}>{detail(l, n, e, "codeFournisseur")}</td>
-                      <td className={`${CELLULE} sticky left-0 z-10 bg-white dark:bg-slate-900`}>
+                      <td className={`${CELLULE} sticky left-0 z-10 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)] bg-white dark:bg-slate-900`}>
                         <input
                           data-champ={`${l.cle}:medicament`}
                           type="text"
@@ -1221,7 +1221,7 @@ export default function NouvelleReceptionPage() {
                       <td className={CELLULE}>{detail(l, n, e, "tauxTva", true)}</td>
                       <td className={CELLULE}>{detail(l, n, e, "qteCommandee", true)}</td>
                       <td className={CELLULE}>
-                        <div className="flex flex-col items-end gap-1">
+                        <div className="flex flex-col items-stretch gap-1">
                           <input
                             data-champ={`${l.cle}:quantite`}
                             type="text"
@@ -1247,7 +1247,7 @@ export default function NouvelleReceptionPage() {
                               <option value="UNITE">{`en ${unite.pluriel}`}</option>
                             </select>
                           ) : (
-                            <span className="py-1.5 text-mc-petit text-slate-700 dark:text-slate-300">boîtes</span>
+                            <span className="py-1.5 text-right text-mc-petit text-slate-700 dark:text-slate-300">boîtes</span>
                           )}
                         </div>
                         {e.quantite && (
