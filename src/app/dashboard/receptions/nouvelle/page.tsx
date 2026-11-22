@@ -323,6 +323,23 @@ export default function NouvelleReceptionPage() {
   const [erreursEntete, setErreursEntete] = useState<Partial<Record<keyof EnteteSaisie, string>>>({});
   const [lignes, setLignes] = useState<LigneSaisie[]>([ligneVide(1)]);
   const [erreurs, setErreurs] = useState<Record<number, ErreursLigne>>({});
+  // Champs du pied de facture saisis à la main : ils ne sont plus recalculés.
+  const [saisisMain, setSaisisMain] = useState<Partial<Record<(typeof MONTANTS_ENTETE)[number], boolean>>>({});
+
+  // Valeurs affichées du pied : calculées à partir des lignes tant que le champ n'est pas saisi à la main.
+  const pied = (() => {
+    const montants = lignes.filter((l) => !estVide(l)).map((l) => lireMontant(l.montantLigne));
+    const renseignes = montants.filter((m): m is number => m !== null);
+    const htCalcule = renseignes.length > 0 ? String(renseignes.reduce((s, m) => s + m, 0)) : "";
+    const montantHT = saisisMain.montantHT ? entete.montantHT : htCalcule;
+    const totalTva = entete.totalTva;
+    const ht = lireMontant(montantHT);
+    const tva = totalTva.trim() === "" ? 0 : lireMontant(totalTva);
+    const ttcCalcule = ht !== null && tva !== null ? String(ht + tva) : "";
+    const montantTTC = saisisMain.montantTTC ? entete.montantTTC : ttcCalcule;
+    const netAPayer = saisisMain.netAPayer ? entete.netAPayer : montantTTC;
+    return { montantHT, totalTva, montantTTC, netAPayer };
+  })();
 
   const [ligneActive, setLigneActive] = useState<number | null>(null);
   const [indexSuggestion, setIndexSuggestion] = useState(0);
@@ -683,8 +700,8 @@ export default function NouvelleReceptionPage() {
     if (entete.referenceCommande.trim() !== "") factureDemandee.referenceCommande = entete.referenceCommande.trim();
     if (entete.dateFacture !== "") factureDemandee.dateFacture = entete.dateFacture;
     for (const c of MONTANTS_ENTETE) {
-      if (entete[c].trim() === "") continue;
-      const v = lireMontant(entete[c]);
+      if (pied[c].trim() === "") continue;
+      const v = lireMontant(pied[c]);
       if (v === null) erreursFact[c] = MSG_MONTANT;
       else factureDemandee[c] = v;
     }
@@ -734,6 +751,7 @@ export default function NouvelleReceptionPage() {
     setLignes([ligneVide(prochaineCle.current++)]);
     setErreurs({});
     setEntete(enteteVide);
+    setSaisisMain({});
     setErreursEntete({});
     setBandeau(null);
     setReessayable(false);
@@ -906,7 +924,7 @@ export default function NouvelleReceptionPage() {
   const lignesRemplies = lignes.filter((l) => !estVide(l));
   const avertissementSomme = controlerSomme(
     lignesRemplies.map((l) => (l.montantLigne.trim() === "" ? null : lireMontant(l.montantLigne))),
-    entete.montantHT.trim() === "" ? null : lireMontant(entete.montantHT),
+    pied.montantHT.trim() === "" ? null : lireMontant(pied.montantHT),
   );
   const lignesChoisies = lignes.filter((l) => l.stockId !== null);
   const totalBoites = lignes.reduce((somme, l) => {
@@ -1353,16 +1371,16 @@ export default function NouvelleReceptionPage() {
         </button>
 
         <div className="flex justify-end">
-          <div className="w-full max-w-sm space-y-2 rounded-mc-moyen border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+          <div className="w-full max-w-md space-y-2 rounded-mc-moyen border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
             {MONTANTS_ENTETE.map((c) => {
               const erreur = erreursEntete[c];
               const fort = c === "netAPayer";
               return (
                 <div key={c}>
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="grid grid-cols-[11rem_minmax(0,1fr)] items-center gap-3">
                     <label
                       htmlFor={`facture-${c}`}
-                      className={`text-mc-legende uppercase tracking-wide ${fort ? "font-semibold text-slate-900 dark:text-slate-100" : "font-medium text-slate-600 dark:text-slate-400"}`}
+                      className={`whitespace-nowrap text-mc-legende uppercase tracking-wide ${fort ? "font-semibold text-slate-900 dark:text-slate-100" : "font-medium text-slate-600 dark:text-slate-400"}`}
                     >
                       {LIBELLES_PIED[c]}
                     </label>
@@ -1372,12 +1390,15 @@ export default function NouvelleReceptionPage() {
                       type="text"
                       inputMode="numeric"
                       aria-label={`${LIBELLES_ENTETE[c]} (GNF)`}
-                      value={entete[c]}
+                      value={pied[c]}
                       readOnly={verrouille}
                       aria-invalid={erreur ? true : undefined}
                       aria-describedby={erreur ? `erreur-facture-${c}` : undefined}
                       onChange={(ev) => {
-                        setEntete((prev) => ({ ...prev, [c]: filtrerMontant(ev.target.value) }));
+                        const valeur = filtrerMontant(ev.target.value);
+                        setEntete((prev) => ({ ...prev, [c]: valeur }));
+                        // Champ vidé : il redevient calculé.
+                        setSaisisMain((prev) => ({ ...prev, [c]: valeur.trim() !== "" }));
                         if (erreur) setErreursEntete((prev) => ({ ...prev, [c]: undefined }));
                       }}
                       className={`${erreur ? CHAMP_NOMBRE_INVALIDE : CHAMP_NOMBRE} ${fort ? "font-semibold" : ""}`}
@@ -1391,6 +1412,7 @@ export default function NouvelleReceptionPage() {
                 </div>
               );
             })}
+            <p className="text-right text-mc-legende text-slate-500 dark:text-slate-400">Calculé à partir des lignes, modifiable.</p>
           </div>
         </div>
         {avertissementSomme && (

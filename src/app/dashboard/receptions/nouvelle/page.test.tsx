@@ -550,6 +550,51 @@ describe("Facture fournisseur", () => {
     await waitFor(() => expect(enregistrerReception).toHaveBeenCalledTimes(1));
   });
 
+  describe("pied de facture calculé", () => {
+    const ht = () => screen.getByLabelText(/^Montant HT \(GNF\)$/);
+    const tva = () => screen.getByLabelText(/^Total TVA \(GNF\)$/);
+    const ttc = () => screen.getByLabelText(/^Montant TTC \(GNF\)$/);
+    const net = () => screen.getByLabelText(/^Net à payer \(GNF\)$/);
+
+    it("cumule les lignes en HT, puis TTC = HT + TVA et net = TTC", async () => {
+      render(<NouvelleReceptionPage />);
+      await attendrePage();
+      expect(ht()).toHaveValue("");
+      remplirLigne(1, "dolip", "10");
+      saisir("Montant HT, ligne 1", "9000");
+      expect(ht()).toHaveValue("9000");
+      expect(ttc()).toHaveValue("9000");
+      expect(net()).toHaveValue("9000");
+      saisir(/^Total TVA \(GNF\)$/, "1620");
+      expect(ttc()).toHaveValue("10620");
+      expect(net()).toHaveValue("10620");
+    });
+
+    it("n'écrase plus un champ modifié à la main quand une ligne change", async () => {
+      render(<NouvelleReceptionPage />);
+      await attendrePage();
+      remplirLigne(1, "dolip", "10");
+      saisir("Montant HT, ligne 1", "9000");
+      saisir(/^Montant HT \(GNF\)$/, "8000");
+      saisir("Montant HT, ligne 1", "12000");
+      expect(ht()).toHaveValue("8000");
+      expect(ttc()).toHaveValue("8000");
+      expect(tva()).toHaveValue("");
+    });
+
+    it("recalcule un champ vidé", async () => {
+      render(<NouvelleReceptionPage />);
+      await attendrePage();
+      remplirLigne(1, "dolip", "10");
+      saisir("Montant HT, ligne 1", "9000");
+      saisir(/^Montant TTC \(GNF\)$/, "5000");
+      expect(net()).toHaveValue("5000");
+      saisir(/^Montant TTC \(GNF\)$/, "");
+      expect(ttc()).toHaveValue("9000");
+      expect(net()).toHaveValue("9000");
+    });
+  });
+
   it("refuse localement un montant illisible et ouvre la zone concernée", async () => {
     render(<NouvelleReceptionPage />);
     await attendrePage();
