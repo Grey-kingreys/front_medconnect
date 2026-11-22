@@ -8,11 +8,16 @@
  */
 import type { Referentiels } from "@/lib/api_caisse";
 import type { EtatPosteDesktop, ReponsePont, UtilisateurPoste } from "@/lib/caisse/contrat_desktop";
-import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeAnomalie, type NomMethodeCaisse, type NomMethodeStock } from "@/lib/caisse/contrat_desktop_schemas";
+import { estDomainePont, schemaUtilisateur, schemasParDomaine, type DomainePont, type NomMethodeAnomalie, type NomMethodeCaisse, type NomMethodeCatalogue, type NomMethodeCredit, type NomMethodeFiche, type NomMethodeFournisseur, type NomMethodeInventaire, type NomMethodeReception, type NomMethodeStock } from "@/lib/caisse/contrat_desktop_schemas";
 import { permissionsRequises } from "@/lib/caisse/permissions_pont";
 import type { CoeurCaisse, ReponseAnnulation } from "./coeur";
 import { messageCorrectionEnregistree, MESSAGE_SORTIE_ENREGISTREE, MESSAGE_SORTIE_REJOUEE } from "./messages_stock";
 import { MESSAGE_ANOMALIE_TRAITEE } from "./anomalies_locales";
+import { MESSAGE_CLIENT_CREDIT_ENREGISTRE, MESSAGE_CLIENT_CREDIT_MODIFIE, MESSAGE_DATE_LIMITE_ENREGISTREE, MESSAGE_DATE_LIMITE_RETIREE, messageRemboursementEnregistre } from "./credit_locale";
+import { MESSAGE_IMPORT_DIFFERE_REJOUE, MESSAGE_IMPORT_MIS_DE_COTE } from "./import_differe_locale";
+import { MESSAGE_INVENTAIRE_REJOUE, messageInventaireEnregistre, nombreEcartsAuDelaDeLaTolerance } from "./inventaire_locale";
+import { messageReceptionEnregistree, MESSAGE_FOURNISSEUR_ENREGISTRE, MESSAGE_RECEPTION_REJOUEE } from "./reception_locale";
+import { MESSAGE_AUCUNE_MODIFICATION, MESSAGE_FICHE_AJOUTEE_HORS_LIGNE, MESSAGE_FICHE_DEJA_PRESENTE, MESSAGE_FICHE_ENREGISTREE_HORS_LIGNE } from "./fiche_edition_locale";
 import { RefusCaisse } from "./refus";
 import type { EtatSynchro } from "./synchro";
 import type { Utilisateur } from "./types_caisse";
@@ -173,7 +178,21 @@ export class Passerelle {
 
     const refus = this.controler(domaine, nom, valeurs);
     if (refus !== null) return refus;
+    // Une vente à crédit demande aussi credit:write (le serveur le recontrôle au rejeu).
+    if (domaine === "caisse" && nom === "creerVente") {
+      const corpsVente = valeurs[1] as { clientCreditId?: string; nouveauClientCredit?: unknown; dateLimiteCredit?: string; paiements?: { mode: string }[] };
+      const aCredit = Boolean(corpsVente.clientCreditId) || corpsVente.nouveauClientCredit !== undefined || (corpsVente.paiements?.some((p) => p.mode === "CREDIT") ?? false);
+      if (aCredit && !(this.utilisateur as UtilisateurPoste).permissions.includes("credit:write")) {
+        return echec(403, "PERMISSION_REFUSEE", MESSAGE_PERMISSION_REFUSEE);
+      }
+    }
     if (domaine === "stock" && nom === "exporter") return this.exporterStock(valeurs);
+    if (domaine === "reception") return this.appelerReception(nom as NomMethodeReception, valeurs);
+    if (domaine === "credit") return this.appelerCredit(nom as NomMethodeCredit, valeurs);
+    if (domaine === "inventaire") return this.appelerInventaire(nom as NomMethodeInventaire, valeurs);
+    if (domaine === "fournisseur") return this.appelerFournisseur(nom as NomMethodeFournisseur, valeurs);
+    if (domaine === "fiche") return this.appelerFiche(nom as NomMethodeFiche, valeurs);
+    if (domaine === "catalogue") return this.appelerCatalogue(nom as NomMethodeCatalogue, valeurs);
     if (domaine === "anomalie") return this.appelerAnomalie(nom as NomMethodeAnomalie, valeurs);
     if (domaine === "stock") return this.appelerStock(nom as NomMethodeStock, valeurs);
     // Les autres domaines pharmacie brancheront leur cœur ici, une fonction à la fois.
@@ -206,6 +225,16 @@ export class Passerelle {
     const u = this.utilisateur as UtilisateurPoste;
     const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
     try {
+      if (methode === "listerImportsDifferes") return succes(coeur.listerImportsDifferes(), "Imports mis de côté sur ce poste.");
+      if (methode === "importerDiffere") {
+        // Le droit du mode, comme la route en ligne : le serveur le recontrôle au rejeu
+        const mode = (v[1] as { mode: string }).mode;
+        if (!u.permissions.includes(mode === "livraison" ? "reception:write" : "inventaire:write")) return echec(403, "PERMISSION_REFUSEE", MESSAGE_PERMISSION_REFUSEE);
+        const r = coeur.mettreImportDeCote(v[1] as never, utilisateur);
+        this.deps.etatChange();
+        this.deps.apresVente();
+        return succes(r.import, r.dejaMisDeCote ? MESSAGE_IMPORT_DIFFERE_REJOUE : MESSAGE_IMPORT_MIS_DE_COTE);
+      }
       let reponse: ReponsePont<unknown>;
       if (methode === "sortir") {
         const sortie = coeur.sortirStock(v[1] as never, utilisateur);
@@ -220,6 +249,137 @@ export class Passerelle {
     } catch (e) {
       if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
       this.deps.journal(`échec stock.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Réception : lecture de l'historique récent, ou écriture locale puis cycle de synchronisation sans l'attendre. */
+  private appelerReception(methode: NomMethodeReception, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      if (methode === "lister") return succes(coeur.listerReceptions((v[1] as { page?: number }).page), "Réceptions du poste.");
+      if (methode === "lire") return succes(coeur.lireReception(v[1] as string), "Réception trouvée.");
+      const r = coeur.enregistrerReception(v[1] as never, utilisateur);
+      this.deps.etatChange();
+      this.deps.apresVente();
+      return succes(r, r.cree === false ? MESSAGE_RECEPTION_REJOUEE : messageReceptionEnregistree(r.lots.length));
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec reception.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Inventaire : lecture de l'historique récent, ou écriture locale puis cycle de synchronisation sans l'attendre. */
+  private appelerInventaire(methode: NomMethodeInventaire, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      if (methode === "lister") return succes(coeur.listerInventaires((v[1] as { page?: number }).page), "Inventaires du poste.");
+      if (methode === "lire") return succes(coeur.lireInventaire(v[1] as string), "Inventaire trouvé.");
+      const r = coeur.enregistrerInventaire(v[1] as never, utilisateur);
+      this.deps.etatChange();
+      this.deps.apresVente();
+      return succes(r, r.cree === false ? MESSAGE_INVENTAIRE_REJOUE : messageInventaireEnregistre(r.lignes.length, nombreEcartsAuDelaDeLaTolerance(r)));
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec inventaire.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Cahier de crédit : lectures locales, ou écriture locale puis cycle de synchronisation sans l'attendre. */
+  private appelerCredit(methode: NomMethodeCredit, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      if (methode === "lister") return succes(coeur.listerCredits(v[1] as never), "Clients de crédit du poste.");
+      if (methode === "lire") return succes(coeur.lireFicheCredit(v[1] as string), "Fiche du client de crédit.");
+      let reponse: ReponsePont<unknown>;
+      switch (methode) {
+        case "creerClient":
+          reponse = succes(coeur.creerClientCredit(v[1] as never, utilisateur), MESSAGE_CLIENT_CREDIT_ENREGISTRE);
+          break;
+        case "modifierClient":
+          reponse = succes(coeur.modifierClientCredit(v[1] as string, v[2] as never, utilisateur), MESSAGE_CLIENT_CREDIT_MODIFIE);
+          break;
+        case "modifierDateLimite": {
+          const dateLimite = (v[2] as { dateLimite: string | null }).dateLimite;
+          reponse = succes(coeur.modifierDateLimiteCredit(v[1] as string, dateLimite, utilisateur), dateLimite === null ? MESSAGE_DATE_LIMITE_RETIREE : MESSAGE_DATE_LIMITE_ENREGISTREE);
+          break;
+        }
+        default: {
+          const r = coeur.enregistrerRemboursementCredit(v[1] as string, v[2] as never, utilisateur);
+          reponse = succes(r, messageRemboursementEnregistre(r.resteAPayer));
+        }
+      }
+      this.deps.etatChange();
+      this.deps.apresVente();
+      return reponse;
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec credit.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Fiche : modification des champs sûrs ou ajout depuis le catalogue, écriture locale puis cycle de synchronisation sans l'attendre. */
+  private appelerFiche(methode: NomMethodeFiche, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      if (methode === "modifier") {
+        const r = coeur.modifierFiche(v[1] as string, v[2] as never, utilisateur);
+        if (r.modifiee) {
+          this.deps.etatChange();
+          this.deps.apresVente();
+        }
+        return succes(r, r.modifiee ? MESSAGE_FICHE_ENREGISTREE_HORS_LIGNE : MESSAGE_AUCUNE_MODIFICATION);
+      }
+      const r = coeur.creerFiche(v[1] as never, utilisateur);
+      if (r.cree) {
+        this.deps.etatChange();
+        this.deps.apresVente();
+      }
+      return succes(r, r.cree ? MESSAGE_FICHE_AJOUTEE_HORS_LIGNE : MESSAGE_FICHE_DEJA_PRESENTE);
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec fiche.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Recherche dans le catalogue global allégé copié sur le poste (lecture seule). */
+  private appelerCatalogue(methode: NomMethodeCatalogue, v: unknown[]): ReponsePont<unknown> {
+    try {
+      return succes(this.deps.coeur.rechercherCatalogue(v[1] as string), "Catalogue du poste.");
+    } catch (e) {
+      this.deps.journal(`échec catalogue.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
+      return echec(500, "ECHEC_LECTURE", MESSAGE_ECHEC_ENREGISTREMENT);
+    }
+  }
+
+  /** Fournisseurs : liste locale, ou création (écriture locale puis cycle de synchronisation). */
+  private appelerFournisseur(methode: NomMethodeFournisseur, v: unknown[]): ReponsePont<unknown> {
+    const coeur = this.deps.coeur;
+    const u = this.utilisateur as UtilisateurPoste;
+    const utilisateur: Utilisateur = { id: u.id, nom: u.nom, superviseur: u.permissions.includes("caisse:superviser") };
+    try {
+      if (methode === "lister") return succes(coeur.listerFournisseurs(), "Fournisseurs du poste.");
+      const f = coeur.creerFournisseur(v[1] as never, utilisateur);
+      if (f.cree) {
+        this.deps.etatChange();
+        this.deps.apresVente();
+      }
+      return succes(f, MESSAGE_FOURNISSEUR_ENREGISTRE);
+    } catch (e) {
+      if (e instanceof RefusCaisse) return { ok: false, status: e.status, code: e.code, message: e.message, details: e.details };
+      this.deps.journal(`échec fournisseur.${methode} : ${e instanceof Error ? e.name : "inconnue"}`);
       return echec(500, "ECHEC_ENREGISTREMENT", MESSAGE_ECHEC_ENREGISTREMENT);
     }
   }
@@ -277,7 +437,7 @@ export class Passerelle {
     }
     if (rattachee === null) return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);
     if (
-      (domaine === "stock" || domaine === "anomalie" || methode === "chargerStock" || methode === "chargerReferentiels" || methode === "etatCaisse") &&
+      (domaine === "stock" || domaine === "fiche" || domaine === "catalogue" || domaine === "anomalie" || domaine === "reception" || domaine === "inventaire" || domaine === "credit" || domaine === "fournisseur" || methode === "chargerStock" || methode === "chargerReferentiels" || methode === "etatCaisse") &&
       !this.deps.coeur.aUnCatalogue()
     ) {
       return echec(503, "CATALOGUE_ABSENT", MESSAGE_CATALOGUE_A_CHARGER);

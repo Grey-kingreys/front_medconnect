@@ -312,6 +312,48 @@ export async function importerStock(structureId: string, fichier: File, mode: Mo
   });
 }
 
+// ─── Import Excel du stock mis de côté hors ligne (poste desktop) ───
+
+/**
+ * Taille maximale d'un fichier mis de côté hors ligne (octets) : le lot envoyé au serveur est limité à 2 Mo et le
+ * fichier y voyage en base64 (un tiers de plus). En ligne la limite est de 2 Mo, hors ligne de 1,4 Mo.
+ */
+export const TAILLE_MAX_FICHIER_DIFFERE = 1_400_000;
+
+/** Fichier choisi sur le poste hors ligne, sans aperçu : lu en base64 et importé au retour du réseau. */
+export interface CorpsImportDiffere {
+  id?: string;
+  mode: ModeImportStock;
+  nomFichier: string;
+  contenuBase64: string;
+}
+
+/** Résultat d'un import mis de côté, une fois traité par le serveur : lignes importées et refusées, jamais un coût. */
+export interface ResultatImportDiffere {
+  mode: ModeImportStock;
+  nomFichier: string;
+  totalLignes: number;
+  importees: number;
+  rejetees: number;
+  receptionId: string | null;
+  inventaireId: string | null;
+  lignesRejetees: { ligne: number; nom: string; raison: string }[];
+}
+
+/** En attente sur le poste, envoyé (résultat à venir), traité par le serveur ou refusé. */
+export type StatutImportDiffere = "EN_ATTENTE" | "ENVOYE" | "TRAITE" | "REFUSE";
+
+/** Import mis de côté sur ce poste, avec son sort (aucune heure, aucun coût). */
+export interface ImportDiffere {
+  id: string;
+  mode: ModeImportStock | null;
+  nomFichier: string;
+  statut: StatutImportDiffere;
+  /** Raison du refus, texte du serveur lisible par un pharmacien. */
+  message: string | null;
+  resultat: ResultatImportDiffere | null;
+}
+
 // ─── Import Excel du catalogue ──────────────────────────────────
 
 /** Résultat de l'analyse d'une ligne du fichier Excel du catalogue. */
@@ -610,6 +652,26 @@ export interface Inventaire {
   /** Faux sur le rejeu d'un identifiant déjà enregistré. */
   cree?: boolean;
   avertissements?: AvertissementInventaire[];
+  /** Auteur nommé ; fourni par la lecture d'un inventaire sur le poste desktop. */
+  auteur?: { id: string; nom: string };
+}
+
+/** Un inventaire de la liste : sans ses lignes (sur le desktop, les 30 derniers jours, sans aucun coût). */
+export interface InventaireResume {
+  id: string;
+  createdAt: string;
+  commentaire: string | null;
+  auteur: { id: string; nom: string };
+  nombreLignes: number;
+  nombreEcarts: number;
+  nombreAnomalies: number;
+}
+
+export interface PageInventaires {
+  inventaires: InventaireResume[];
+  page: number;
+  parPage: number;
+  total: number;
 }
 
 /** Enregistre un inventaire ; rejouable avec le même `id` sans rien compter deux fois. */
@@ -618,6 +680,16 @@ export async function enregistrerInventaire(structureId: string, corps: CorpsInv
     method: "POST",
     body: JSON.stringify(corps),
   });
+}
+
+/** Inventaires, les plus récents d'abord, vingt par page. */
+export async function listerInventaires(structureId: string, page = 1) {
+  return authFetch<PageInventaires>(`/pharmacie/${encodeURIComponent(structureId)}/inventaires?page=${page}`);
+}
+
+/** Détail d'un inventaire. */
+export async function getInventaire(structureId: string, inventaireId: string) {
+  return authFetch<Inventaire>(`/pharmacie/${encodeURIComponent(structureId)}/inventaires/${encodeURIComponent(inventaireId)}`);
 }
 
 export type RaisonSortie = "PERIME" | "CASSE" | "PERDU" | "RETOUR_FOURNISSEUR" | "AUTRE";

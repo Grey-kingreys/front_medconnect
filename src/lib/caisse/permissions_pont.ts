@@ -21,11 +21,29 @@ const PERMISSIONS_CAISSE: Record<string, readonly string[]> = Object.fromEntries
  */
 export const PERMISSIONS_PAR_FONCTION: Record<DomainePont, Record<string, readonly string[]>> = {
   caisse: PERMISSIONS_CAISSE,
-  stock: { sortir: ["stock:write"], corriger: ["stock:write"], exporter: ["stock:read"] },
-  reception: {},
-  inventaire: {},
-  credit: {},
+  stock: {
+    sortir: ["stock:write"],
+    corriger: ["stock:write"],
+    exporter: ["stock:read"],
+    // Comme la route en ligne : stock:read et stock:write ; le droit du mode (reception:write ou inventaire:write) est contrôlé par la passerelle
+    importerDiffere: ["stock:read", "stock:write"],
+    listerImportsDifferes: ["stock:read", "stock:write"],
+  },
+  reception: { enregistrer: ["reception:write"], lister: ["reception:write"], lire: ["reception:write"] },
+  fournisseur: { lister: ["reception:write"], creer: ["reception:write"] },
+  inventaire: { enregistrer: ["inventaire:write"], lister: ["inventaire:write"], lire: ["inventaire:write"] },
+  credit: {
+    lister: ["credit:read"],
+    lire: ["credit:read"],
+    creerClient: ["credit:write"],
+    modifierClient: ["credit:write"],
+    modifierDateLimite: ["credit:write"],
+    enregistrerRemboursement: ["credit:write"],
+  },
   anomalie: { lister: ["anomalie:gerer"], traiter: ["anomalie:gerer"] },
+  // Ajouter un médicament au stock ne demande que stock:write en ligne (POST /pharmacie/stock/:id) : pas de catalogue:write.
+  fiche: { modifier: ["stock:write"], creer: ["stock:write"] },
+  catalogue: { rechercher: ["stock:write"] },
 };
 
 /** Permissions exigées par une fonction, ou null si la fonction n'existe pas dans ce domaine. */

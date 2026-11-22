@@ -1,7 +1,7 @@
 import { act, cleanup, renderHook } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { EVENEMENT_DECONNEXION_FORCEE } from "@/lib/deconnexion_forcee";
+import { EVENEMENT_DECONNEXION_FORCEE, EVENEMENT_SESSION_EXPIREE } from "@/lib/deconnexion_forcee";
 import { AuthProvider, useAuth, useTerminerConnexion } from "./useAuth";
 
 const push = vi.fn();
@@ -62,6 +62,22 @@ describe("AuthProvider", () => {
     });
 
     expect(result.current.auth.user).toBeNull();
+    expect(push).toHaveBeenCalledWith("/auth/login");
+  });
+
+  it("session expirée (rafraîchissement refusé) : vide l'utilisateur et ouvre la connexion", () => {
+    const { result } = renderHook(() => ({ terminer: useTerminerConnexion(), auth: useAuth() }), {
+      wrapper: enveloppe,
+    });
+    act(() => result.current.terminer(DONNEES));
+    push.mockReset();
+
+    act(() => {
+      window.dispatchEvent(new Event(EVENEMENT_SESSION_EXPIREE));
+    });
+
+    expect(result.current.auth.user).toBeNull();
+    expect(document.cookie).not.toContain("mc_connecte=1");
     expect(push).toHaveBeenCalledWith("/auth/login");
   });
 });

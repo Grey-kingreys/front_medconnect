@@ -16,6 +16,37 @@ import { fichesLocales } from "./fiche_locale";
 import { CLE_ANOMALIES_PHOTOGRAPHIE_LE, listerAnomaliesLocales, traiterAnomalieLocale, type OptionsListeAnomaliesLocale } from "./anomalies_locales";
 import type { Anomalie, PageAnomalies } from "@/lib/api_pilotage";
 import { preparerExportStock, type ExportStockPret } from "./export_stock";
+import {
+  creerFournisseurLocal,
+  enregistrerReceptionLocale,
+  listerFournisseursLocaux,
+  listerReceptionsLocales,
+  lireReceptionLocale,
+} from "./reception_locale";
+import type { CorpsImportDiffere, ImportDiffere, CorpsInventaire, CorpsReception, Fournisseur, Inventaire, PageInventaires, PageReceptions, Reception } from "@/lib/api_pharmacie";
+import type { CorpsClientCredit, CorpsModifClientCredit, FicheClientCredit, ListeCredits, ResultatRemboursement } from "@/lib/api_credit";
+import {
+  creerClientCreditLocal,
+  enregistrerRemboursementLocal,
+  listerCreditsLocaux,
+  lireFicheCreditLocale,
+  modifierClientCreditLocal,
+  modifierDateLimiteLocale,
+  type CorpsRemboursementLocal,
+  type OptionsListeCredits,
+} from "./credit_locale";
+import { importDejaMisDeCote, listerImportsDifferesLocaux, mettreImportDeCoteLocal, rangerImportsDifferesPhoto } from "./import_differe_locale";
+import { enregistrerInventaireLocal, listerInventairesLocaux, lireInventaireLocal } from "./inventaire_locale";
+import {
+  creerFicheLocale,
+  modifierFicheLocale,
+  rechercherCatalogueLocal,
+  type ChampsFicheModifiables,
+  type CorpsFicheCreee,
+  type ResultatCreation,
+  type ResultatModification,
+} from "./fiche_edition_locale";
+import type { Medicament } from "@/lib/api_pharmacie";
 import { corrigerQuantite, sortirStock, type CorpsCorrectionLocale, type CorpsSortieLocale } from "./stock_operations";
 import { plageRestante } from "./plages_locales";
 import { enregistrerReglages, lireReglages } from "./reglages";
@@ -179,6 +210,47 @@ export class CoeurCaisse {
         });
       }
 
+      // Un serveur plus ancien n'envoie ni fournisseurs ni réceptions : les tables ne sont pas touchées.
+      if (photo.fournisseurs !== undefined) {
+        s.executer("DELETE FROM fournisseurs_photo");
+        photo.fournisseurs.forEach((f, rang) => {
+          s.executer("INSERT INTO fournisseurs_photo (id, rang, document) VALUES (?, ?, ?)", [f.id, rang, JSON.stringify(f)]);
+        });
+      }
+      if (photo.receptions !== undefined) {
+        s.executer("DELETE FROM receptions_photo");
+        photo.receptions.forEach((r, rang) => {
+          s.executer("INSERT INTO receptions_photo (id, rang, document) VALUES (?, ?, ?)", [r.id, rang, JSON.stringify(r)]);
+        });
+      }
+
+      // Un serveur plus ancien n'envoie pas d'inventaires : la table n'est pas touchée.
+      if (photo.inventaires !== undefined) {
+        s.executer("DELETE FROM inventaires_photo");
+        photo.inventaires.forEach((i, rang) => {
+          s.executer("INSERT INTO inventaires_photo (id, rang, document) VALUES (?, ?, ?)", [i.id, rang, JSON.stringify(i)]);
+        });
+      }
+
+      // Un serveur plus ancien n'envoie pas les imports mis de côté : le réglage n'est pas touché.
+      if (photo.importsDifferes !== undefined) rangerImportsDifferesPhoto(this.ctx, photo.importsDifferes);
+
+      // Un serveur plus ancien n'envoie pas le cahier de crédit : la table n'est pas touchée.
+      if (photo.clientsCredit !== undefined) {
+        s.executer("DELETE FROM clients_credit_photo");
+        photo.clientsCredit.forEach((cl, rang) => {
+          s.executer("INSERT INTO clients_credit_photo (id, rang, document) VALUES (?, ?, ?)", [cl.id, rang, JSON.stringify(cl)]);
+        });
+      }
+
+      // Un serveur plus ancien n'envoie pas le catalogue allégé : la table n'est pas touchée.
+      if (photo.medicaments !== undefined) {
+        s.executer("DELETE FROM medicaments_catalogue");
+        photo.medicaments.forEach((m, rang) => {
+          s.executer("INSERT INTO medicaments_catalogue (id, rang, document) VALUES (?, ?, ?)", [m.id, rang, JSON.stringify(m)]);
+        });
+      }
+
       s.executer("DELETE FROM fiches");
       for (const fiche of photo.fiches) {
         s.executer("INSERT INTO fiches (stockId, document, nom) VALUES (?, ?, ?)", [
@@ -282,6 +354,102 @@ export class CoeurCaisse {
   /** Classeur .xlsx du stock local, sans coût, avec son nom de fichier. */
   preparerExportStock(options: { filtre?: "tous" | "alertes" | "rupture" | "qualifier"; q?: string }): ExportStockPret {
     return preparerExportStock(this.ctx, options);
+  }
+
+  // ------------------------------------------------------------------ réception hors ligne
+
+  /** Fournisseurs de la photographie et ceux créés sur ce poste. */
+  listerFournisseurs(): Fournisseur[] {
+    return listerFournisseursLocaux(this.ctx);
+  }
+
+  /** Crée un fournisseur (ou rend celui du même nom) : écriture locale et événement `FOURNISSEUR_CREE`. */
+  creerFournisseur(corps: { nom: string; telephone?: string }, u: Utilisateur): Fournisseur & { cree: boolean } {
+    return creerFournisseurLocal(this.ctx, corps, u);
+  }
+
+  /** Réception : lots locaux, mouvements positifs et événement `RECEPTION_ENREGISTREE` en une transaction. */
+  enregistrerReception(corps: CorpsReception, u: Utilisateur): Reception {
+    return enregistrerReceptionLocale(this.ctx, corps, u);
+  }
+
+  /** Réceptions des 30 derniers jours (photographie plus celles faites ici), sans aucun montant. */
+  listerReceptions(page = 1): PageReceptions {
+    return listerReceptionsLocales(this.ctx, page);
+  }
+
+  lireReception(id: string): Reception {
+    return lireReceptionLocale(this.ctx, id);
+  }
+
+  /** Inventaire : lots locaux des lots trouvés, mouvements qui amènent le stock au compté et événement `INVENTAIRE_ENREGISTRE` en une transaction. */
+  enregistrerInventaire(corps: CorpsInventaire, u: Utilisateur): Inventaire {
+    return enregistrerInventaireLocal(this.ctx, corps, u);
+  }
+
+  /** Import Excel mis de côté hors ligne : un seul événement, aucun aperçu, aucune écriture dans le stock local. */
+  mettreImportDeCote(corps: CorpsImportDiffere & { id: string }, u: Utilisateur): { import: ImportDiffere; dejaMisDeCote: boolean } {
+    const dejaMisDeCote = importDejaMisDeCote(this.ctx, corps.id);
+    return { import: mettreImportDeCoteLocal(this.ctx, corps, u), dejaMisDeCote };
+  }
+
+  /** Les 20 derniers imports mis de côté : en attente, envoyés ou traités (résultat de la photographie). */
+  listerImportsDifferes(): ImportDiffere[] {
+    return listerImportsDifferesLocaux(this.ctx);
+  }
+
+  /** Inventaires des 30 derniers jours (photographie plus ceux faits ici), sans aucun coût. */
+  listerInventaires(page = 1): PageInventaires {
+    return listerInventairesLocaux(this.ctx, page);
+  }
+
+  lireInventaire(id: string): Inventaire {
+    return lireInventaireLocal(this.ctx, id);
+  }
+
+  // ------------------------------------------------------------------ cahier de crédit hors ligne
+
+  /** Clients du cahier : photographie plus opérations du poste pas encore appliquées, reste et statut calculés ici. */
+  listerCredits(options: OptionsListeCredits = {}): ListeCredits {
+    return listerCreditsLocaux(this.ctx, options);
+  }
+
+  lireFicheCredit(clientId: string): FicheClientCredit {
+    return lireFicheCreditLocale(this.ctx, clientId);
+  }
+
+  creerClientCredit(corps: CorpsClientCredit & { id: string }, u: Utilisateur): FicheClientCredit {
+    return creerClientCreditLocal(this.ctx, corps, u);
+  }
+
+  modifierClientCredit(clientId: string, corps: CorpsModifClientCredit, u: Utilisateur): FicheClientCredit {
+    return modifierClientCreditLocal(this.ctx, clientId, corps, u);
+  }
+
+  modifierDateLimiteCredit(venteId: string, dateLimite: string | null, u: Utilisateur): FicheClientCredit {
+    return modifierDateLimiteLocale(this.ctx, venteId, dateLimite, u);
+  }
+
+  /** Remboursement : ligne locale, entrée de caisse locale si versé en caisse, et événement `REMBOURSEMENT_CREDIT`. */
+  enregistrerRemboursementCredit(clientId: string, corps: CorpsRemboursementLocal, u: Utilisateur): ResultatRemboursement {
+    return enregistrerRemboursementLocal(this.ctx, clientId, corps, u);
+  }
+
+  // ------------------------------------------------------------------ fiches hors ligne
+
+  /** Modifie les champs sûrs d'une fiche (prix, tolérance, notes) : surcouche locale et événement `FICHE_MODIFIEE`. */
+  modifierFiche(stockId: string, champs: ChampsFicheModifiables, u: Utilisateur): ResultatModification {
+    return modifierFicheLocale(this.ctx, stockId, champs, u);
+  }
+
+  /** Ajoute un médicament du catalogue au stock, sans quantité : fiche locale et événement `FICHE_CREEE`. */
+  creerFiche(corps: CorpsFicheCreee, u: Utilisateur): ResultatCreation {
+    return creerFicheLocale(this.ctx, corps, u);
+  }
+
+  /** Médicaments du catalogue global allégé (copie de la dernière photographie). */
+  rechercherCatalogue(recherche: string): Medicament[] {
+    return rechercherCatalogueLocal(this.ctx, recherche);
   }
 
   // ------------------------------------------------------------------ anomalies hors ligne

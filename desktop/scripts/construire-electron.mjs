@@ -25,7 +25,7 @@ await build({
   platform: "node",
   format: "cjs",
   target: "node24",
-  external: ["electron", "better-sqlite3"],
+  external: ["electron", "better-sqlite3-multiple-ciphers"],
   // Code resserré (noms courts, espaces retirés) quand il part chez une officine.
   minify: avecBytecode,
   legalComments: "none",

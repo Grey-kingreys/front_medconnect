@@ -4,7 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Loader2, Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
-import { listerReceptions, type PageReceptions } from "@/lib/api_pharmacie";
+import type { PageReceptions } from "@/lib/api_pharmacie";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { ALERTE_INFO, BOUTON_PRIMAIRE, CARTE, FOCUS } from "@/components/pharmacie/classes";
 import { ErreurAvecReessai } from "@/components/pharmacie/ErreurAvecReessai";
 import { formaterDateHeure } from "../ventes/affichage";
@@ -29,7 +30,8 @@ export default function ReceptionsPage() {
   useEffect(() => {
     if (!structureId) return;
     let actif = true;
-    listerReceptions(structureId, page)
+    sourcePharmacie()
+      .listerReceptions(structureId, page)
       .then((res) => {
         if (actif) setEtat({ statut: "pret", page: res.data });
       })

@@ -187,6 +187,120 @@ const ETAPES: string[] = [
     traiteeParNom TEXT NOT NULL
   );
   `,
+  // Version 7 (réception hors ligne) : fournisseurs et réceptions récentes de la dernière photographie (lecture, sans
+  // coût), fournisseurs créés et réceptions faites sur le poste pas encore appliqués par le serveur (même règle de séquence).
+  `
+  CREATE TABLE fournisseurs_photo (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE receptions_photo (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE fournisseurs_locaux (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    nom TEXT NOT NULL,
+    telephone TEXT,
+    creeLe TEXT NOT NULL
+  );
+  CREATE TABLE receptions_locales (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    recueLe TEXT NOT NULL,
+    document TEXT NOT NULL
+  );
+  `,
+  // Version 8 (fiches hors ligne) : catalogue global allégé de la dernière photographie (lecture, ajout d'un médicament
+  // au stock), modifications de champs sûrs d'une fiche et fiches créées sur le poste pas encore appliquées par le
+  // serveur (même règle de séquence que les mouvements).
+  `
+  CREATE TABLE medicaments_catalogue (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE fiches_modifiees_locales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence INTEGER NOT NULL,
+    stockId TEXT NOT NULL,
+    champ TEXT NOT NULL,
+    valeur TEXT NOT NULL
+  );
+  CREATE INDEX fiches_modifiees_locales_fiche ON fiches_modifiees_locales (stockId, sequence);
+  CREATE TABLE fiches_creees_locales (
+    stockId TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    medicamentId TEXT NOT NULL,
+    document TEXT NOT NULL
+  );
+  `,
+  // Version 9 (inventaire hors ligne) : inventaires récents de la dernière photographie (lecture, sans coût) et
+  // inventaires faits sur le poste pas encore appliqués par le serveur (même règle de séquence que les mouvements).
+  `
+  CREATE TABLE inventaires_photo (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE inventaires_locales (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    creeLe TEXT NOT NULL,
+    document TEXT NOT NULL
+  );
+  `,
+  // Version 10 (cahier de crédit hors ligne) : clients de la dernière photographie (lecture : prises, remboursements,
+  // dates limites, sans coût), puis ce qui a été fait sur le poste et n'est pas encore appliqué par le serveur (même
+  // règle de séquence que les mouvements) : clients créés ou modifiés, prises à crédit (la vente est dans `ventes`),
+  // remboursements et dates limites.
+  `
+  CREATE TABLE clients_credit_photo (
+    id TEXT PRIMARY KEY,
+    rang INTEGER NOT NULL,
+    document TEXT NOT NULL
+  );
+  CREATE TABLE clients_credit_locaux (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    nomComplet TEXT NOT NULL,
+    telephone TEXT,
+    note TEXT,
+    creeLe TEXT NOT NULL
+  );
+  CREATE TABLE clients_credit_modifies_locaux (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence INTEGER NOT NULL,
+    clientId TEXT NOT NULL,
+    champ TEXT NOT NULL,
+    valeur TEXT NOT NULL
+  );
+  CREATE TABLE prises_credit_locales (
+    venteId TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    clientId TEXT NOT NULL,
+    dateLimite TEXT
+  );
+  CREATE TABLE remboursements_credit_locaux (
+    id TEXT PRIMARY KEY,
+    sequence INTEGER NOT NULL,
+    clientId TEXT NOT NULL,
+    montant INTEGER NOT NULL,
+    note TEXT,
+    verseEnCaisse INTEGER NOT NULL,
+    auteurNom TEXT NOT NULL,
+    creeLe TEXT NOT NULL
+  );
+  CREATE TABLE dates_limites_locales (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    sequence INTEGER NOT NULL,
+    venteId TEXT NOT NULL,
+    dateLimite TEXT
+  );
+  `,
 ];
 
 export const VERSION_SCHEMA = ETAPES.length;

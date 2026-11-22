@@ -44,13 +44,41 @@ contextBridge.exposeInMainWorld("medconnecteDesktop", {
     sortir: (s: string, corps: unknown) => appeler("stock:sortir", s, corps),
     corriger: (s: string, stockId: string, corps: unknown) => appeler("stock:corriger", s, stockId, corps),
     exporter: (s: string, options: unknown) => appeler("stock:exporter", s, options),
+    importerDiffere: (s: string, corps: unknown) => appeler("stock:importerDiffere", s, corps),
+    listerImportsDifferes: (s: string) => appeler("stock:listerImportsDifferes", s),
   },
-  reception: {},
-  inventaire: {},
-  credit: {},
+  reception: {
+    enregistrer: (s: string, corps: unknown) => appeler("reception:enregistrer", s, corps),
+    lister: (s: string, options: unknown) => appeler("reception:lister", s, options),
+    lire: (s: string, receptionId: string) => appeler("reception:lire", s, receptionId),
+  },
+  fournisseur: {
+    lister: (s: string) => appeler("fournisseur:lister", s),
+    creer: (s: string, corps: unknown) => appeler("fournisseur:creer", s, corps),
+  },
+  inventaire: {
+    enregistrer: (s: string, corps: unknown) => appeler("inventaire:enregistrer", s, corps),
+    lister: (s: string, options: unknown) => appeler("inventaire:lister", s, options),
+    lire: (s: string, inventaireId: string) => appeler("inventaire:lire", s, inventaireId),
+  },
+  credit: {
+    lister: (s: string, options: unknown) => appeler("credit:lister", s, options),
+    lire: (s: string, clientId: string) => appeler("credit:lire", s, clientId),
+    creerClient: (s: string, corps: unknown) => appeler("credit:creerClient", s, corps),
+    modifierClient: (s: string, clientId: string, corps: unknown) => appeler("credit:modifierClient", s, clientId, corps),
+    modifierDateLimite: (s: string, venteId: string, corps: unknown) => appeler("credit:modifierDateLimite", s, venteId, corps),
+    enregistrerRemboursement: (s: string, clientId: string, corps: unknown) => appeler("credit:enregistrerRemboursement", s, clientId, corps),
+  },
   anomalie: {
     lister: (s: string, options: unknown) => appeler("anomalie:lister", s, options),
     traiter: (s: string, anomalieId: string, corps: unknown) => appeler("anomalie:traiter", s, anomalieId, corps),
+  },
+  fiche: {
+    modifier: (s: string, stockId: string, champs: unknown) => appeler("fiche:modifier", s, stockId, champs),
+    creer: (s: string, corps: unknown) => appeler("fiche:creer", s, corps),
+  },
+  catalogue: {
+    rechercher: (s: string, recherche: string) => appeler("catalogue:rechercher", s, recherche),
   },
   maj: { installer: () => appeler("maj:installer") },
   impression: {

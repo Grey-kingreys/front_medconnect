@@ -17,12 +17,16 @@ vi.mock("@/hooks/useAuth", () => ({
     profile: null,
   }),
 }));
-vi.mock("@/lib/api_pharmacie", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@/lib/api_pharmacie")>()),
-  getMyStock,
-  listerLotsFiche,
-  enregistrerInventaire,
+// La page passe par la source de la pharmacie : ici, la source en ligne branchée sur les mêmes simulations.
+vi.mock("@/lib/caisse/source_pharmacie_active", () => ({
+  sourcePharmacie: () => ({
+    enLigneSeulement: true,
+    chargerStockInfo: async (structureId: string) => (await getMyStock(structureId)).data,
+    listerLots: async (structureId: string, stockId: string) => (await listerLotsFiche(structureId, stockId)).data,
+    enregistrerInventaire: (structureId: string, corps: unknown) => enregistrerInventaire(structureId, corps),
+  }),
 }));
+
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 

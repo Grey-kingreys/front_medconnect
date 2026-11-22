@@ -7,10 +7,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { messageErreurPour } from "@/hooks/useToast";
 import { nouvelleCleIdempotence } from "@/lib/api_carnet";
 import {
-  creerFournisseur,
-  enregistrerReception,
-  getMyStock,
-  listerFournisseurs,
   type CorpsReception,
   type EnteteFactureDemandee,
   type Fournisseur,
@@ -19,6 +15,7 @@ import {
   type StockMedicament,
 } from "@/lib/api_pharmacie";
 import { ApiError } from "@/lib/api_auth";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
 import { LIBELLES_UNITE_MINIMALE, deOuD } from "@/lib/caisse/regles/quantites";
 import { controlerLigne, controlerSomme, lireMontant, lireTauxTva } from "@/lib/facture_fournisseur";
 import { formaterGNF } from "@/lib/format_gnf";
@@ -45,8 +42,8 @@ const compact = (classes: string) =>
   classes.replace("h-mc-controle ", "h-mc-controle-petit ").replace("text-mc-normal", "text-mc-petit").replace("px-3", "px-2");
 const CHAMP_PETIT = compact(CHAMP);
 const CHAMP_PETIT_INVALIDE = compact(CHAMP_INVALIDE);
-const CHAMP_QUANTITE = CHAMP_PETIT.replace("w-full ", "w-20 shrink-0 text-right tabular-nums ");
-const CHAMP_QUANTITE_INVALIDE = CHAMP_PETIT_INVALIDE.replace("w-full ", "w-20 shrink-0 text-right tabular-nums ");
+const CHAMP_QUANTITE = CHAMP_PETIT.replace("w-full ", "w-full text-right tabular-nums ");
+const CHAMP_QUANTITE_INVALIDE = CHAMP_PETIT_INVALIDE.replace("w-full ", "w-full text-right tabular-nums ");
 // Montants : alignés à droite, chiffres de largeur fixe.
 const CHAMP_NOMBRE = CHAMP_PETIT.replace("w-full ", "w-full text-right tabular-nums ");
 const CHAMP_NOMBRE_INVALIDE = CHAMP_PETIT_INVALIDE.replace("w-full ", "w-full text-right tabular-nums ");
@@ -326,6 +323,23 @@ export default function NouvelleReceptionPage() {
   const [erreursEntete, setErreursEntete] = useState<Partial<Record<keyof EnteteSaisie, string>>>({});
   const [lignes, setLignes] = useState<LigneSaisie[]>([ligneVide(1)]);
   const [erreurs, setErreurs] = useState<Record<number, ErreursLigne>>({});
+  // Champs du pied de facture saisis à la main : ils ne sont plus recalculés.
+  const [saisisMain, setSaisisMain] = useState<Partial<Record<(typeof MONTANTS_ENTETE)[number], boolean>>>({});
+
+  // Valeurs affichées du pied : calculées à partir des lignes tant que le champ n'est pas saisi à la main.
+  const pied = (() => {
+    const montants = lignes.filter((l) => !estVide(l)).map((l) => lireMontant(l.montantLigne));
+    const renseignes = montants.filter((m): m is number => m !== null);
+    const htCalcule = renseignes.length > 0 ? String(renseignes.reduce((s, m) => s + m, 0)) : "";
+    const montantHT = saisisMain.montantHT ? entete.montantHT : htCalcule;
+    const totalTva = entete.totalTva;
+    const ht = lireMontant(montantHT);
+    const tva = totalTva.trim() === "" ? 0 : lireMontant(totalTva);
+    const ttcCalcule = ht !== null && tva !== null ? String(ht + tva) : "";
+    const montantTTC = saisisMain.montantTTC ? entete.montantTTC : ttcCalcule;
+    const netAPayer = saisisMain.netAPayer ? entete.netAPayer : montantTTC;
+    return { montantHT, totalTva, montantTTC, netAPayer };
+  })();
 
   const [ligneActive, setLigneActive] = useState<number | null>(null);
   const [indexSuggestion, setIndexSuggestion] = useState(0);
@@ -363,10 +377,10 @@ export default function NouvelleReceptionPage() {
   useEffect(() => {
     if (!structureId) return;
     let actif = true;
-    Promise.all([getMyStock(structureId), listerFournisseurs(structureId)])
+    Promise.all([sourcePharmacie().chargerStockInfo(structureId), sourcePharmacie().listerFournisseurs(structureId)])
       .then(([s, f]) => {
         if (!actif) return;
-        const fiches = s.data.stocks.filter((x) => !x.archiveLe);
+        const fiches = s.stocks.filter((x) => !x.archiveLe);
         setStock(fiches);
         setFournisseurs(f.data);
         setErreurChargement(null);
@@ -493,7 +507,8 @@ export default function NouvelleReceptionPage() {
     const telephone = telFournisseur.trim();
     setFournisseurEnCours(true);
     setErreurFournisseur(null);
-    creerFournisseur(structureId, { nom, ...(telephone !== "" ? { telephone } : {}) })
+    sourcePharmacie()
+      .creerFournisseur(structureId, { nom, ...(telephone !== "" ? { telephone } : {}) })
       .then((res) => {
         setFournisseurEnCours(false);
         const fournisseur: Fournisseur = {
@@ -586,7 +601,8 @@ export default function NouvelleReceptionPage() {
     setBandeauLignes(false);
     setReessayable(false);
     setConfirmationModif(false);
-    enregistrerReception(structureId, corps)
+    sourcePharmacie()
+      .enregistrerReception(structureId, corps)
       .then((res) => {
         envoiEnCours.current = false;
         setEnvoi(false);
@@ -684,8 +700,8 @@ export default function NouvelleReceptionPage() {
     if (entete.referenceCommande.trim() !== "") factureDemandee.referenceCommande = entete.referenceCommande.trim();
     if (entete.dateFacture !== "") factureDemandee.dateFacture = entete.dateFacture;
     for (const c of MONTANTS_ENTETE) {
-      if (entete[c].trim() === "") continue;
-      const v = lireMontant(entete[c]);
+      if (pied[c].trim() === "") continue;
+      const v = lireMontant(pied[c]);
       if (v === null) erreursFact[c] = MSG_MONTANT;
       else factureDemandee[c] = v;
     }
@@ -735,6 +751,7 @@ export default function NouvelleReceptionPage() {
     setLignes([ligneVide(prochaineCle.current++)]);
     setErreurs({});
     setEntete(enteteVide);
+    setSaisisMain({});
     setErreursEntete({});
     setBandeau(null);
     setReessayable(false);
@@ -907,7 +924,7 @@ export default function NouvelleReceptionPage() {
   const lignesRemplies = lignes.filter((l) => !estVide(l));
   const avertissementSomme = controlerSomme(
     lignesRemplies.map((l) => (l.montantLigne.trim() === "" ? null : lireMontant(l.montantLigne))),
-    entete.montantHT.trim() === "" ? null : lireMontant(entete.montantHT),
+    pied.montantHT.trim() === "" ? null : lireMontant(pied.montantHT),
   );
   const lignesChoisies = lignes.filter((l) => l.stockId !== null);
   const totalBoites = lignes.reduce((somme, l) => {
@@ -1055,13 +1072,13 @@ export default function NouvelleReceptionPage() {
               <tr className={`${ui.enteteTableau} align-bottom`}>
                 <th scope="col" className={`${ENTETE} w-10 text-right`}>Ligne</th>
                 <th scope="col" className={`${ENTETE} w-24`}>Code</th>
-                <th scope="col" className={`${ENTETE} sticky left-0 z-10 w-60 bg-slate-50 dark:bg-slate-800`}>Désignation des produits</th>
+                <th scope="col" className={`${ENTETE} sticky left-0 z-10 w-60 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)] bg-slate-50 dark:bg-slate-800`}>Désignation des produits</th>
                 <th scope="col" className={`${ENTETE} w-28`}>Péremption<br />(MM/AA)</th>
                 <th scope="col" className={`${ENTETE} w-14`}>TB</th>
                 <th scope="col" className={`${ENTETE} w-28 text-right`}>Prix<br />public</th>
                 <th scope="col" className={`${ENTETE} w-16 text-right`}>TVA</th>
                 <th scope="col" className={`${ENTETE} w-24 text-right`}>Qté<br />commandée</th>
-                <th scope="col" className={`${ENTETE} w-28`}>Qté<br />livrée</th>
+                <th scope="col" className={`${ENTETE} w-28 text-right`}>Qté<br />livrée</th>
                 <th scope="col" className={`${ENTETE} w-28 text-right`}>Prix<br />unitaire</th>
                 <th scope="col" className={`${ENTETE} w-32 text-right`}>Montant<br />HT</th>
                 <th scope="col" className={`${ENTETE} w-22 text-right`}>Colisage</th>
@@ -1088,7 +1105,7 @@ export default function NouvelleReceptionPage() {
                     <tr className="align-top">
                       <td className={`${CELLULE} text-right tabular-nums text-slate-600 dark:text-slate-400`}>{n}</td>
                       <td className={CELLULE}>{detail(l, n, e, "codeFournisseur")}</td>
-                      <td className={`${CELLULE} sticky left-0 z-10 bg-white dark:bg-slate-900`}>
+                      <td className={`${CELLULE} sticky left-0 z-10 shadow-[2px_0_4px_-2px_rgba(15,23,42,0.15)] bg-white dark:bg-slate-900`}>
                         <input
                           data-champ={`${l.cle}:medicament`}
                           type="text"
@@ -1204,7 +1221,7 @@ export default function NouvelleReceptionPage() {
                       <td className={CELLULE}>{detail(l, n, e, "tauxTva", true)}</td>
                       <td className={CELLULE}>{detail(l, n, e, "qteCommandee", true)}</td>
                       <td className={CELLULE}>
-                        <div className="flex flex-col items-end gap-1">
+                        <div className="flex flex-col items-stretch gap-1">
                           <input
                             data-champ={`${l.cle}:quantite`}
                             type="text"
@@ -1230,7 +1247,7 @@ export default function NouvelleReceptionPage() {
                               <option value="UNITE">{`en ${unite.pluriel}`}</option>
                             </select>
                           ) : (
-                            <span className="py-1.5 text-mc-petit text-slate-700 dark:text-slate-300">boîtes</span>
+                            <span className="py-1.5 text-right text-mc-petit text-slate-700 dark:text-slate-300">boîtes</span>
                           )}
                         </div>
                         {e.quantite && (
@@ -1354,16 +1371,16 @@ export default function NouvelleReceptionPage() {
         </button>
 
         <div className="flex justify-end">
-          <div className="w-full max-w-sm space-y-2 rounded-mc-moyen border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
+          <div className="w-full max-w-md space-y-2 rounded-mc-moyen border border-slate-200 bg-slate-50 p-3 dark:border-slate-800 dark:bg-slate-800/50">
             {MONTANTS_ENTETE.map((c) => {
               const erreur = erreursEntete[c];
               const fort = c === "netAPayer";
               return (
                 <div key={c}>
-                  <div className="flex items-center justify-between gap-3">
+                  <div className="grid grid-cols-[11rem_minmax(0,1fr)] items-center gap-3">
                     <label
                       htmlFor={`facture-${c}`}
-                      className={`text-mc-legende uppercase tracking-wide ${fort ? "font-semibold text-slate-900 dark:text-slate-100" : "font-medium text-slate-600 dark:text-slate-400"}`}
+                      className={`whitespace-nowrap text-mc-legende uppercase tracking-wide ${fort ? "font-semibold text-slate-900 dark:text-slate-100" : "font-medium text-slate-600 dark:text-slate-400"}`}
                     >
                       {LIBELLES_PIED[c]}
                     </label>
@@ -1373,12 +1390,15 @@ export default function NouvelleReceptionPage() {
                       type="text"
                       inputMode="numeric"
                       aria-label={`${LIBELLES_ENTETE[c]} (GNF)`}
-                      value={entete[c]}
+                      value={pied[c]}
                       readOnly={verrouille}
                       aria-invalid={erreur ? true : undefined}
                       aria-describedby={erreur ? `erreur-facture-${c}` : undefined}
                       onChange={(ev) => {
-                        setEntete((prev) => ({ ...prev, [c]: filtrerMontant(ev.target.value) }));
+                        const valeur = filtrerMontant(ev.target.value);
+                        setEntete((prev) => ({ ...prev, [c]: valeur }));
+                        // Champ vidé : il redevient calculé.
+                        setSaisisMain((prev) => ({ ...prev, [c]: valeur.trim() !== "" }));
                         if (erreur) setErreursEntete((prev) => ({ ...prev, [c]: undefined }));
                       }}
                       className={`${erreur ? CHAMP_NOMBRE_INVALIDE : CHAMP_NOMBRE} ${fort ? "font-semibold" : ""}`}
@@ -1392,6 +1412,7 @@ export default function NouvelleReceptionPage() {
                 </div>
               );
             })}
+            <p className="text-right text-mc-legende text-slate-500 dark:text-slate-400">Calculé à partir des lignes, modifiable.</p>
           </div>
         </div>
         {avertissementSomme && (

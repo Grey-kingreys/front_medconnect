@@ -9,7 +9,30 @@ import type {
   TypeMouvementCaisse,
 } from "../api_caisse";
 import type { Anomalie, OptionsListeAnomalies, PageAnomalies } from "../api_pilotage";
-import type { CorpsSortieStock, SortieStockEnregistree, StockMedicament } from "../api_pharmacie";
+import type {
+  CorpsImportDiffere,
+  CorpsInventaire,
+  CorpsReception,
+  CorpsSortieStock,
+  Fournisseur,
+  ImportDiffere,
+  Medicament,
+  PageInventaires,
+  PageReceptions,
+  Inventaire,
+  Reception,
+  SortieStockEnregistree,
+  StockMedicament,
+} from "../api_pharmacie";
+import type {
+  CorpsClientCredit,
+  CorpsModifClientCredit,
+  CorpsRemboursement,
+  FiltreStatutCredit,
+  FicheClientCredit,
+  ListeCredits,
+  ResultatRemboursement,
+} from "../api_credit";
 import type { CorpsCreationVente, Vente, VentesDuJour } from "../api_ventes";
 import type { EtatCaisse } from "./source";
 
@@ -128,6 +151,10 @@ export interface PontStock extends PontDomaine {
   ): Promise<ReponsePont<StockMedicament>>;
   /** Génère le .xlsx du stock local (sans coût) et l'enregistre par une boîte « Enregistrer sous ». */
   exporter(s: string, options: { filtre?: "tous" | "alertes" | "rupture" | "qualifier"; q?: string }): Promise<ReponsePont<ResultatExportStock>>;
+  /** Met un fichier Excel de côté (un événement du journal, aucun aperçu, stock local inchangé) : importé au retour du réseau. */
+  importerDiffere(s: string, corps: CorpsImportDiffere & { id: string }): Promise<ReponsePont<ImportDiffere>>;
+  /** Les 20 derniers imports mis de côté : en attente, envoyés, traités (avec leur résultat) ou refusés. */
+  listerImportsDifferes(s: string): Promise<ReponsePont<ImportDiffere[]>>;
 }
 
 /** Résultat de l'export du stock sur le poste : `enregistre` est faux si la personne a fermé la boîte sans enregistrer. */
@@ -136,10 +163,59 @@ export interface ResultatExportStock {
   nomFichier: string;
 }
 
+/** Domaine `reception` du pont : livraison avec facture, liste et détail des réceptions récentes (permission `reception:write`). */
+export interface PontReception extends PontDomaine {
+  enregistrer(s: string, corps: CorpsReception & { id: string }): Promise<ReponsePont<Reception>>;
+  lister(s: string, options: { page?: number }): Promise<ReponsePont<PageReceptions>>;
+  lire(s: string, receptionId: string): Promise<ReponsePont<Reception>>;
+}
+
+/** Domaine `inventaire` du pont : comptage par lot, liste et détail des inventaires récents (permission `inventaire:write`). */
+export interface PontInventaire extends PontDomaine {
+  enregistrer(s: string, corps: CorpsInventaire & { id: string }): Promise<ReponsePont<Inventaire>>;
+  lister(s: string, options: { page?: number }): Promise<ReponsePont<PageInventaires>>;
+  lire(s: string, inventaireId: string): Promise<ReponsePont<Inventaire>>;
+}
+
+/** Domaine `credit` du pont : cahier de crédit (lecture `credit:read`, écritures `credit:write`). */
+export interface PontCredit extends PontDomaine {
+  lister(s: string, options: { q?: string; statut?: FiltreStatutCredit; page?: number; parPage?: number }): Promise<ReponsePont<ListeCredits>>;
+  lire(s: string, clientId: string): Promise<ReponsePont<FicheClientCredit>>;
+  creerClient(s: string, corps: CorpsClientCredit & { id: string }): Promise<ReponsePont<FicheClientCredit>>;
+  modifierClient(s: string, clientId: string, corps: CorpsModifClientCredit): Promise<ReponsePont<FicheClientCredit>>;
+  modifierDateLimite(s: string, venteId: string, corps: { dateLimite: string | null }): Promise<ReponsePont<FicheClientCredit>>;
+  enregistrerRemboursement(s: string, clientId: string, corps: CorpsRemboursement & { id: string }): Promise<ReponsePont<ResultatRemboursement>>;
+}
+
+/** Domaine `fournisseur` du pont : liste et création (permission `reception:write`). */
+export interface PontFournisseur extends PontDomaine {
+  lister(s: string): Promise<ReponsePont<Fournisseur[]>>;
+  creer(s: string, corps: { nom: string; telephone?: string }): Promise<ReponsePont<Fournisseur & { cree: boolean }>>;
+}
+
 /** Domaine `anomalie` du pont : file des anomalies ouvertes et traitement sur le poste (permission `anomalie:gerer`). */
 export interface PontAnomalie extends PontDomaine {
   lister(s: string, options: OptionsListeAnomalies): Promise<ReponsePont<PageAnomalies>>;
   traiter(s: string, anomalieId: string, corps: { commentaire: string }): Promise<ReponsePont<Anomalie>>;
+}
+
+/** Champs d'une fiche modifiables hors ligne : prix de la boîte, prix à l'unité, tolérance d'inventaire, notes (null efface). */
+export interface ChampsFicheSurs {
+  prixUnitaire?: number | null;
+  prixUnite?: number | null;
+  toleranceInventaire?: number | null;
+  notes?: string | null;
+}
+
+/** Domaine `fiche` du pont : modifier les champs sûrs d'une fiche, ajouter un médicament au stock (permission `stock:write`). */
+export interface PontFiche extends PontDomaine {
+  modifier(s: string, stockId: string, champs: ChampsFicheSurs): Promise<ReponsePont<{ fiche: StockMedicament; modifiee: boolean }>>;
+  creer(s: string, corps: { id: string; medicamentId: string; prixUnitaire?: number | null; notes?: string | null }): Promise<ReponsePont<{ fiche: StockMedicament; cree: boolean }>>;
+}
+
+/** Domaine `catalogue` du pont : recherche dans le catalogue global allégé copié sur le poste (permission `stock:write`). */
+export interface PontCatalogue extends PontDomaine {
+  rechercher(s: string, recherche: string): Promise<ReponsePont<Medicament[]>>;
 }
 
 export interface PontDesktop {
@@ -169,10 +245,13 @@ export interface PontDesktop {
   };
   /** Domaines pharmacie à venir, prêts à recevoir leurs fonctions (absents des anciens préchargements). */
   stock?: PontStock;
-  reception?: PontDomaine;
-  inventaire?: PontDomaine;
-  credit?: PontDomaine;
+  reception?: PontReception;
+  fournisseur?: PontFournisseur;
+  inventaire?: PontInventaire;
+  credit?: PontCredit;
   anomalie?: PontAnomalie;
+  fiche?: PontFiche;
+  catalogue?: PontCatalogue;
   maj: {
     /** Installe la mise à jour prête et relance l'application ; refusé si une caisse est ouverte ou si des ventes attendent. */
     installer(): Promise<ReponsePont<null>>;

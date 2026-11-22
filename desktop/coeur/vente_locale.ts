@@ -43,6 +43,7 @@ import {
   messageStockIntrouvable,
   messageVenteUniteInterdite,
 } from "./messages";
+import { creerClientDeVente, enregistrerPriseLocale, verifierCreditDeVente } from "./credit_locale";
 import { consommerNumeroPlage, prochainNumeroPlage } from "./plages_locales";
 import { RefusCaisse, exigerUuid, refusValidation } from "./refus";
 import type { Utilisateur } from "./types_caisse";
@@ -242,6 +243,10 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       }
     }
 
+    // Vente à crédit : client du cahier, date limite (contrôlés avant toute écriture).
+    const credit = verifierCreditDeVente(c, corps);
+    const clientCreditId = credit ? (credit.client?.id ?? c.outils.genererId()) : null;
+
     // Client et total.
     const clientNom = (corps.clientNom ?? "").trim();
     const clientTelephone = (corps.clientTelephone ?? "").trim();
@@ -254,8 +259,8 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
     const total = lignes.reduce((somme, x) => somme + x.calcul.montantLigne, 0);
     if (total > PRIX_MAX) throw refusValidation(MESSAGE_TOTAL_TROP_ELEVE);
 
-    // 6. Paiements.
-    if (corps.paiements !== undefined) {
+    // 6. Paiements. Une vente à crédit se règle entièrement à crédit : jamais de l'argent encaissé.
+    if (credit === null && corps.paiements !== undefined) {
       if (!Array.isArray(corps.paiements) || corps.paiements.length < 1 || corps.paiements.length > 5) {
         throw refusValidation("Une vente a de 1 à 5 paiements.");
       }
@@ -269,11 +274,13 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
         }
       }
     }
-    const prepares = preparerPaiements(
-      total,
-      corps.paiements,
-      ref.modesPaiement.map((m) => ({ ...m, id: m.code })),
-    );
+    const prepares = credit
+      ? ({ ok: true, paiements: [{ modePaiementId: "CREDIT", code: "CREDIT", montant: total, referenceExterne: null, montantRecu: null }] } as ReturnType<typeof preparerPaiements>)
+      : preparerPaiements(
+          total,
+          corps.paiements,
+          ref.modesPaiement.map((m) => ({ ...m, id: m.code })),
+        );
     if (!prepares.ok) {
       switch (prepares.code) {
         case "MODE_PAIEMENT_INCONNU":
@@ -287,6 +294,7 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       }
     }
     const libellesModes = new Map(ref.modesPaiement.map((m) => [m.code, m.libelle]));
+    libellesModes.set("CREDIT", "Crédit");
 
     // 7. Caisse du poste.
     const ouverte = sessionOuverteLigne(c);
@@ -439,12 +447,16 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
         ...(p.montantRecu !== null ? { montantRecu: p.montantRecu } : {}),
       })),
       total,
+      ...(clientCreditId !== null ? { clientCreditId } : {}),
+      ...(credit?.dateLimite ? { dateLimiteCredit: credit.dateLimite } : {}),
       ...(clientNom !== "" ? { clientNom } : {}),
       ...(clientTelephone !== "" ? { clientTelephone } : {}),
       ordonnanceVerifiee: corps.ordonnanceVerifiee === true,
       ...(telephonePrescripteur !== "" ? { telephonePrescripteur } : {}),
     };
 
+    const nomCredit = credit ? (credit.client?.nomComplet ?? credit.nouveau?.nomComplet) : undefined;
+    const telephoneCredit = credit ? (credit.client?.telephone ?? credit.nouveau?.telephone) : undefined;
     const vente: Vente = {
       id: cle,
       numero,
@@ -452,8 +464,8 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       createdAt: horodatage,
       total,
       ordonnanceVerifiee: corps.ordonnanceVerifiee === true,
-      clientNom: clientNom !== "" ? clientNom : null,
-      clientTelephone: clientTelephone !== "" ? clientTelephone : null,
+      clientNom: clientNom !== "" ? clientNom : (nomCredit ?? null),
+      clientTelephone: clientTelephone !== "" ? clientTelephone : (telephoneCredit ?? null),
       telephonePrescripteur: telephonePrescripteur !== "" ? telephonePrescripteur : null,
       vendeur: { id: u.id, nom: u.nom },
       annuleeLe: null,
@@ -472,10 +484,15 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
       annulation: null,
       venteOrigine: null,
       motif: null,
+      ...(credit && clientCreditId !== null
+        ? { clientCreditId, credit: { clientCreditId, nomComplet: nomCredit ?? "", dateLimite: credit.dateLimite } }
+        : {}),
     };
 
     // 12. Écriture : tout ou rien. L'événement de la vente, dernier, prend la séquence réservée ici.
     if (!ouverte) creerSession(c, sessionId, u, true);
+    // Nouveau client de crédit : son événement précède celui de la vente.
+    if (credit?.nouveau && clientCreditId !== null) creerClientDeVente(c, clientCreditId, credit.nouveau, u);
     const sequence = c.etat().prochaineSequence;
     c.stockage.executer(
       "INSERT INTO ventes (id, sequence, sessionId, jourMetier, numero, total, document, createdAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
@@ -493,7 +510,9 @@ export function enregistrerVente(c: Contexte, corps: CorpsCreationVente, cle: st
         });
       }
     });
-    for (const p of prepares.paiements) {
+    if (credit && clientCreditId !== null) enregistrerPriseLocale(c, cle, sequence, clientCreditId, credit.dateLimite);
+    // Le crédit n'est jamais de l'argent encaissé : aucun paiement local.
+    for (const p of credit ? [] : prepares.paiements) {
       c.stockage.executer("INSERT INTO paiements_locaux (venteId, sessionId, mode, montant) VALUES (?, ?, ?, ?)", [
         cle,
         sessionId,

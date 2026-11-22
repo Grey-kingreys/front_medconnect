@@ -16,7 +16,7 @@ import {
   verifyToken,
   ApiError,
 } from "@/lib/api_auth";
-import { EVENEMENT_DECONNEXION_FORCEE } from "@/lib/deconnexion_forcee";
+import { EVENEMENT_DECONNEXION_FORCEE, EVENEMENT_SESSION_EXPIREE } from "@/lib/deconnexion_forcee";
 import { pontDesktop } from "@/lib/caisse/contrat_desktop";
 import { deconnecterPoste, panneReseauDesktop, pousserJeton } from "@/lib/connexion_desktop";
 import { DeleteConfirmModal } from "@/components/modals/DeleteConfirmModal";
@@ -253,7 +253,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       router.push("/auth/login");
     };
     window.addEventListener(EVENEMENT_DECONNEXION_FORCEE, surDeconnexionForcee);
-    return () => window.removeEventListener(EVENEMENT_DECONNEXION_FORCEE, surDeconnexionForcee);
+    // Rafraîchissement refusé : même effet, sans motif à afficher sur la page de connexion
+    window.addEventListener(EVENEMENT_SESSION_EXPIREE, surDeconnexionForcee);
+    return () => {
+      window.removeEventListener(EVENEMENT_DECONNEXION_FORCEE, surDeconnexionForcee);
+      window.removeEventListener(EVENEMENT_SESSION_EXPIREE, surDeconnexionForcee);
+    };
   }, [router]);
 
   // ── Application desktop : obtenir un jeton pour le processus principal ──

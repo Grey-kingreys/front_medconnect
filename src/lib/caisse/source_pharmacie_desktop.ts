@@ -1,5 +1,5 @@
 import type { LotEnStock, StockInfo, StockMedicament } from "../api_pharmacie";
-import type { PontAnomalie, PontDesktop, PontStock } from "./contrat_desktop";
+import type { PontAnomalie, PontCatalogue, PontCredit, PontDesktop, PontFiche, PontFournisseur, PontInventaire, PontReception, PontStock } from "./contrat_desktop";
 import type { SourcePharmacie } from "./source_pharmacie";
 import { lire } from "./source_desktop";
 
@@ -46,6 +46,30 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     if (pont.anomalie === undefined || typeof pont.anomalie.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
     return pont.anomalie;
   };
+  const reception = (): PontReception => {
+    if (pont.reception === undefined || typeof pont.reception.enregistrer !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.reception;
+  };
+  const inventaire = (): PontInventaire => {
+    if (pont.inventaire === undefined || typeof pont.inventaire.enregistrer !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.inventaire;
+  };
+  const credit = (): PontCredit => {
+    if (pont.credit === undefined || typeof pont.credit.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.credit;
+  };
+  const fournisseur = (): PontFournisseur => {
+    if (pont.fournisseur === undefined || typeof pont.fournisseur.lister !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.fournisseur;
+  };
+  const fiche = (): PontFiche => {
+    if (pont.fiche === undefined || typeof pont.fiche.modifier !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.fiche;
+  };
+  const catalogue = (): PontCatalogue => {
+    if (pont.catalogue === undefined || typeof pont.catalogue.rechercher !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+    return pont.catalogue;
+  };
   const chargerStock = async (structureId: string) => lire(await pont.caisse.chargerStock(structureId)).data;
 
   return {
@@ -71,6 +95,68 @@ export function creerSourcePharmacieDesktop(pont: PontDesktop): SourcePharmacie 
     },
     async traiterAnomalie(structureId, anomalieId, commentaire) {
       return lire(await anomalie().traiter(structureId, anomalieId, { commentaire }));
+    },
+    async enregistrerInventaire(structureId, corps) {
+      return lire(await inventaire().enregistrer(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async listerInventaires(structureId, page) {
+      return lire(await inventaire().lister(structureId, { page }));
+    },
+    async lireInventaire(structureId, inventaireId) {
+      return lire(await inventaire().lire(structureId, inventaireId));
+    },
+    async listerCredits(structureId, options) {
+      return lire(await credit().lister(structureId, options));
+    },
+    async lireFicheCredit(structureId, clientId) {
+      return lire(await credit().lire(structureId, clientId));
+    },
+    async creerClientCredit(structureId, corps) {
+      return lire(await credit().creerClient(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async modifierClientCredit(structureId, clientId, corps) {
+      return lire(await credit().modifierClient(structureId, clientId, corps));
+    },
+    async modifierDateLimitePrise(structureId, venteId, dateLimite) {
+      return lire(await credit().modifierDateLimite(structureId, venteId, { dateLimite }));
+    },
+    async enregistrerRemboursementCredit(structureId, clientId, corps) {
+      return lire(await credit().enregistrerRemboursement(structureId, clientId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async listerFournisseurs(structureId) {
+      return lire(await fournisseur().lister(structureId));
+    },
+    async creerFournisseur(structureId, corps) {
+      return lire(await fournisseur().creer(structureId, corps));
+    },
+    async enregistrerReception(structureId, corps) {
+      return lire(await reception().enregistrer(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async listerReceptions(structureId, page) {
+      return lire(await reception().lister(structureId, { page }));
+    },
+    async lireReception(structureId, receptionId) {
+      return lire(await reception().lire(structureId, receptionId));
+    },
+    async rechercherCatalogue(structureId, recherche) {
+      return lire(await catalogue().rechercher(structureId, recherche)).data;
+    },
+    async creerFiche(structureId, corps) {
+      return lire(await fiche().creer(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async modifierFiche(structureId, f, champs) {
+      return lire(await fiche().modifier(structureId, f.id, champs));
+    },
+    async mettreImportDeCote(structureId, corps) {
+      const s = stock();
+      if (typeof s.importerDiffere !== "function") throw new Error(MESSAGE_APPLICATION_ANCIENNE);
+      return lire(await s.importerDiffere(structureId, { ...corps, id: corps.id ?? crypto.randomUUID() }));
+    },
+    async listerImportsDifferes(structureId) {
+      const s = stock();
+      // Une application plus ancienne n'a pas cette fonction : la liste est vide, sans erreur
+      if (typeof s.listerImportsDifferes !== "function") return [];
+      return lire(await s.listerImportsDifferes(structureId)).data;
     },
     async exporterStock(structureId, options) {
       const s = stock();

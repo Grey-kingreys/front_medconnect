@@ -42,6 +42,12 @@ function installerPont(horsLigne: boolean) {
   const sortir = vi.fn().mockImplementation(() => ok({ soldeLot: 20, quantiteARegulariser: 0 }, "Sortie de stock enregistrée sur ce poste."));
   const corriger = vi.fn().mockImplementation(() => ok(fiche, "Stock réduit sur ce poste (nouvelle quantité : 20)"));
   const exporter = vi.fn().mockImplementation(() => ok({ enregistre: true, nomFichier: "stock-pharmacie-2026-11-14.xlsx" }, "Stock exporté."));
+  const listerImportsDifferes = vi.fn().mockImplementation(() =>
+    ok([
+      { id: "i1", mode: "livraison", nomFichier: "livraison.xlsx", statut: "TRAITE", message: null, resultat: { mode: "livraison", nomFichier: "livraison.xlsx", totalLignes: 3, importees: 2, rejetees: 1, receptionId: null, inventaireId: null, lignesRejetees: [{ ligne: 4, nom: "Inconnu", raison: "Médicament absent du catalogue." }] } },
+      { id: "i2", mode: "inventaire", nomFichier: "comptage.xlsx", statut: "EN_ATTENTE", message: null, resultat: null },
+    ]),
+  );
   const chargerStock = vi.fn().mockImplementation(() => ok([fiche]));
   const chargerReferentiels = vi.fn().mockImplementation(() => ok({ parametres: { seuilStockBas: 5 } }));
   const etat = { horsLigne, enLigne: !horsLigne };
@@ -50,7 +56,7 @@ function installerPont(horsLigne: boolean) {
     etat: () => Promise.resolve(etat),
     surEtat: () => () => undefined,
     caisse: { chargerStock, chargerReferentiels },
-    stock: { sortir, corriger, exporter },
+    stock: { sortir, corriger, exporter, listerImportsDifferes },
   } as unknown as PontDesktop;
   return { sortir, corriger, chargerStock, exporter };
 }
@@ -100,18 +106,29 @@ describe("Stock sur le poste desktop", () => {
     await waitFor(() => expect(onSucces).toHaveBeenCalledWith("Stock réduit sur ce poste (nouvelle quantité : 20)"));
   });
 
-  it("hors ligne, la page se lit et les autres actions demandent une connexion", async () => {
+  it("hors ligne, la page se lit, l'import Excel s'ouvre (fichier mis de côté) et la fiche s'ouvre pour les champs sûrs", async () => {
     installerPont(true);
     render(<StockPage />);
     expect(await screen.findByText("Doliprane")).toBeTruthy();
     await waitFor(() => expect(screen.getByRole("button", { name: "Sortir Doliprane du stock" })).toBeTruthy());
 
-    for (const nom of ["Importer depuis Excel", "Ajouter un médicament", "Modifier Doliprane"]) {
-      fireEvent.click(screen.getByRole("button", { name: nom }));
-      expect((await screen.findByRole("alert")).textContent).toBe("Cette action demande une connexion.");
-    }
-    expect(screen.queryByText("Fenêtre d'import ouverte")).toBeNull();
     expect(screen.queryByText("Fiche ouverte")).toBeNull();
+    // Hors ligne, l'import ne demande plus la connexion : la fenêtre s'ouvre
+    fireEvent.click(screen.getByRole("button", { name: "Importer depuis Excel" }));
+    expect(await screen.findByText("Fenêtre d'import ouverte")).toBeTruthy();
+    expect(screen.queryByText("Cette action demande une connexion.")).toBeNull();
+    // Ajouter et modifier une fiche se font sur le poste : la fenêtre s'ouvre.
+    fireEvent.click(screen.getByRole("button", { name: "Modifier Doliprane" }));
+    expect(await screen.findByText("Fiche ouverte")).toBeTruthy();
+  });
+
+  it("hors ligne, les fichiers mis de côté et leur résultat sont listés sur la page du stock", async () => {
+    installerPont(true);
+    render(<StockPage />);
+    expect(await screen.findByText("Fichiers Excel mis de côté")).toBeTruthy();
+    expect(screen.getByText("2 lignes importées sur 3, 1 ligne refusée")).toBeTruthy();
+    expect(screen.getByText("En attente du retour du réseau")).toBeTruthy();
+    expect(screen.getByText("Ligne 4 (Inconnu) : Médicament absent du catalogue.")).toBeTruthy();
   });
 
   it("hors ligne, l'export se fait sur le poste, sans connexion, et dit que les prix d'achat n'y sont pas", async () => {

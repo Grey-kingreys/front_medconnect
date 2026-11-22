@@ -1,6 +1,6 @@
 # MedConnecte Caisse (desktop)
 
-Application Electron qui affiche le site web de MedConnecte. Aucune compilation native n'est nécessaire (`better-sqlite3` fournit son binaire).
+Application Electron qui affiche le site web de MedConnecte. Aucune compilation native n'est nécessaire (`better-sqlite3-multiple-ciphers` 13.1.1, SQLCipher, fournit son binaire Node-API).
 
 Installation à froid, depuis ce dossier :
 
@@ -34,9 +34,17 @@ Une mise à jour ne s'installe qu'à la fermeture du programme ou sur demande, j
 
 La notice pour l'officine est `NOTICE-INSTALLATION.md`.
 
+## Base chiffrée (Q12)
+
+La base `caisse.sqlite` est chiffrée (SQLCipher, AES-256) contre le vol du PC. La clé (32 octets aléatoires) est créée au premier démarrage, protégée par Electron `safeStorage` (DPAPI Windows, liée à la session Windows) et rangée chiffrée dans `cle-base.bin` (dossier des données). Elle n'est jamais en clair sur le disque ni dans le journal. Sans coffre disponible, la caisse refuse de démarrer (pas de repli en clair).
+
+- **Poste déjà installé avec une base en clair** : au démarrage, elle est chiffrée automatiquement (copie de sauvegarde dans `sauvegarde-avant-chiffrement`, copie chiffrée contrôlée table par table, remplacement, puis suppression de la sauvegarde). En cas d'échec, la base d'origine et la sauvegarde restent. Le `journal.log` l'indique.
+- **Changer de compte Windows ou réinstaller Windows rend la base illisible** (la clé n'est plus déchiffrable). C'est accepté : le serveur garde la vérité après synchronisation. **Ce qui n'a pas encore été synchronisé serait perdu.** La caisse affiche alors un message clair ; pour repartir, supprimer `cle-base.bin` et `caisse.sqlite*` (après avoir déplacé l'ancienne base), puis relancer.
+- Une copie de la base ne s'ouvre pas sans la clé : pour le support, utiliser la session Windows du poste.
+
 ## Support : fichiers du poste
 
-- **Ne jamais copier `caisse.sqlite` seul.** La base est en mode WAL : ses ventes récentes peuvent être dans `caisse.sqlite-wal`, et un `-wal` d'une autre base rejoué sur ce fichier le corrompt. Déplacer les trois fichiers ensemble (`caisse.sqlite`, `-wal`, `-shm`, programme fermé), ou faire une copie cohérente avec `db.backup()` de better-sqlite3.
+- **Ne jamais copier `caisse.sqlite` seul.** La base est en mode WAL : ses ventes récentes peuvent être dans `caisse.sqlite-wal`, et un `-wal` d'une autre base rejoué sur ce fichier le corrompt. Déplacer les trois fichiers ensemble (`caisse.sqlite`, `-wal`, `-shm`, programme fermé), ou faire une copie cohérente avec `db.backup()` (la copie obtenue est une base chiffrée, lisible seulement avec la clé du poste).
 - Si `appareil.json` et la base ne donnent pas le même identifiant, la caisse refuse de démarrer (« Les données de ce poste ne correspondent pas à son identifiant ») et ne modifie rien. Cause probable : base remplacée à la main.
 - `journal.log` (dossier de données) garde les événements de démarrage, sans jeton ni vente.
 - **Mises à jour non signées** : seule l'empreinte `sha512` lue dans `latest.yml` protège le téléchargement. L'hébergement des mises à jour doit donc être sûr (`https`, accès en écriture réservé).

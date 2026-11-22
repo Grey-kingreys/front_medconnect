@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { X, Pill, Loader2, Save, Plus, Info, AlertCircle, ChevronDown, CheckCircle2 } from "lucide-react";
 import {
-  getCatalogue,
   Medicament,
   upsertStock,
   createMedicament,
@@ -22,6 +21,9 @@ import { manqueVenteAuDetail } from "@/lib/caisse/regles/prix";
 import { formaterGNF } from "@/lib/format_gnf";
 import { afficherDatePeremption, lireDatePeremption } from "@/lib/date_peremption";
 import { codeErreur, estErreurReseau } from "@/lib/erreurs_api";
+import { sourcePharmacie } from "@/lib/caisse/source_pharmacie_active";
+import { MESSAGE_ACTION_EN_LIGNE } from "@/lib/caisse/source_desktop";
+import type { ChampsFicheSurs } from "@/lib/caisse/contrat_desktop";
 
 interface StockModalProps {
   isOpen: boolean;
@@ -33,6 +35,8 @@ interface StockModalProps {
   fichesActives?: StockMedicament[];
   /** Bascule sur la fenêtre de modification de la fiche d'un médicament déjà en stock choisi à l'ajout. */
   onModifierFiche?: (fiche: StockMedicament) => void;
+  /** Poste desktop hors ligne : seuls le prix de la boîte, le prix à l'unité, la tolérance et les notes se changent, et un médicament du catalogue s'ajoute sans quantité. */
+  horsLigne?: boolean;
 }
 
 type Conversion = "" | "MULTIPLIER" | "CONSERVER";
@@ -93,6 +97,10 @@ const MESSAGE_CONVERSION_REFUSEE =
   "Le stock ne peut pas être converti en unités. Choisissez « le stock compte des unités » pour le garder tel quel, ou corrigez d'abord les lots du produit.";
 const MESSAGE_CHOIX_CONVERSION = "Indiquez si le stock actuel compte des boîtes ou des unités.";
 const MESSAGE_PAR_DEFAUT = "Une erreur est survenue";
+const MESSAGE_HORS_LIGNE_AJOUT =
+  "Sans connexion, on ajoute un médicament du catalogue avec son prix et ses notes. Pour y mettre des boîtes, enregistrez ensuite une réception. Le reste de la fiche (unités par boîte, vente à l'unité, médicament absent du catalogue) demande une connexion.";
+const MESSAGE_HORS_LIGNE_MODIF =
+  "Sans connexion, on change le prix de la boîte, le prix à l'unité, l'écart toléré et les notes. Le reste de la fiche (unité, unités par boîte, vente à l'unité, confirmation) demande une connexion.";
 
 const LABEL = ui.label;
 const AIDE = "text-mc-legende text-slate-600 dark:text-slate-400 ml-1";
@@ -205,7 +213,7 @@ class DejaPresentError extends Error {
 const ficheDuMedicament = (fiches: StockMedicament[] | undefined, med: Medicament) =>
   fiches?.find((f) => f.medicamentId === med.id || f.medicament.id === med.id);
 
-export default function StockModal({ isOpen, onClose, structureId, onSuccess, editItem, fichesActives, onModifierFiche }: StockModalProps) {
+export default function StockModal({ isOpen, onClose, structureId, onSuccess, editItem, fichesActives, onModifierFiche, horsLigne = false }: StockModalProps) {
   const [search, setSearch] = useState("");
   const [catalogue, setCatalogue] = useState<Medicament[]>([]);
   const [loadingCatalogue, setLoadingCatalogue] = useState(false);
@@ -277,17 +285,17 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     }
     setLoadingCatalogue(true);
     try {
-      const res = await getCatalogue(q);
+      const res = await sourcePharmacie().rechercherCatalogue(structureId, q);
       // Réponse périmée : la fenêtre a été rouverte, ou un médicament a été choisi entre-temps.
       if (recherche !== derniereRecherche.current) return;
-      setCatalogue(res.data);
+      setCatalogue(res);
       setShowDropdown(true);
     } catch (err) {
       console.error(err);
     } finally {
       setLoadingCatalogue(false);
     }
-  }, []);
+  }, [structureId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -446,6 +454,31 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     return "fait";
   };
 
+  /** Poste hors ligne, modification : seuls les champs sûrs qui changent partent, par la source locale. */
+  const modifierHorsLigne = async (item: StockMedicament, v: Valeurs): Promise<"rien" | "fait"> => {
+    const champs: ChampsFicheSurs = {};
+    if (v.prixBoite !== (item.prixUnitaire ?? null)) champs.prixUnitaire = v.prixBoite;
+    if ((item.deconditionnable ?? false) && v.prixUnite !== (item.prixUnite ?? null)) champs.prixUnite = v.prixUnite;
+    if (v.tolerance !== (item.toleranceInventaire ?? null)) champs.toleranceInventaire = v.tolerance;
+    const notes = form.notes.trim();
+    if (notes !== (item.notes ?? "")) champs.notes = notes === "" ? null : notes;
+    if (Object.keys(champs).length === 0) return "rien";
+    await sourcePharmacie().modifierFiche(structureId, { id: item.id, medicamentId: item.medicamentId }, champs);
+    return "fait";
+  };
+
+  /** Poste hors ligne, ajout : le médicament du catalogue entre au stock avec son prix et ses notes, sans quantité. */
+  const ajouterHorsLigne = async (v: Valeurs) => {
+    if (!selectedMed) throw new Error(MESSAGE_CHOISIR_MEDICAMENT);
+    const notes = form.notes.trim();
+    const res = await sourcePharmacie().creerFiche(structureId, {
+      medicamentId: selectedMed.id,
+      ...(v.prixBoite !== null ? { prixUnitaire: v.prixBoite } : {}),
+      ...(notes !== "" ? { notes } : {}),
+    });
+    if (!res.data.cree) throw new DejaPresentError();
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (envoiRef.current) return;
@@ -465,7 +498,15 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
     envoiRef.current = true;
     setSaving(true);
     try {
-      if (editItem) {
+      if (horsLigne && editItem) {
+        const issue = await modifierHorsLigne(editItem, lecture.valeurs);
+        if (issue === "rien") {
+          onClose();
+          return;
+        }
+      } else if (horsLigne) {
+        await ajouterHorsLigne(lecture.valeurs);
+      } else if (editItem) {
         const issue = await modifierLaFiche(editItem, lecture.valeurs);
         if (issue === "refus") return;
         if (issue === "rien") {
@@ -643,8 +684,13 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     </button>
                   ))}
 
-                  {/* Create New Option */}
-                  {search.length >= 2 && (
+                  {/* Create New Option : le catalogue commun se complète en ligne seulement */}
+                  {search.length >= 2 && horsLigne && (
+                    <p className="p-4 text-mc-legende text-slate-600 dark:text-slate-400">
+                      {`Un médicament absent de cette liste se crée dans le catalogue avec une connexion. ${MESSAGE_ACTION_EN_LIGNE}`}
+                    </p>
+                  )}
+                  {search.length >= 2 && !horsLigne && (
                     <button
                       type="button"
                       onClick={handleStartCreate}
@@ -738,6 +784,13 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
             )}
 
             {afficherSaisie && (<>
+            {horsLigne && (
+              <p role="note" className={ALERTE_ATTENTION}>
+                <Info className="w-5 h-5 shrink-0" aria-hidden="true" />
+                {editItem ? MESSAGE_HORS_LIGNE_MODIF : MESSAGE_HORS_LIGNE_AJOUT}
+              </p>
+            )}
+
             {/* Stock actuel (modification) : la quantité ne se change plus ici */}
             {editItem && (
               <div className="space-y-1">
@@ -803,6 +856,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                   <select
                     id="stock-unite"
                     value={form.unite}
+                    disabled={horsLigne}
                     onChange={(e) => maj({ unite: e.target.value as UniteMinimale })}
                     aria-describedby={aideUniteAvecStock ? "stock-aide-unite" : undefined}
                     className={SAISIE}
@@ -826,6 +880,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     inputMode="numeric"
                     autoComplete="off"
                     value={form.coefficient}
+                    disabled={horsLigne}
                     onChange={(e) => maj({ coefficient: e.target.value })}
                     aria-describedby={
                       aideNombreAIndiquer ? "stock-aide-nombre" : editItem && !nonQualifie ? "stock-aide-coefficient" : undefined
@@ -851,6 +906,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                     inputMode="numeric"
                     autoComplete="off"
                     value={form.tolerance}
+                    disabled={horsLigne && !editItem}
                     onChange={(e) => maj({ tolerance: e.target.value })}
                     aria-describedby="stock-aide-tolerance"
                     className={SAISIE}
@@ -865,6 +921,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
                 <input
                   type="checkbox"
                   checked={form.deconditionnable}
+                  disabled={horsLigne}
                   onChange={(e) => maj({ deconditionnable: e.target.checked })}
                   className={CASE_A_COCHER}
                 />
@@ -897,7 +954,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
             </div>
 
             {/* Qualification (modification d'une fiche non confirmée) */}
-            {editItem && nonQualifie && (
+            {editItem && nonQualifie && !horsLigne && (
               <div className="space-y-4">
                 <div className={ALERTE_ATTENTION}>
                   <Info className="w-5 h-5 shrink-0" aria-hidden="true" />
@@ -953,7 +1010,7 @@ export default function StockModal({ isOpen, onClose, structureId, onSuccess, ed
             )}
 
             {/* Quantité de départ et péremption (ajout) */}
-            {!editItem && (
+            {!editItem && !horsLigne && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <label htmlFor="stock-quantite-depart" className={LABEL}>Quantité de départ (en boîtes)</label>

@@ -4,11 +4,13 @@
 // (jamais de jeton, de cookie ni de mot de passe) dans MC_SONDE_SORTIE, puis quitte.
 import { app, BrowserWindow, session } from "electron";
 import { spawn } from "node:child_process";
-import { createRequire } from "node:module";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync, statSync, unlinkSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import type { CoeurCaisse } from "../coeur/coeur";
+import { ouvrirBase } from "../coeur/stockage_sqlite";
+import { obtenirCle } from "./cle_base";
+import { coffreElectron } from "./coffre_electron";
 import type { ServiceImpression } from "./impression";
 
 type Json = Record<string, unknown>;
@@ -145,11 +147,7 @@ export async function jouerScenario(opts: OptionsScenario): Promise<void> {
 
   const lireEtat = (): Json => (existsSync(fichierEtat) ? (JSON.parse(readFileSync(fichierEtat, "utf8")) as Json) : {});
   const ecrireEtat = (e: Json) => writeFileSync(fichierEtat, JSON.stringify(e, null, 2) + "\n");
-  const sqlite = () => {
-    const exiger = createRequire(path.join(app.getAppPath(), "package.json"));
-    const Database = exiger("better-sqlite3");
-    return new Database(path.join(opts.dossier, "caisse.sqlite"));
-  };
+  const sqlite = () => ouvrirBase(path.join(opts.dossier, "caisse.sqlite"), obtenirCle(opts.dossier, coffreElectron));
 
   interface Fiche {
     id: string;
@@ -526,9 +524,9 @@ export async function jouerScenario(opts: OptionsScenario): Promise<void> {
       }
 
       // Étape 5 : page réservée au réseau
-      await aller("/dashboard/receptions");
+      await aller("/dashboard/credits");
       const reservee = await attendre(() => contient("Cette action demande une connexion."), 20_000);
-      noter("5 page Réception réservée", reservee && (await contient("Aller à la vente")));
+      noter("5 page réservée au réseau", reservee && (await contient("Aller à la vente")));
       await defauts("page réservée");
 
       // Étape 6 : fermeture de la caisse, comptage, écart, commentaire
